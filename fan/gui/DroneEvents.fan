@@ -1,5 +1,7 @@
 using concurrent::Actor
+using concurrent::ActorPool
 using fwt::Desktop
+using afConcurrent
 
 class DroneEvents {
 	
@@ -17,13 +19,10 @@ class DroneEvents {
 		}
 		drone.connect
 		
-//		drone.flatTrim
-//		
-//		drone.takeOff
-//		
-//		Actor.sleep(5sec)
-//
-//		drone.land
+		droneRef := Unsafe(drone)
+		Synchronized(ActorPool()).async |->| {
+			FlightPlan().fly(droneRef.val)
+		}
 	}
 	
 	
@@ -48,8 +47,10 @@ class DroneEvents {
 	}
 	
 	Void shutdown() {
+		drone.crashLand
 		drone.disconnect
 		Actor.locals.remove("DroneEvents")
 		echo("Goodbye!")
 	}
 }
+
