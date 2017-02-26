@@ -24,7 +24,21 @@ const class Cmd {
 		Cmd("CONFIG", [name, value])
 	}
 	
-	** Makes a 'CTRL' cmd 
+	** Makes a 'CTRL' cmd.
+	** 
+	** Possible states of the drone 'control' thread.
+	** 
+	** pre>
+	** typedef enum {
+	**   NO_CONTROL_MODE = 0,          /*<! Doing nothing */
+	**   ARDRONE_UPDATE_CONTROL_MODE,  /*<! Not used */
+	**   PIC_UPDATE_CONTROL_MODE,      /*<! Not used */
+	**   LOGS_GET_CONTROL_MODE,        /*<! Not used */
+	**   CFG_GET_CONTROL_MODE,         /*<! Send active configuration file to a client through the 'control' socket UDP 5559 */
+	**   ACK_CONTROL_MODE,             /*<! Reset command mask in navdata */
+	**   CUSTOM_CFG_GET_CONTROL_MODE   /*<! Requests the list of custom configuration IDs */
+	** } ARDRONE_CONTROL_MODE;
+	** <pre
 	static Cmd makeCtrl(Int controlMode, Int otherMode) {
 		Cmd("CTRL", [controlMode, otherMode])
 	}
@@ -106,20 +120,6 @@ const class Cmd {
 	override Str toStr() { cmdStr(0) }
 }
 
-
-///**
-// * @brief Possible states of the drone 'control' thread.
-//  */
-//typedef enum
-//{
-//  NO_CONTROL_MODE = 0,          /*<! Doing nothing */
-//  ARDRONE_UPDATE_CONTROL_MODE,  /*<! Not used */
-//  PIC_UPDATE_CONTROL_MODE,      /*<! Not used */
-//  LOGS_GET_CONTROL_MODE,        /*<! Not used */
-//  CFG_GET_CONTROL_MODE,         /*<! Send active configuration file to a client through the 'control' socket UDP 5559 */
-//  ACK_CONTROL_MODE,             /*<! Reset command mask in navdata */
-//  CUSTOM_CFG_GET_CONTROL_MODE   /*<! Requests the list of custom configuration IDs */
-//} ARDRONE_CONTROL_MODE;
 
 //// from ARDrone_SDK_2_0/ControlEngine/iPhone/Release/ARDroneGeneratedTypes.h
 //var LED_ANIMATIONS = exports.LED_ANIMATIONS = [
