@@ -30,8 +30,6 @@ class DroneEvents {
 	Int oldStateFlags
 	Void onNavData(NavData navData) {
 		if (oldStateFlags.xor(navData.stateFlags) > 0) {
-			echo("  StateChange: ${navData.stateFlags.toHex(8).upper}")
-			
 			oldState := DroneState(oldStateFlags)
 			buf := StrBuf(1024)
 			DroneState#.methods.findAll { it.returns == Bool# && it.params.isEmpty && it.parent == DroneState# }.each {
@@ -43,7 +41,7 @@ class DroneEvents {
 					buf.addChar('\n')
 				}
 			}
-			echo(buf.toStr)
+			echo(buf.toStr.trimEnd)
 			oldStateFlags = navData.stateFlags
 		}
 	

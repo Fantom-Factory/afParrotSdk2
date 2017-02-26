@@ -30,19 +30,8 @@ const class CmdSender {
 		mutex.synchronized |->| {
 			sender = CmdSenderImpl(config.droneIpAddr, config.controlPort)
 			sender.connect
-
-//			if (sender.connected && !actorPool.isStopped)
-//				commsWatchdog
 		}
 	}
-	
-//	private Void commsWatchdog() {
-//		mutex.asyncLater(30ms) |->| {
-//			send(Cmd.makeKeepAlive)
-//			if (sender.connected && !actorPool.isStopped)
-//				mutex.async |->| { commsWatchdog }
-//		}
-//	}
 	
 	Void send(Cmd cmd) {
 		mutex.async |->| {
@@ -76,7 +65,7 @@ class CmdSenderImpl {
 	Void send(Cmd cmd) {
 		if (connected) {
 			socket.send(UdpPacket() { data = cmd.cmdStr(++lastSeq).toBuf.seek(0) })
-			echo("  Sent: ${cmd.cmdStr(lastSeq)}")
+			echo("--> ${cmd.cmdStr(lastSeq).trim}")
 		}
 	}
 	
