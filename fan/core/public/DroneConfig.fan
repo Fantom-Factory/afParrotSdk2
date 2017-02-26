@@ -8,4 +8,6 @@ const class DroneConfig {
 	const Int		controlPort			:= 5556
 	
 	const Duration	udpReceiveTimeout	:= 1sec
+	
+	const Duration	loopTimeout			:= 5sec
 }
