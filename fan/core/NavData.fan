@@ -1,24 +1,12 @@
 
 const class NavData {
+	private const Log		log	:= Drone#.pod.log
+	const	Int				stateFlags
+	const	Int				seqNum
+	const	Int				visionFlag
+	const	DroneState		state
+	const	NavOption:Obj	options
 
-	const	Int			stateFlags
-	const	Int			seqNum
-	const	Int			visionFlag
-	const	DroneState	state
-	
-	// Demo nav data
-//	CtrlState	ctrlState
-	const Int		battery
-	const Float		altitude
-	const Float		pitch
-	const Float		roll
-	const Float		yaw
-	const Float		vx
-	const Float		vy
-	const Float		vz
-
-//	VisionTag[]	visionTags
-	
 	// It appears there are 2 header numbers
 	// see https://github.com/felixge/node-ar-drone/blob/master/lib/navdata/parseNavdata.js#L592
 	private static const Int navDataHeader1	:= 0x55667788
@@ -34,89 +22,85 @@ const class NavData {
 		if (header != navDataHeader1 && header != navDataHeader2)
 			throw Err("Nav Data Magic Number [${header}] does not equal 0x${navDataHeader1.toHex.upper}")
 		
-		stateFlags	= in.readS4
-		seqNum		= in.readS4
-		visionFlag	= in.readS4
+		stateFlags	= in.readU4
+		seqNum		= in.readU4
+		visionFlag	= in.readU4
 		state		= DroneState(stateFlags)
+		options		:= NavOption:Obj[:]
 		
 		while (in.avail > 0) {
-			optionTag := in.readS2
-			optionLen := in.readS2
+			optionId  := in.readU2
+			optionLen := in.readU2
 
-			switch (optionTag) {
-				case 0:		// NAVDATA_DEMO_TAG
-					echo("NAVDATA_DEMO_TAG")
-				
-				case -1:	// NAVDATA_CKS_TAG
-					chkSum	 := in.readS4
-					myChkSum := 0
-					navDataBuf.size = navDataBuf.pos - 8
-					navDataBuf.trim
-					chkSumIn := navDataBuf.flip.in
-					while (chkSumIn.avail > 0) {
-						myChkSum += chkSumIn.read
-					}
-				
-					if (chkSum != myChkSum)
-						throw IOErr("Invalid NavData checksum; expected 0x${chkSum} got 0x${myChkSum}")
+			if (optionId == 0xFFFF) {
+				chkSum	 := in.readU4
+				navDataBuf.size = navDataBuf.pos - 8
+				navDataBuf.trim
+				chkSumIn := navDataBuf.flip.in
+				myChkSum := 0
+				while (chkSumIn.avail > 0) { myChkSum += chkSumIn.read }
 			
-				default:
-					echo("WARN - wots a 0x${optionTag.toHex(4).upper} tag?")
-
-					// length includes header size (4 bytes)
-					if (optionLen < 4) {
-						echo("WARN - invalid option length 0x${optionLen.toHex(4).upper}")
-						continue
-					}
-					in.skip(optionLen - 4)
+				if (chkSum != myChkSum)
+					throw IOErr("Invalid NavData checksum; expected 0x${chkSum} got 0x${myChkSum}")
+				continue
 			}
+			
+			navOption	:= NavOption.vals[optionId]
+			parseMethod	:= typeof.method("parse${navOption.name.capitalize}", false)
+			if (parseMethod == null) {
+				log.warn("No parse method for NavOption ${navOption}")
+				in.skip(optionLen - 4)
+			} else
+				options[navOption] = parseMethod.call(in, optionLen)
 		}
-		
-	}	
-	
-	Str dump() {
-//		"poo 0x$sequence.toHex.upper 0x$visionFlag.toHex.upper"
-		//"poo 0x$seq.toHex.upper "
-		
-		typeof.methods.findAll { it.returns == Bool# && it.params.isEmpty }.each { echo("${it.name.padr(20)} = ${it.callOn(this, null)}") }
-		return ""
+		this.options = options
 	}
 	
-	static Void main(Str[] args) {
-//		dat := NavData(Buf.fromHex("88776655900c804fed0d000000000000ffff08001f040000"))
-//		echo(dat.dump)
-//		echo("demo = $dat.navDataDemoOnly")
-//		echo("boot = $dat.navDataBootstrap")
-//
-//		
-//		dat = NavData(Buf.fromHex("88776655900c804f3309000001000000ffff080062030000"))
-//		echo("demo = $dat.navDataDemoOnly")
-//		echo("boot = $dat.navDataBootstrap")
-//		
-//		dat = NavData(Buf.fromHex("88776655900c804f3409000001000000ffff080063030000"))
-//		echo("demo = $dat.navDataDemoOnly")
-//		echo("boot = $dat.navDataBootstrap")
-		
-
-		d := NavData { it.stateFlags = 0x4f800c90 }
-		echo(d.dump)
-
+	NavOptionDemo? demoData() {
+		options[NavOption.demo]
+	}
+	
+	@Operator
+	Obj? get(NavOption navOpt) {
+		options[navOpt]
+	}
+	
+	static internal NavOptionDemo parseDemo(InStream in) {
+		NavOptionDemo {
+			it.flyState				= FlyState.vals[in.readU2]
+			it.ctrlState			= CtrlState.vals[in.readU2]
+			it.batteryPercentage	= in.readU4
+			it.theta				= Float.makeBits32(in.readU4) / 1000
+			it.phi					= Float.makeBits32(in.readU4) / 1000
+			it.psi					= Float.makeBits32(in.readU4) / 1000
+			it.altitude				= in.readS4 / 1000
+			it.velocityX			= Float.makeBits32(in.readU4)
+			it.velocityY			= Float.makeBits32(in.readU4)
+			it.velocityZ			= Float.makeBits32(in.readU4)
+			it.frameIndex			= in.readU4
+				detection			:= Str:Obj[
+				"camera"	: Str:Obj[
+					"rotation"		: [0, 0, 0, 0, 0, 0, 0, 0, 0].map |v->Float| { Float.makeBits32(in.readU4) },
+					"translation"	: [0, 0, 0].map |v->Float| { Float.makeBits32(in.readU4) }
+				],
+				"tagIndex"	: in.readU4
+			]
+				detection["camera"]->set("type", in.readU4)
+			it.detection			= detection
+			it.drone				= Str:Obj[
+				"camera"	: Str:Obj[
+					"rotation"		: [0, 0, 0, 0, 0, 0, 0, 0, 0].map |v->Float| { Float.makeBits32(in.readU4) },
+					"translation"	: [0, 0, 0].map |v->Float| { Float.makeBits32(in.readU4) }
+				]
+			]
+		}
+	}
+	
+	static internal Obj parseVisionDetect(InStream in, Int optLen) {
+		in.skip(optLen - 4)
+		return 3
 	}
 }
-
-//enum class CtrlState {
-//	def, init, landed, flying, hovering, test, transTakeoff, transGotofix, transLanding;
-//}
-
-//enum class NavDataTag {
-//	NAVDATA_DEMO_TAG, NAVDATA_TIME_TAG, NAVDATA_RAW_MEASURES_TAG, 
-//	NAVDATA_PHYS_MEASURES_TAG, NAVDATA_GYROS_OFFSETS_TAG, NAVDATA_EULER_ANGLES_TAG, 
-//	NAVDATA_REFERENCES_TAG, NAVDATA_TRIMS_TAG, NAVDATA_RC_REFERENCES_TAG, 
-//	NAVDATA_PWM_TAG, NAVDATA_ALTITUDE_TAG, NAVDATA_VISION_RAW_TAG, 
-//	NAVDATA_VISION_OF_TAG, NAVDATA_VISION_TAG, NAVDATA_VISION_PERF_TAG, 
-//	NAVDATA_TRACKERS_SEND_TAG, NAVDATA_VISION_DETECT_TAG, NAVDATA_WATCHDOG_TAG, 
-//	NAVDATA_ADC_DATA_FRAME_TAG, NAVDATA_VIDEO_STREAM_TAG, NAVDATA_CKS_TAG;	//(0xFFFF);
-//}
 
 ** see /ARDrone_SDK_2_0_1/ARDroneLib/Soft/Common/config.h
 const class DroneState {
@@ -173,3 +157,47 @@ const class DroneState {
 	@NoDoc
 	override Str toStr() { dump	}
 }
+
+const class NavOptionDemo {
+	** Fly State
+	const	FlyState	flyState
+	** Control State
+	const	CtrlState	ctrlState
+	** Battery voltage filtered (mV)
+	const	Int			batteryPercentage
+	** Pitch in milli-degrees
+	const	Float		theta
+	** Roll in milli-degrees
+	const	Float		phi
+	** Yaw in milli-degrees
+	const	Float		psi
+	** Altitude in centimeters
+	const	Int			altitude
+	** Estimated linear velocity
+	const	Float		velocityX
+	** Estimated linear velocity
+	const	Float		velocityY
+	** Estimated linear velocity
+	const	Float		velocityZ
+	** Streamed frame index. Not used -> To integrate in video stage.
+	const	Int			frameIndex
+	** (Deprecated) Camera parameters compute by detection
+	const	Str:Obj		detection
+	** (Deprecated) Camera parameters compute by drone
+	const	Str:Obj		drone
+	@NoDoc
+	new make(|This| f) { f(this) }
+}
+
+enum class NavOption {
+	demo, time, rawMeasures, physMeasures, gyrosOffsets, eulerAngles, references, trims, rcReferences, pwm, altitude, visionRaw, visionOf, vision, visionPerf, trackersSend, visionDetect, watchdog, adcDataFrame, videoStream, games, pressureRaw, magneto, windSpeed, kalmanPressure, hdvideoStream, wifi, gps;
+}
+
+enum class FlyState {
+	ok, lostAlt, lostAltGoDown, altOutZone, combinedYaw, brake, noVision;
+}
+
+enum class CtrlState {
+	def, init, landed, flying, hovering, test, transTakeOff, transGotoFix, transLanding, transLooping;
+}
+

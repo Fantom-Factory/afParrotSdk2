@@ -49,7 +49,10 @@ internal const class NavDataReader {
 		mutex.async |->| {
 			navData := reader.receive
 			if (navData != null) {
-				listeners.each { ((|NavData|) it).call(navData) }
+				listeners.each { 
+					try ((|NavData|) it).call(navData)
+					catch (Err err)	err.trace
+				}
 			}
 			if (reader.connected && !actorPool.isStopped)
 				mutex.async |->| { read }
@@ -79,41 +82,25 @@ internal class NavDataReaderImpl {
 		if (connected)
 			disconnect
 
+		// send any old data to the nav port to prompt the drone to start sending stuff back
 		triggerPacket := UdpPacket(null, null, Buf(4).write(1).write(0).write(0).write(0).flip)
 		socket.send(triggerPacket)
-		log.debug("Sent trigger packet to nav data")
-		
-//		d:=receive
-//		log.debug("Got first packet")
-//		echo("navDataDemoOnly  = $d.state.navDataDemo")
-//		echo("navDataBootstrap = $d.state.navDataBootstrap")
-//		echo("controlReceived  = $d.state.controlCommandAck")
-//
-//		socket := UdpSocket().connect(IpAddr("192.168.1.1"), 5559)
-//		socket.send(Cmd.makeConfig("general:navdata_demo", "TRUE")._toPacket(1))
-//		log.debug("Sent demo mode")
-//
-//		d=receive
-//		log.debug("Got 2 packet")
-//		echo("navDataDemoOnly  = $d.navDataDemoOnly")
-//		echo("navDataBootstrap = $d.navDataBootstrap")
-//		echo("controlReceived  = $d.controlReceived")
-//		
-//		socket.send(Cmd.makeCtrl(5, 0)._toPacket(2))
-//		log.debug("Sent ctrl")
-//
-//		d=receive
-//		log.debug("Got 3 packet")
-//		echo("navDataDemoOnly  = $d.navDataDemoOnly")
-//		echo("navDataBootstrap = $d.navDataBootstrap")
-//		echo("controlReceived  = $d.controlReceived")
-
 		connected = true
 	}
 	
 	NavData? receive() {
 		try {
-			navData := NavData(socket.receive.data.flip.with {
+			packet := null as UdpPacket
+			try	packet	= socket.receive
+			catch (IOErr err) {
+				if (err.msg.contains("SocketTimeoutException")) {
+					log.warn("Drone not connected (SocketTimeoutException) - check your Wifi settings")
+					return null
+				}
+				throw err
+			}
+
+			navData	:= NavData(packet.data.flip.with {
 				it.endian = Endian.little
 			})
 			
@@ -122,12 +109,11 @@ internal class NavDataReaderImpl {
 				return null
 			}
 
-//			echo("got! $navData.stateFlags.toHex")
 			lastSeqNum = navData.seqNum
 			return navData
 			
-		} catch (IOErr ioe) {
-			ioe.trace
+		} catch (Err err) {
+			err.trace
 			// err? should we disconnect, throw an event or something?
 			return null
 		}
