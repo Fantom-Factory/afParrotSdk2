@@ -1,46 +1,37 @@
-using afConcurrent
-using concurrent
+using afConcurrent::SynchronizedState
+using concurrent::ActorPool
 using inet::IpAddr
 using inet::UdpSocket
 using inet::UdpPacket
 
-// TODO simplify and use SyncState
 const class CmdSender {
 	private const ActorPool			actorPool
 	private const DroneConfig		config
-	private const Synchronized		mutex
-	private const SynchronizedList	listeners
-	
-	private CmdSenderImpl sender {
-		get { Actor.locals[CmdSenderImpl#.qname] }
-		set { Actor.locals[CmdSenderImpl#.qname] = it}
-	}
+	private const SynchronizedState	mutex
 	
 	new make(ActorPool actorPool, DroneConfig config) {
-		this.listeners	= SynchronizedList(actorPool) {
-			it.valType	= |NavData|#
+		this.mutex		= SynchronizedState(actorPool) |->Obj| {
+			CmdSenderImpl(config.droneIpAddr, config.controlPort)
 		}
-		this.mutex		= Synchronized(actorPool)
 		this.config		= config
 		this.actorPool	= actorPool
 	}
 	
 	Void connect() {
-		// synchronized so we know we've connected -   so we can throw err if already connected?
-		mutex.synchronized |->| {
-			sender = CmdSenderImpl(config.droneIpAddr, config.controlPort)
+		// call synchronized so we know we've connected
+		mutex.getState |CmdSenderImpl sender| {
 			sender.connect
 		}
 	}
 	
 	Void send(Cmd cmd) {
-		mutex.async |->| {
+		mutex.withState |CmdSenderImpl sender| {
 			sender.send(cmd)
 		}
 	}
 	
 	Void disconnect() {
-		mutex.synchronized |->| {
+		mutex.getState |CmdSenderImpl sender| {
 			sender.disconnect
 		}
 	}	
