@@ -1,28 +1,24 @@
 using concurrent::Actor
 using concurrent::ActorPool
-using afConcurrent::Synchronized
 using afConcurrent::SynchronizedList
+using afConcurrent::SynchronizedState
 using inet::IpAddr
 using inet::UdpSocket
 using inet::UdpPacket
 
-// TODO simplify and use SyncState
 internal const class NavDataReader {
 	private const ActorPool			actorPool
 	private const DroneConfig		config
-	private const Synchronized		mutex
+	private const SynchronizedState	mutex
 	private const SynchronizedList	listeners
 	
-	private NavDataReaderImpl reader {
-		get { Actor.locals[NavDataReaderImpl#.qname] }
-		set { Actor.locals[NavDataReaderImpl#.qname] = it}
-	}
-	
 	new make(ActorPool actorPool, DroneConfig config) {
+		this.mutex		= SynchronizedState(actorPool) |->Obj?| {
+			NavDataReaderImpl(config.droneIpAddr, config.navDataPort, config.udpReceiveTimeout)
+		}
 		this.listeners	= SynchronizedList(actorPool) {
 			it.valType	= |NavData|#
 		}
-		this.mutex		= Synchronized(actorPool)
 		this.config		= config
 		this.actorPool	= actorPool
 	}
@@ -36,31 +32,30 @@ internal const class NavDataReader {
 	}
 	
 	Void connect() {
-		// synchronized so we know we've connected -   so we can throw err if already connected?
-		mutex.synchronized |->| {
-			reader = NavDataReaderImpl(config.droneIpAddr, config.navDataPort, config.udpReceiveTimeout)
+		// call synchronized so we know when we've connected
+		mutex.getState |NavDataReaderImpl reader| {
 			reader.connect
 			if (reader.connected && !actorPool.isStopped)
-				mutex.async |->| { read }
+				readNavData
 		}
 	}
 	
-	private Void read() {
-		mutex.async |->| {
+	private Void readNavData() {
+		mutex.withState |NavDataReaderImpl reader| {
 			navData := reader.receive
 			if (navData != null) {
-				listeners.each { 
+				listeners.each {
 					try ((|NavData|) it).call(navData)
 					catch (Err err)	err.trace
 				}
 			}
 			if (reader.connected && !actorPool.isStopped)
-				mutex.async |->| { read }
+				readNavData
 		}
 	}
 	
 	Void disconnect() {
-		mutex.synchronized |->| {
+		mutex.getState |NavDataReaderImpl reader| {
 			reader.disconnect
 		}
 	}
