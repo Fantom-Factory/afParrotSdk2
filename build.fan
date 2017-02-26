@@ -22,7 +22,7 @@ class Build : BuildPod {
 			"afConcurrent 1.0.17 - 1.0", 
 		]
 
-		srcDirs = [`fan/`, `fan/core/`, `fan/gui/`]
+		srcDirs = [`fan/`, `fan/core/`, `fan/core/internal/`, `fan/core/public/`, `fan/gui/`]
 		resDirs = [,]
 	}
 }

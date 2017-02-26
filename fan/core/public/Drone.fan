@@ -1,6 +1,7 @@
 using concurrent::ActorPool
 using concurrent::Actor
 using concurrent::AtomicBool
+using concurrent::AtomicRef
 
 class Drone {
 
@@ -8,9 +9,23 @@ class Drone {
 	private NavDataReader	navDataReader
 	private CmdSender		cmdSender
 	private AtomicBool		connectedRef	:= AtomicBool(false)
+	private AtomicRef		navDataRef		:= AtomicRef(null)
 	
+	** The configuration as passed to the ctor.
 	const	DroneConfig		config
 	
+	** Returns a copy of the latest Nav Data.
+	** 'null' if not connected.
+			NavData?		navData {
+				get { navDataRef.val }
+				private set { }
+			}
+	
+	** The current control (flying) state of the Drone.
+			CtrlState?		controlState {
+				get { navData?.demoData?.ctrlState }
+				private set { }
+			}
 	
 	new make(DroneConfig config := DroneConfig()) {
 		this.actorPool		= ActorPool() { it.name = "Parrot Drone" }
@@ -23,7 +38,10 @@ class Drone {
 		cmdSender		:= cmdSender
 		navDataReader	:= navDataReader
 		connectedRef	:= connectedRef
+		navDataRef		:= navDataRef
 		navDataReader.addListener |navData| {
+			navDataRef.val = navData
+			
 			if (navData.state.controlCommandAck && connectedRef.val) {
 				echo("contrl ack")
 				cmdSender.send(Cmd.makeCtrl(5, 0))
