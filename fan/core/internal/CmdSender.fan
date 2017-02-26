@@ -19,21 +19,24 @@ const class CmdSender {
 	
 	Void connect() {
 		// call synchronized so we know we've connected
-		mutex.getState |CmdSenderImpl sender| {
-			sender.connect
-		}
+		if (!actorPool.isStopped)
+			mutex.getState |CmdSenderImpl sender| {
+				sender.connect
+			}
 	}
 	
 	Void send(Cmd cmd) {
-		mutex.withState |CmdSenderImpl sender| {
-			sender.send(cmd)
-		}
+		if (!actorPool.isStopped)
+			mutex.withState |CmdSenderImpl sender| {
+				sender.send(cmd)
+			}
 	}
 	
 	Void disconnect() {
-		mutex.getState |CmdSenderImpl sender| {
-			sender.disconnect
-		}
+		if (!actorPool.isStopped)
+			mutex.getState |CmdSenderImpl sender| {
+				sender.disconnect
+			}
 	}	
 }
 
@@ -56,7 +59,8 @@ class CmdSenderImpl {
 	Void send(Cmd cmd) {
 		if (connected) {
 			socket.send(UdpPacket() { data = cmd.cmdStr(++lastSeq).toBuf.seek(0) })
-			echo("--> ${cmd.cmdStr(lastSeq).trim}")
+			if (cmd.id != "COMWDG" && cmd.id != "REF")
+				log.debug("--> ${cmd.cmdStr(lastSeq).trim}")
 		}
 	}
 	

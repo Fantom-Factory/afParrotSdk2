@@ -16,7 +16,7 @@ class FlightPlan {
 		echo("take off")
 		drone.takeOff
 		
-		Actor.sleep(10sec)
+		Actor.sleep(5sec)
 
 		echo("land")
 		drone.land

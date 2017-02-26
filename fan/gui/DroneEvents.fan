@@ -4,7 +4,7 @@ using fwt::Desktop
 using afConcurrent
 
 class DroneEvents {
-	
+	private Log				log				:= Drone#.pod.log
 	Drone?	drone
 	
 	Void startup() {
@@ -31,16 +31,19 @@ class DroneEvents {
 		if (oldStateFlags.xor(navData.stateFlags) > 0) {
 			oldState := DroneState(oldStateFlags)
 			buf := StrBuf(1024)
-			DroneState#.methods.findAll { it.returns == Bool# && it.params.isEmpty && it.parent == DroneState# }.each {
-				oldVal := it.callOn(oldState, null)
-				newVal := it.callOn(navData.state, null)
-				if (newVal != oldVal) {
-					buf.add(it.name.padr(28, '.'))
-					buf.add(oldVal).add(" --> ").add(newVal)
-					buf.addChar('\n')
+			DroneState#.methods.findAll { it.returns == Bool# && it.params.isEmpty && it.parent == DroneState# }
+				.exclude { it == DroneState#comWatchdogProblem }
+				.each {
+					oldVal := it.callOn(oldState, null)
+					newVal := it.callOn(navData.state, null)
+					if (newVal != oldVal) {
+						buf.addChar('\n')
+						buf.add(it.name.padr(28, '.'))
+						buf.add(oldVal).add(" --> ").add(newVal)
+					}
 				}
-			}
-			echo(buf.toStr.trimEnd)
+			if (!buf.isEmpty)
+				log.debug(buf.toStr)
 			oldStateFlags = navData.stateFlags
 		}
 	

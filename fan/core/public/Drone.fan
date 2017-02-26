@@ -3,58 +3,66 @@ using concurrent::Actor
 using concurrent::AtomicBool
 using concurrent::AtomicRef
 
-class Drone {
-	private Log				log				:= Drone#.pod.log
-	private AtomicBool		connectedRef	:= AtomicBool(false)
-	private	AtomicRef		navDataRef		:= AtomicRef(null)
+const class Drone {
+	private const	Log				log				:= Drone#.pod.log
+	private	const	AtomicRef		navDataRef		:= AtomicRef(null)
+	private	const	AtomicBool		crashOnExitRef	:= AtomicBool(true)
 
-	internal CmdSender		cmdSender
-	internal NavDataReader	navDataReader
-	internal ActorPool		actorPool
+	internal const	CmdSender		cmdSender
+	internal const	NavDataReader	navDataReader
+	internal const	ActorPool		actorPool
 	
 	** The configuration as passed to the ctor.
-	const	DroneConfig		config
+			const	DroneConfig		config
 	
 	** Returns a copy of the latest Nav Data.
 	** 'null' if not connected.
-			NavData?		navData {
-				get { navDataRef.val }
-				private set { }
-			}
+					NavData?		navData {
+						get { navDataRef.val }
+						private set { }
+					}
 	
 	** The current control (flying) state of the Drone.
-			CtrlState?		state {
-				get { navData?.demoData?.ctrlState }
-				private set { }
-			}
+					CtrlState?		state {
+						get { navData?.demoData?.ctrlState }
+						private set { }
+					}
+	
+	** Forces the drone to crash land on disconnect (or VM exit) should it still be flying.
+	** It sets emergency mode which cuts off all engines.
+	** 
+	** Given your drone is flying autonomously, consider this a safety net to prevent it hovering 
+	** in the ceiling when your program crashes! 
+					Bool 			crashLandOnExit {
+						get { crashOnExitRef.val }
+						set { crashOnExitRef.val = it }
+					}
 	
 	new make(DroneConfig config := DroneConfig()) {
 		this.actorPool		= ActorPool() { it.name = "Parrot Drone" }
 		this.config			= config
 		this.navDataReader	= NavDataReader(actorPool, config)
 		this.cmdSender		= CmdSender(actorPool, config)
+		navDataRef			:= navDataRef
+		Env.cur.addShutdownHook |->| { doCrashLandOnExit }
 	}
 
 	** Sets up the socket connections to the drone. 
 	** Your device must already be connected to the drone's wifi hot spot.
 	This connect() {
-		cmdSender		:= cmdSender
-		navDataReader	:= navDataReader
-		connectedRef	:= connectedRef
-		navDataRef		:= navDataRef
 		navDataReader.addListener |navData| {
 			oldNavData	:= (NavData?) navDataRef.val
 			if (oldNavData?.demoData?.ctrlState != navData.demoData?.ctrlState)
-				echo("STATE: ${oldNavData?.demoData?.ctrlState} --> ${navData.demoData?.ctrlState}")
+				log.debug("STATE: ${oldNavData?.demoData?.ctrlState} --> ${navData.demoData?.ctrlState}")
 			
 			navDataRef.val = navData
 			
-			if (navData.state.controlCommandAck && connectedRef.val) {
+			if (navData.state.controlCommandAck) {
 				echo("contrl ack")
 				cmdSender.send(Cmd.makeCtrl(5, 0))
 			}
 
-			if (navData.state.comWatchdogProblem && connectedRef.val)
+			if (navData.state.comWatchdogProblem)
 				cmdSender.send(Cmd.makeKeepAlive)
 		}
 		
@@ -63,14 +71,12 @@ class Drone {
 
 		// send me nav demo data please!
 		cmdSender.send(Cmd.makeConfig("general:navdata_demo", "TRUE"))
-		
-		connectedRef.val = true
 		return this
 	}
 	
 	This disconnect() {
-		// do this first so our listener knows when NOT to send cmds
-		connectedRef.val = false
+		doCrashLandOnExit	// our safety net!
+
 		navDataReader.disconnect
 		cmdSender.disconnect
 		actorPool.stop.join(1sec)
@@ -115,10 +121,10 @@ class Drone {
 	}
 
 	Void takeOff(Bool block := true, Duration? timeout := null) {
-//		if (state != CtrlState.landed) {
-//			log.warn("Can not take off when state is ${state}")
-//			return
-//		}
+		if (state != CtrlState.landed) {
+			log.warn("Can not take off when state is ${state}")
+			return
+		}
 		if (block)
 			DroneLoop.takeOff(this, timeout ?: config.loopTimeout)
 		else
@@ -126,13 +132,23 @@ class Drone {
 	}
 
 	Void land(Bool block := true, Duration? timeout := null) {
-//		if (state != CtrlState.flying && state != CtrlState.hovering) {
-//			log.warn("Can not land when state is ${state}")
-//			return
-//		}
+		if (state != CtrlState.flying && state != CtrlState.hovering) {
+			log.warn("Can not land when state is ${state}")
+			return
+		}
 		if (block)
 			DroneLoop.land(this, timeout ?: config.loopTimeout)
 		else
 			cmdSender.send(Cmd.makeLand)
+	}
+	
+	// ---- Private Stuff ----
+	
+	Void doCrashLandOnExit() {
+		if (crashLandOnExit)
+			if (navData?.state?.flying == true || (state != CtrlState.landed || state != CtrlState.def)) {
+				log.warn("Exiting Program --> Crash landing Drone")
+				crashLand
+			}
 	}
 }
