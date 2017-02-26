@@ -15,8 +15,8 @@ const class Cmd {
 	// ---- Cmd Factories ----
 	
 	** Makes a 'CALIB' cmd. 
-	static Cmd makeCalib(Int deviceNo) {
-		Cmd("CALIB", [deviceNo])
+	static Cmd makeCalib(Int deviceNum) {
+		Cmd("CALIB", [deviceNum])
 	}
 	
 	** Makes a 'CONFIG' cmd with the given name / value pair. 
