@@ -9,5 +9,5 @@ const class DroneConfig {
 	
 	const Duration	udpReceiveTimeout	:= 1sec
 	
-	const Duration	loopTimeout			:= 10sec
+	const Duration	defaultTimeout		:= 10sec
 }

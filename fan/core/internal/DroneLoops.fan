@@ -43,13 +43,11 @@ internal const class DroneLoop {
 	static Void takeOff(Drone drone, Duration timeout) {
 		blockAndLog(drone, timeout, |NavData? navData->Bool| {
 			navData?.demoData?.ctrlState == CtrlState.flying || navData?.demoData?.ctrlState == CtrlState.hovering
-//			navData?.state?.flying == true
 		}, Cmd.makeTakeOff, "Drone took off")
 	}
 	
 	static Void land(Drone drone, Duration timeout) {
 		blockAndLog(drone, timeout, |NavData? navData->Bool| {
-//			navData?.state?.flying == false
 			navData?.demoData?.ctrlState == CtrlState.landed
 		}, Cmd.makeLand, "Drone landed")
 	}

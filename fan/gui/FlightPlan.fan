@@ -13,12 +13,16 @@ class FlightPlan {
 
 		Actor.sleep(500ms)
 
-		echo("take off")
-		drone.takeOff
+		drone.animateLeds(LedAnimation.redSnake, 2f, 10sec)
 		
-		Actor.sleep(5sec)
+		Actor.sleep(11sec)
 
-		echo("land")
-		drone.land
+//		echo("take off")
+//		drone.takeOff
+//		
+//		Actor.sleep(5sec)
+//
+//		echo("land")
+//		drone.land
 	}
 }
