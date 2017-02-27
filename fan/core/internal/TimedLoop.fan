@@ -32,7 +32,8 @@ internal const class TimedLoop {
 			future.complete(null)
 		} else {
 			drone.cmdSender.send(cmd)
-			mutex.asyncLater(drone.config.cmdInterval, #sendCmd.func.bind([this]))
+			if (!drone.actorPool.isStopped)
+				mutex.asyncLater(drone.config.cmdInterval, #sendCmd.func.bind([this]))
 		}
 	}
 }

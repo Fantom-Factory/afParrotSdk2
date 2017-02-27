@@ -17,6 +17,7 @@ const class Drone {
 	private	const	AtomicRef		onBatterDrainRef	:= AtomicRef()
 	private	const	AtomicRef		onEmergencyRef		:= AtomicRef()
 	private	const	AtomicRef		onBatteryLowRef		:= AtomicRef()
+	private	const	AtomicRef		onDisconnectRef		:= AtomicRef()
 	private	const	Synchronized	eventThread
 
 	internal const	CmdSender		cmdSender
@@ -106,12 +107,24 @@ const class Drone {
 						set { onBatteryLowRef.val = it}
 					}
 
+	** Event hook that's called when the drone is disconnected.. 
+	** 'abnormal' is set to 'true' if the drone is disconnected due to a communication / socket error.
+	** This may happen if the battery drains too low or the drone is switched off.
+	** 
+	** Throws 'NotImmutableErr' if the function is not immutable.
+	** 
+	** Note this hook is called from a different Actor / thread to the one that sets it. 
+					|Bool abnormal, Drone|? onDisconnect {
+						get { onDisconnectRef.val }
+						set { onDisconnectRef.val = it}
+					}
+
 	** Creates a 'Drone' instance, optionally passing in default configuration.
 	new make(DroneConfig config := DroneConfig()) {
 		this.actorPool		= ActorPool() { it.name = "Parrot Drone" }
 		this.config			= config
-		this.navDataReader	= NavDataReader(actorPool, config)
-		this.cmdSender		= CmdSender(actorPool, config)
+		this.navDataReader	= NavDataReader(this, actorPool, config)
+		this.cmdSender		= CmdSender(this, actorPool, config)
 		this.eventThread	= Synchronized(actorPool)
 		Env.cur.addShutdownHook |->| { doCrashLandOnExit }
 	}
@@ -137,7 +150,8 @@ const class Drone {
 		cmdSender.send(Cmd.makeConfig("general:navdata_demo", "TRUE"))
 
 		NavDataLoop.waitUntilReady(this, timeout ?: config.defaultTimeout)
-		log.info("Connected to AR Drone 2.0")
+		if (!actorPool.isStopped)
+			log.info("Connected to AR Drone 2.0")
 		return this
 	}
 	
@@ -146,15 +160,7 @@ const class Drone {
 	**  
 	** This method blocks until it's finished.
 	This disconnect(Duration timeout := 2sec) {
-		if (actorPool.isStopped) return this
-		
-		doCrashLandOnExit	// our safety net!
-
-		navDataReader.disconnect
-		cmdSender.disconnect
-		actorPool.stop.join(timeout)
-		log.info("Disonnected from Drone")
-		return this
+		doDisconnect(false, timeout)
 	}
 	
 	// ---- Commands ----
@@ -194,7 +200,7 @@ const class Drone {
 	** Not doing so will result in the drone not being unstable.
 	Void flatTrim() {
 		if (state != CtrlState.def && state != CtrlState.init && state != CtrlState.landed) {
-			log.warn("Can not Flat Trim when flying - ${state}")
+			log.warn("Can not flat trim when state is ${state}")
 			return
 		}
 		cmdSender.send(Cmd.makeFlatTrim)
@@ -319,6 +325,27 @@ const class Drone {
 	
 	// ---- Private Stuff ----
 	
+	internal This doDisconnect(Bool abnormal, Duration timeout := 2sec) {
+		if (actorPool.isStopped) return this
+		
+		doCrashLandOnExit	// our safety net!
+
+		navDataReader.disconnect
+		cmdSender.disconnect
+
+		// call handlers from a different thread so they don't block
+		eventThread.async |->| {
+			callSafe(onDisconnect, [abnormal, this])
+		}
+		
+		actorPool.stop
+		if (!abnormal)	// don't block internal threads
+			actorPool.join(timeout)
+
+		log.info("Disconnected from Drone")
+		return this
+	}
+	
 	private Void processNavData(NavData navData) {
 		if (actorPool.isStopped) return
 
@@ -374,7 +401,7 @@ const class Drone {
 	
 	private Void doCrashLandOnExit() {
 		if (crashLandOnExit)
-			if (navData?.flags?.flying == true || (state != CtrlState.landed && state != CtrlState.def)) {
+			if (navData?.flags?.flying == true || (state != null && state != CtrlState.landed && state != CtrlState.def)) {
 				log.warn("Exiting Program --> Crash landing Drone")
 				crashLand
 			}
@@ -385,6 +412,30 @@ const class Drone {
 enum class LedAnimation {
 	blinkGreenRed, blinkGreen, blinkRed, blinkOrange, snakeGreenRed, fire, standard, red, green, snakeRed, blank, rightMissile, leftMissile, doubleMissile, frontLeftGreenOthersRed, frontRightGreenOthersRed, rearRightGreenOthersRed, rearLeftGreenOthersRed, leftGreenRightRed, leftRedRightGreen, blinkStandard;
 }
+
+// TODO add default duration
+//static const int32_t MAYDAY_TIMEOUT[ARDRONE_NB_ANIM_MAYDAY] = {
+//    1000,  // ARDRONE_ANIM_PHI_M30_DEG
+//    1000,  // ARDRONE_ANIM_PHI_30_DEG
+//    1000,  // ARDRONE_ANIM_THETA_M30_DEG
+//    1000,  // ARDRONE_ANIM_THETA_30_DEG
+//    1000,  // ARDRONE_ANIM_THETA_20DEG_YAW_200DEG
+//    1000,  // ARDRONE_ANIM_THETA_20DEG_YAW_M200DEG
+//    5000,  // ARDRONE_ANIM_TURNAROUND
+//    5000,  // ARDRONE_ANIM_TURNAROUND_GODOWN
+//    2000,  // ARDRONE_ANIM_YAW_SHAKE
+//    5000,  // ARDRONE_ANIM_YAW_DANCE
+//    5000,  // ARDRONE_ANIM_PHI_DANCE
+//    5000,  // ARDRONE_ANIM_THETA_DANCE
+//    5000,  // ARDRONE_ANIM_VZ_DANCE
+//    5000,  // ARDRONE_ANIM_WAVE
+//    5000,  // ARDRONE_ANIM_PHI_THETA_MIXED
+//    5000,  // ARDRONE_ANIM_DOUBLE_PHI_THETA_MIXED
+//    15,  // ARDRONE_ANIM_FLIP_AHEAD
+//    15,  // ARDRONE_ANIM_FLIP_BEHIND
+//    15,  // ARDRONE_ANIM_FLIP_LEFT
+//    15,  // ARDRONE_ANIM_FLIP_RIGHT
+//};
 
 ** Pre-configured flight paths.
 enum class FlightAnimation {

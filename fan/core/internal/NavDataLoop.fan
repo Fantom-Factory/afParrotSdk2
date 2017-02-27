@@ -56,7 +56,7 @@ internal const class NavDataLoop {
 		}
 		catch (TimeoutErr err)
 			// Suppress TimeoutErr if drone has since disconnected
-			if (!drone.actorPool.isStopped) throw err
+			if ((drone.navData?.flags?.batteryTooLow == true || drone.actorPool.isStopped).not) throw err
 	}
 	
 	private Void sendCmd() {

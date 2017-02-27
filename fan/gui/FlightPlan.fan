@@ -15,6 +15,7 @@ class FlightPlan {
 		drone.onBatteryDrain	= |newPercentage|	{ log.info("Battery now at ${newPercentage}%"	) }
 		drone.onBatteryLow		= |->|				{ log.warn("   !!! Battery Level Low !!!"		) }
 		drone.onEmergency		= |->|				{ log.warn("   !!! EMERGENCY LANDING !!!   "	) }
+		drone.onDisconnect		= |abnormal|		{ if (abnormal) log.warn("   !!! DISCONNECTED !!!   "	) }
 		
 		// initiating pre-flight system checks
 		drone.connect
@@ -27,11 +28,14 @@ class FlightPlan {
 
 		drone.takeOff
 
-		drone.spinClockwise(5f, 5sec)
-//		sounds.beep
+		drone.spinClockwise(-1f, 3sec)
 		
-//		drone.animateFlight(FlightAnimation.yawShake, 4sec)
-//		Actor.sleep(5sec)
+		sounds.beep
+		drone.animateFlight(FlightAnimation.phi30Deg, 1sec)
+		Actor.sleep(1sec)
+		sounds.beep
+		drone.animateFlight(FlightAnimation.phiM30Deg, 1sec)
+		Actor.sleep(1sec)
 		
 		drone.land
 
@@ -44,7 +48,7 @@ class FlightPlan {
 	Void onNavData(NavData navData) {
 		str := navData.flags.dumpChanged(oldFlags)
 		if (!str.isEmpty)
-			log.debug("\n${str}")
+			str.splitLines.each { log.debug(it) }
 		oldFlags = navData.flags
 		
 		if (oldState != navData.demoData?.flyState && navData.demoData?.flyState != null) {

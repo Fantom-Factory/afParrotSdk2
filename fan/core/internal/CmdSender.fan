@@ -9,9 +9,9 @@ internal const class CmdSender {
 	private const DroneConfig		config
 	private const SynchronizedState	mutex
 	
-	new make(ActorPool actorPool, DroneConfig config) {
+	new make(Drone drone, ActorPool actorPool, DroneConfig config) {
 		this.mutex		= SynchronizedState(actorPool) |->Obj| {
-			CmdSenderImpl(config.droneIpAddr, config.controlPort)
+			CmdSenderImpl(drone, config.droneIpAddr, config.controlPort)
 		}
 		this.config		= config
 		this.actorPool	= actorPool
@@ -42,12 +42,14 @@ internal const class CmdSender {
 
 internal class CmdSenderImpl {
 	Log			log	:= Drone#.pod.log
+	Drone		drone
 	UdpSocket	socket
 	Bool		connected
 	Int			lastSeq
 	
-	new make(Str ipAddr, Int port) {
-		socket = UdpSocket().connect(IpAddr(ipAddr), port)
+	new make(Drone drone, Str ipAddr, Int port) {
+		this.drone = drone
+		this.socket = UdpSocket().connect(IpAddr(ipAddr), port)
 	}
 	
 	Void connect() {
@@ -58,9 +60,19 @@ internal class CmdSenderImpl {
 	
 	Void send(Cmd cmd) {
 		if (connected) {
-			socket.send(UdpPacket() { data = cmd.cmdStr(++lastSeq).toBuf.seek(0) })
-			if (cmd.id != "COMWDG" && cmd.id != "REF" && cmd.id != "PCMD")
-				log.debug("--> ${cmd.cmdStr(lastSeq).trim}")
+			try	{
+				socket.send(UdpPacket() { data = cmd.cmdStr(++lastSeq).toBuf.seek(0) })
+				if (cmd.id != "COMWDG" && cmd.id != "REF" && cmd.id != "PCMD" && cmd.id != "CTRL")
+					if (log.isDebug)
+						log.debug("--> ${cmd.cmdStr(lastSeq).trim}")
+			} catch (IOErr ioe) {
+				if (ioe.msg.contains("java.net.SocketException")) {
+					log.warn("Drone not connected (could not send cmd) - check the drone's power")
+					drone.doDisconnect(true)
+					return
+				}
+				throw ioe
+			}
 		}
 	}
 	

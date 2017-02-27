@@ -12,9 +12,9 @@ internal const class NavDataReader {
 	private const SynchronizedState	mutex
 	private const SynchronizedList	listeners
 	
-	new make(ActorPool actorPool, DroneConfig config) {
+	new make(Drone drone, ActorPool actorPool, DroneConfig config) {
 		this.mutex		= SynchronizedState(actorPool) |->Obj?| {
-			NavDataReaderImpl(config.droneIpAddr, config.navDataPort, config.udpReceiveTimeout)
+			NavDataReaderImpl(drone, config.droneIpAddr, config.navDataPort, config.udpReceiveTimeout)
 		}
 		this.listeners	= SynchronizedList(actorPool) {
 			it.valType	= |NavData|#
@@ -64,13 +64,15 @@ internal const class NavDataReader {
 
 internal class NavDataReaderImpl {
 	Log				log		:= Drone#.pod.log
+	Drone			drone
 	UdpSocket		socket
 	Bool			connected
 	Int				lastSeqNum
 	NavDataParser	parser	:= NavDataParser()
 	
-	new make(Str ipAddr, Int port, Duration receiveTimeout) {
-		socket = UdpSocket().connect(IpAddr(ipAddr), port) {
+	new make(Drone drone, Str ipAddr, Int port, Duration receiveTimeout) {
+		this.drone  = drone
+		this.socket = UdpSocket().connect(IpAddr(ipAddr), port) {
 			it.options.receiveTimeout = receiveTimeout
 		}
 	}
@@ -91,7 +93,8 @@ internal class NavDataReaderImpl {
 			try	packet	= socket.receive
 			catch (IOErr err) {
 				if (err.msg.contains("SocketTimeoutException")) {
-					log.warn("Drone not connected (SocketTimeoutException) - check your Wifi settings")
+					log.warn("Drone not connected (SocketTimeoutException on navData read) - check your Wifi settings")
+					drone.doDisconnect(true)
 					return null
 				}
 				throw err
