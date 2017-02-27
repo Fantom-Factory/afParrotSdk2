@@ -12,13 +12,12 @@ class DroneUi {
 		echo("Hello!")
 
 		drone = Drone()
-		drone.addNavDataListener |navData| {
+		drone.onNavData = |navData| {
 			Desktop.callAsync |->| {
 				drone := (DroneUi) Actor.locals["DroneUi"]
 				drone.onNavData(navData)
 			}
 		}
-		drone.connect
 		
 		droneRef := Unsafe(drone)
 		Synchronized(ActorPool()).async |->| {
