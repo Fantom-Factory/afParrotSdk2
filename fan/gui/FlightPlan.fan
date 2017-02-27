@@ -27,7 +27,7 @@ class FlightPlan {
 
 		drone.takeOff
 
-		drone.spinClockwise(1f, 5sec)
+		drone.spinClockwise(5f, 5sec)
 //		sounds.beep
 		
 //		drone.animateFlight(FlightAnimation.yawShake, 4sec)

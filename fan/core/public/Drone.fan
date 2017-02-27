@@ -12,12 +12,12 @@ const class Drone {
 	private const	Log				log					:= Drone#.pod.log
 	private	const	AtomicRef		navDataRef			:= AtomicRef()
 	private	const	AtomicBool		crashOnExitRef		:= AtomicBool(true)
-	private	const	Synchronized	mutex
 	private	const	AtomicRef		onNavDataRef		:= AtomicRef()
 	private	const	AtomicRef		onStateChangeRef	:= AtomicRef()
 	private	const	AtomicRef		onBatterDrainRef	:= AtomicRef()
 	private	const	AtomicRef		onEmergencyRef		:= AtomicRef()
 	private	const	AtomicRef		onBatteryLowRef		:= AtomicRef()
+	private	const	Synchronized	eventThread
 
 	internal const	CmdSender		cmdSender
 	internal const	NavDataReader	navDataReader
@@ -112,8 +112,7 @@ const class Drone {
 		this.config			= config
 		this.navDataReader	= NavDataReader(actorPool, config)
 		this.cmdSender		= CmdSender(actorPool, config)
-		this.mutex			= Synchronized(actorPool)
-		navDataRef			:= navDataRef
+		this.eventThread	= Synchronized(actorPool)
 		Env.cur.addShutdownHook |->| { doCrashLandOnExit }
 	}
 
@@ -124,7 +123,11 @@ const class Drone {
 	** 
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
 	This connect(Duration? timeout := null) {
-		// TODO prevent re-connection
+		// we could re-use if we didn't stop the actor pool...?
+		// but nah, we created it, we should destroy it
+		if (actorPool.isStopped)
+			throw Err("Can not re-use Drone() instances")
+
 		navDataReader.addListener(#processNavData.func.bind([this]))
 		
 		cmdSender.connect
@@ -321,17 +324,16 @@ const class Drone {
 
 		oldNavData	:= (NavData?) navDataRef.val
 		
-		mutex.synchronized |->| {
-			newOpts := oldNavData?.options?.rw ?: NavOption:Obj[:]
-			newOpts.setAll(navData.options)
-			newNav := NavData {
-				it.flags		= navData.flags
-				it.seqNum		= navData.seqNum
-				it.visionFlag	= navData.visionFlag
-				it.options		= newOpts
-			}
-			navDataRef.val = newNav
+		// we don't need a mutex 'cos we're only ever called from the single-threaded NavDataReader actor
+		newOpts := oldNavData?.options?.rw ?: NavOption:Obj[:]
+		newOpts.setAll(navData.options)
+		newNav := NavData {
+			it.flags		= navData.flags
+			it.seqNum		= navData.seqNum
+			it.visionFlag	= navData.visionFlag
+			it.options		= newOpts
 		}
+		navDataRef.val = newNav
 		
 		// ---- perform standard feedback ----
 		
@@ -343,24 +345,31 @@ const class Drone {
 
 		// ---- call event handlers ----
 		
-		// TODO call handlers from a different thread, so they don't block the NavDataReader
-		
-		onNavData?.call(navData, this)
-		
-		if (navData.flags.emergencyLanding && oldNavData?.flags?.emergencyLanding != true && oldNavData?.flags?.flying == true)
-			onEmergency?.call(this)
-
-		if (navData.flags.batteryTooLow && oldNavData?.flags?.batteryTooLow != true )
-			onBatteryLow?.call(this)
-		
-		demoData := navData.demoData
-		if (demoData != null) {
-			if (demoData.ctrlState != oldNavData?.demoData?.ctrlState)
-				onStateChange?.call(demoData.ctrlState, this)
-		
-			if (oldNavData?.demoData?.batteryPercentage == null || demoData.batteryPercentage < oldNavData.demoData.batteryPercentage)
-				onBatteryDrain?.call(demoData.batteryPercentage, this)
+		// call handlers from a different thread so they don't block the NavDataReader
+		eventThread.async |->| {
+			callSafe(onNavData, [navData, this])
+			
+			if (navData.flags.emergencyLanding && oldNavData?.flags?.emergencyLanding != true && oldNavData?.flags?.flying == true)
+				callSafe(onEmergency, [this])
+	
+			if (navData.flags.batteryTooLow && oldNavData?.flags?.batteryTooLow != true )
+				callSafe(onBatteryLow, [this])
+			
+			demoData := navData.demoData
+			if (demoData != null) {
+				if (demoData.ctrlState != oldNavData?.demoData?.ctrlState)
+					callSafe(onStateChange, [demoData.ctrlState, this])
+			
+				if (oldNavData?.demoData?.batteryPercentage == null || demoData.batteryPercentage < oldNavData.demoData.batteryPercentage)
+					callSafe(onBatteryDrain, [demoData.batteryPercentage, this])
+			}
 		}
+	}
+	
+	private Void callSafe(Func? f, Obj[]? args) {
+		try f?.callList(args)
+		catch (Err err)
+			err.trace
 	}
 	
 	private Void doCrashLandOnExit() {

@@ -59,7 +59,7 @@ internal class CmdSenderImpl {
 	Void send(Cmd cmd) {
 		if (connected) {
 			socket.send(UdpPacket() { data = cmd.cmdStr(++lastSeq).toBuf.seek(0) })
-			if (cmd.id != "COMWDG" && cmd.id != "REF")
+			if (cmd.id != "COMWDG" && cmd.id != "REF" && cmd.id != "PCMD")
 				log.debug("--> ${cmd.cmdStr(lastSeq).trim}")
 		}
 	}

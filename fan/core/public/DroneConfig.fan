@@ -8,7 +8,7 @@ const class DroneConfig {
 	const Int		videoPort			:= 5555
 	const Int		controlPort			:= 5556
 	
-	const Duration	cmdInterval			:= 30ms
+	const Duration	cmdInterval			:= 25ms
 
 	const Duration	udpReceiveTimeout	:= 1sec
 	const Duration	defaultTimeout		:= 10sec
