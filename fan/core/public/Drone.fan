@@ -64,6 +64,8 @@ const class Drone {
 	** Event hook that's called when the drone's state is changed.
 	** 
 	** Throws 'NotImmutableErr' if the function is not immutable.
+	** 
+	** Note this hook is called from a different Actor / thread to the one that sets it. 
 					|CtrlState state, Drone|? onStateChange {
 						get { onStateChangeRef.val }
 						set { onStateChangeRef.val = it}
@@ -73,6 +75,8 @@ const class Drone {
 	** The function is called with the new battery percentage level (0 - 100).
 	** 
 	** Throws 'NotImmutableErr' if the function is not immutable.
+	** 
+	** Note this hook is called from a different Actor / thread to the one that sets it. 
 					|Int newPercentage, Drone|? onBatteryDrain {
 						get { onBatterDrainRef.val }
 						set { onBatterDrainRef.val = it}
@@ -85,6 +89,8 @@ const class Drone {
 	** Note this hook is only called when the drone is flying.
 	** 
 	** Throws 'NotImmutableErr' if the function is not immutable.
+	** 
+	** Note this hook is called from a different Actor / thread to the one that sets it. 
 					|Drone|?	onEmergency {
 						get { onEmergencyRef.val }
 						set { onEmergencyRef.val = it}
@@ -93,6 +99,8 @@ const class Drone {
 	** Event hook that's called when the drone's battery reaches a critical level.
 	** 
 	** Throws 'NotImmutableErr' if the function is not immutable.
+	** 
+	** Note this hook is called from a different Actor / thread to the one that sets it. 
 					|Drone|?	onBatteryLow {
 						get { onBatteryLowRef.val }
 						set { onBatteryLowRef.val = it}
@@ -125,7 +133,7 @@ const class Drone {
 		// send me nav demo data please!
 		cmdSender.send(Cmd.makeConfig("general:navdata_demo", "TRUE"))
 
-		DroneLoop.waitUntilReady(this, timeout ?: config.defaultTimeout)
+		NavDataLoop.waitUntilReady(this, timeout ?: config.defaultTimeout)
 		log.info("Connected to AR Drone 2.0")
 		return this
 	}
@@ -159,7 +167,7 @@ const class Drone {
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
 	Void clearEmergencyMode(Duration? timeout := null) {
 		if (navData?.flags?.emergencyLanding == true)
-			DroneLoop.clearEmergencyMode(this, timeout ?: config.defaultTimeout)
+			NavDataLoop.clearEmergencyMode(this, timeout ?: config.defaultTimeout)
 	}
 
 	** Sets or clears config and profiles relating to indoor / outdoor flight.
@@ -200,7 +208,7 @@ const class Drone {
 			return
 		}
 		if (block)
-			DroneLoop.takeOff(this, timeout ?: config.defaultTimeout)
+			NavDataLoop.takeOff(this, timeout ?: config.defaultTimeout)
 		else
 			cmdSender.send(Cmd.makeTakeOff)
 	}
@@ -215,7 +223,7 @@ const class Drone {
 			return
 		}
 		if (block)
-			DroneLoop.land(this, timeout ?: config.defaultTimeout)
+			NavDataLoop.land(this, timeout ?: config.defaultTimeout)
 		else
 			cmdSender.send(Cmd.makeLand)
 	}
@@ -267,7 +275,8 @@ const class Drone {
 
 	// FIXME movement cmds
 	
-//	Void moveUp() {
+	** If a duration is given, then by default this method will block
+//	Void moveUp(Float val, Duration? duration := null, Bool? block := true) {
 //	}
 //	
 //	Void moveDown() {
@@ -322,6 +331,8 @@ const class Drone {
 			cmdSender.send(Cmd.makeKeepAlive)
 
 		// ---- call event handlers ----
+		
+		// TODO call handlers from a different thread, so they don't block the NavDataReader
 		
 		onNavData?.call(navData, this)
 		

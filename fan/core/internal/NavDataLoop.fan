@@ -3,7 +3,7 @@ using concurrent::Future
 using afConcurrent::Synchronized
 
 ** Blocks, and optionally resends a Cmd, until certain conditions in nav data have been met. 
-internal const class DroneLoop {
+internal const class NavDataLoop {
 	const NavDataReader 	reader
 	const CmdSender			sender
 	const Func				listener
@@ -54,7 +54,7 @@ internal const class DroneLoop {
 	
 	private static Void blockAndLog(Drone drone, Duration timeout, |NavData?->Bool| process, Cmd? cmd, Str msg) {
 		t := Timer()
-		DroneLoop(drone, process, cmd).future.get(timeout)
+		NavDataLoop(drone, process, cmd).future.get(timeout)
 		t.finish(msg)
 	}
 	
