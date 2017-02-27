@@ -161,7 +161,7 @@ enum class NavOption {
 
 ** Drone state.
 enum class FlyState {
-	ok, lostAlt, lostAltGoDown, altOutZone, combinedYaw, brake, noVision, 		unknown;
+	ok, lostAlt, lostAltGoDown, altOutZone, combinedYaw, brake, noVision, 		unknown;	// unknown appears to be at index 11
 }
 
 ** Flight state.
