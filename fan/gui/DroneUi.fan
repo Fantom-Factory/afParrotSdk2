@@ -3,7 +3,8 @@ using concurrent::ActorPool
 using fwt::Desktop
 using afConcurrent
 
-internal class DroneUi {
+** Kill me!
+class DroneUi {
 	private Log				log				:= Drone#.pod.log
 	Drone?	drone
 	
@@ -28,14 +29,15 @@ internal class DroneUi {
 	
 	Int oldStateFlags
 	Void onNavData(NavData navData) {
-		if (oldStateFlags.xor(navData.stateFlags) > 0) {
-			oldState := DroneState(oldStateFlags)
+		// TODO move to dumpChanged() meth in flags
+		if (oldStateFlags.xor(navData.flags.stateFlags) > 0) {
+			oldState := NavDataFlags(oldStateFlags)
 			buf := StrBuf(1024)
-			DroneState#.methods.findAll { it.returns == Bool# && it.params.isEmpty && it.parent == DroneState# }
-				.exclude { it == DroneState#comWatchdogProblem }
+			NavDataFlags#.methods.findAll { it.returns == Bool# && it.params.isEmpty && it.parent == NavDataFlags# }
+				.exclude { it == NavDataFlags#comWatchdogProblem || it == NavDataFlags#controlCommandAck }
 				.each {
 					oldVal := it.callOn(oldState, null)
-					newVal := it.callOn(navData.state, null)
+					newVal := it.callOn(navData.flags, null)
 					if (newVal != oldVal) {
 						buf.addChar('\n')
 						buf.add(it.name.padr(28, '.'))
@@ -44,7 +46,7 @@ internal class DroneUi {
 				}
 			if (!buf.isEmpty)
 				log.debug(buf.toStr)
-			oldStateFlags = navData.stateFlags
+			oldStateFlags = navData.flags.stateFlags
 		}
 	
 	}

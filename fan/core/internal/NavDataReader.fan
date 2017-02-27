@@ -62,10 +62,11 @@ internal const class NavDataReader {
 }
 
 internal class NavDataReaderImpl {
-	Log			log	:= Drone#.pod.log
-	UdpSocket	socket
-	Bool		connected
-	Int			lastSeqNum
+	Log				log		:= Drone#.pod.log
+	UdpSocket		socket
+	Bool			connected
+	Int				lastSeqNum
+	NavDataParser	parser	:= NavDataParser()
 	
 	new make(Str ipAddr, Int port, Duration receiveTimeout) {
 		socket = UdpSocket().connect(IpAddr(ipAddr), port) {
@@ -95,7 +96,7 @@ internal class NavDataReaderImpl {
 				throw err
 			}
 
-			navData	:= NavData(packet.data.flip.with {
+			navData	:= parser.parse(packet.data.flip.with {
 				it.endian = Endian.little
 			})
 			
