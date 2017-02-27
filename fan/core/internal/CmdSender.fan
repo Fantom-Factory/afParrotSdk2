@@ -4,7 +4,7 @@ using inet::IpAddr
 using inet::UdpSocket
 using inet::UdpPacket
 
-const class CmdSender {
+internal const class CmdSender {
 	private const ActorPool			actorPool
 	private const DroneConfig		config
 	private const SynchronizedState	mutex
@@ -40,7 +40,7 @@ const class CmdSender {
 	}	
 }
 
-class CmdSenderImpl {
+internal class CmdSenderImpl {
 	Log			log	:= Drone#.pod.log
 	UdpSocket	socket
 	Bool		connected

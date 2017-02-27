@@ -1,4 +1,6 @@
 
+** (Advanced)
+@NoDoc
 const class Cmd {
     const Str?	id
     const Obj[]	params

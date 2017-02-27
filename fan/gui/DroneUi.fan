@@ -3,7 +3,7 @@ using concurrent::ActorPool
 using fwt::Desktop
 using afConcurrent
 
-class DroneEvents {
+internal class DroneUi {
 	private Log				log				:= Drone#.pod.log
 	Drone?	drone
 	
@@ -13,7 +13,7 @@ class DroneEvents {
 		drone = Drone()
 		drone.addNavDataListener |navData| {
 			Desktop.callAsync |->| {
-				drone := (DroneEvents) Actor.locals["DroneEvents"]
+				drone := (DroneUi) Actor.locals["DroneUi"]
 				drone.onNavData(navData)
 			}
 		}
