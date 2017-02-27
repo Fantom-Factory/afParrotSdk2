@@ -293,15 +293,18 @@ const class Drone {
 //
 //	Void moveBackward() {
 //	}
-//	
-//	Void spinClockwise() {
-//	}
-//	
+	
+	Void spinClockwise(Float angularSpeed) {
+		// TODO check val 0-1
+		cmdSender.send(Cmd.makeMove(0f, 0f, 0f, angularSpeed))
+	}
+	
 //	Void spinAnticlockwise() {
 //	}
-//	
-//	Void stop() {
-//	}	
+	
+	Void stop() {
+		cmdSender.send(Cmd.makeHover)
+	}	
 	
 	// ---- Private Stuff ----
 	

@@ -48,7 +48,6 @@ const class NavDataFlags {
 	const |Method,Bool?->Str| logFlagValue	:= |Method method, Bool? oldVal -> Str| {
 		val := method.callOn(this, null)
 		buf := StrBuf(64)
-		buf.addChar('\n')
 		buf.add(method.name.padr(28, '.'))
 		if (oldVal != null)
 			buf.add(oldVal).add(" --> ")
@@ -108,7 +107,8 @@ const class NavDataFlags {
 	** 
 	** Note this ignores changes to common flags 'comWatchdogProblem' and 'controlCommandAck'.
 	Str dumpChanged(NavDataFlags? oldFlags) {
-		if (data.xor(oldFlags?.data ?: 0) == 0)
+		oldFlags = oldFlags ?: NavDataFlags(0)
+		if (data.xor(oldFlags.data) == 0)
 			return ""
 		
 		return flagMethods.exclude { it == #comWatchdogProblem || it == #controlCommandAck }.map |method->Str?| {
