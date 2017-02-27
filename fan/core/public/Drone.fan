@@ -218,10 +218,12 @@ const class Drone {
 	** 
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
 	Void land(Bool block := true, Duration? timeout := null) {
-		if (state != CtrlState.flying && state != CtrlState.hovering) {
-			log.warn("Can not land when state is ${state}")
-			return
-		}
+		// let's not second guess what state the drone is in
+		// if they wanna land the drone, send the gawd damn land cmd!
+//		if (state != CtrlState.flying && state != CtrlState.hovering) {
+//			log.warn("Can not land when state is ${state}")
+//			return
+//		}
 		if (block)
 			NavDataLoop.land(this, timeout ?: config.defaultTimeout)
 		else
@@ -294,13 +296,19 @@ const class Drone {
 //	Void moveBackward() {
 //	}
 	
-	Void spinClockwise(Float angularSpeed) {
+	Void spinClockwise(Float angularSpeed, Duration? duration := null, Bool? block := true) {
 		// TODO check val 0-1
-		cmdSender.send(Cmd.makeMove(0f, 0f, 0f, angularSpeed))
+		cmd := Cmd.makeMove(0f, 0f, 0f, angularSpeed)
+		
+		if (duration != null) {
+			future := TimedLoop(this, duration, cmd).future
+			if (block) future.get
+		} else
+			cmdSender.send(cmd)
 	}
 	
-//	Void spinAnticlockwise() {
-//	}
+	Void spinAnticlockwise() {
+	}
 	
 	Void stop() {
 		cmdSender.send(Cmd.makeHover)
@@ -339,7 +347,7 @@ const class Drone {
 		
 		onNavData?.call(navData, this)
 		
-		if (navData.flags.emergencyLanding && oldNavData?.flags?.emergencyLanding != true && navData.flags.flying)
+		if (navData.flags.emergencyLanding && oldNavData?.flags?.emergencyLanding != true && oldNavData?.flags?.flying == true)
 			onEmergency?.call(this)
 
 		if (navData.flags.batteryTooLow && oldNavData?.flags?.batteryTooLow != true )

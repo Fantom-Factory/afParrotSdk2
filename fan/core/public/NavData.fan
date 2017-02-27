@@ -166,6 +166,6 @@ enum class FlyState {
 
 ** Flight state.
 enum class CtrlState {
-	def, init, landed, flying, hovering, test, transTakeOff, transGotoFix, transLanding, transLooping;
+	def, init, landed, flying, hovering, test, transGotoFix, transTakeOff, transLooping, transLanding;
 }
 

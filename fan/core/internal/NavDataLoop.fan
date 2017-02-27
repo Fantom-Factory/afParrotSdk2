@@ -6,15 +6,17 @@ using afConcurrent::Synchronized
 internal const class NavDataLoop {
 	const NavDataReader 	reader
 	const CmdSender			sender
+	const DroneConfig		config
 	const Func				listener
 	const Future			future
-	const |NavData->Bool|	process
+	const |NavData?->Bool|	process
 	const Synchronized		mutex
 	const Cmd				cmd
 	
 	new make(Drone drone, |NavData?->Bool| process, Cmd? cmd) {
 		this.reader		= drone.navDataReader
 		this.sender		= drone.cmdSender
+		this.config		= drone.config
 		this.listener	= #onNavData.func.bind([this])
 		this.future		= Future()
 		this.process	= process
@@ -22,9 +24,7 @@ internal const class NavDataLoop {
 		this.mutex		= Synchronized(drone.actorPool)
 		reader.addListener(listener)
 		
-		if (process(drone.navData))
-			future.complete(null)
-
+		onNavData(drone.navData)
 		sendCmd
 	}
 	
@@ -54,18 +54,23 @@ internal const class NavDataLoop {
 	
 	private static Void blockAndLog(Drone drone, Duration timeout, |NavData?->Bool| process, Cmd? cmd, Str msg) {
 		t := Timer()
-		NavDataLoop(drone, process, cmd).future.get(timeout)
-		t.finish(msg)
+		try	{
+			NavDataLoop(drone, process, cmd).future.get(timeout)
+			t.finish(msg)
+		}
+		catch (TimeoutErr err)
+			// Suppress TimeoutErr if drone has since disconnected
+			if (!drone.actorPool.isStopped) throw err
 	}
 	
 	private Void sendCmd() {
 		if (!future.state.isComplete) {
 			sender.send(cmd)
-			mutex.asyncLater(30ms, #sendCmd.func.bind([this]))
+			mutex.asyncLater(config.cmdInterval, #sendCmd.func.bind([this]))
 		}
 	}
 	
-	private Void onNavData(NavData navData) {
+	private Void onNavData(NavData? navData) {
 		if (process(navData)) {
 			reader.removeListener(listener)
 			future.complete(null)
