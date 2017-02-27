@@ -2,7 +2,7 @@ using concurrent::Actor
 using gfx::Size
 using fwt::Window
 
-class Main {
+internal class Main {
 	
 	Void main() {
 		Drone#.pod.log.level = LogLevel.debug
@@ -22,13 +22,13 @@ class Main {
 	}
 	
 	Void startup() {
-		drone := DroneEvents()
-		Actor.locals["DroneEvents"] = drone
+		drone := DroneUi()
+		Actor.locals["DroneUi"] = drone
 		drone.startup
 	}
 	
 	Void shutdown() {
-		drone := (DroneEvents) Actor.locals["DroneEvents"]
+		drone := (DroneUi) Actor.locals["DroneUi"]
 		drone.shutdown
 	}	
 }

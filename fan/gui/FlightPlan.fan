@@ -1,28 +1,24 @@
 using concurrent::Actor
-class FlightPlan {
+
+internal class FlightPlan {
 	
 	Void fly(Drone drone) {
-		echo("Waiting for Ready")
-		drone.waitUntilReady
-		
-		echo("clear emergency")
 		drone.clearEmergencyMode
-
-		echo("flat trim")
 		drone.flatTrim
+		drone.setOutdoorFlight(false)
 
 		Actor.sleep(500ms)
 
-		drone.animateLeds(LedAnimation.redSnake, 2f, 10sec)
+		drone.animateLeds(LedAnimation.fire, 2f, 10sec)
 		
-		Actor.sleep(11sec)
+//		Actor.sleep(11sec)
 
 //		echo("take off")
-//		drone.takeOff
+		drone.takeOff
 //		
 //		Actor.sleep(5sec)
 //
 //		echo("land")
-//		drone.land
+		drone.land
 	}
 }

@@ -4,7 +4,7 @@ class Build : BuildPod {
 
 	new make() {
 		podName = "afParrotDrone"
-		summary = "Fly Boy!"
+		summary = "Pure Fantom driver for the Parrot AR Drone 2.0"
 		version = Version("0.0.1")
 
 		meta = [
@@ -22,7 +22,7 @@ class Build : BuildPod {
 			"afConcurrent 1.0.17 - 1.0", 
 		]
 
-		srcDirs = [`fan/`, `fan/core/`, `fan/core/internal/`, `fan/core/public/`, `fan/gui/`]
+		srcDirs = [`fan/`, `fan/core/`, `fan/core/advanced/`, `fan/core/internal/`, `fan/core/public/`, `fan/gui/`]
 		resDirs = [,]
 	}
 }

@@ -1,19 +1,31 @@
 
+** Standard navigation data returned by the Drone. 
+** Common data can be found with the 'state()' and 'demoData()' methods. 
 const class NavData {
 	private const Log		log	:= Drone#.pod.log
+	
+	** The raw flags used in 'DroneState'.
 	const	Int				stateFlags
+	
+	** The sequence number of the originating UDP packet.
 	const	Int				seqNum
+	
+	** Vision flags. (I have no idea!)
 	const	Int				visionFlag
+	
+	** State flags wrapped up in handy getter methods.
 	const	DroneState		state
+	
+	** A map of nav options.
 	const	NavOption:Obj	options
 
 	// It appears there are 2 header numbers
 	// see https://github.com/felixge/node-ar-drone/blob/master/lib/navdata/parseNavdata.js#L592
 	private static const Int navDataHeader1	:= 0x55667788
 	private static const Int navDataHeader2	:= 0x55667789
-	
-	new make(|This| f) { f(this) }
-	
+
+	** Creates a 'NavData' instance from the contents of a UDP payload. 
+	@NoDoc
 	new makeBuf(Buf navDataBuf) {
 		in := navDataBuf.in
 		in.endian = Endian.little
@@ -56,10 +68,15 @@ const class NavData {
 		this.options = options
 	}
 	
+	** Convenience method to return the 'NavOptionDemo' data (if any) contained in 'options'. 
 	NavOptionDemo? demoData() {
 		options[NavOption.demo]
 	}
 	
+	** Convenience method to return 'NavOption' data. Example:
+	** 
+	**   syntax: fantom
+	**   demoData := navData[NavOption.demo] 
 	@Operator
 	Obj? get(NavOption navOpt) {
 		options[navOpt]
@@ -102,11 +119,12 @@ const class NavData {
 	}
 }
 
-** see /ARDrone_SDK_2_0_1/ARDroneLib/Soft/Common/config.h
+** Standard state flags for the drone.
 const class DroneState {
 	private const Int stateFlags
 
-	internal new make(Int stateFlags) {
+	@NoDoc
+	new make(Int stateFlags) {
 		this.stateFlags = stateFlags
 	}
 	
@@ -144,6 +162,7 @@ const class DroneState {
 	Bool	comWatchdogProblem()		{ stateFlags.and(1.shiftl(30)) != 0 }
 	Bool	emergencyLanding()			{ stateFlags.and(1.shiftl(31)) != 0 }
 	
+	** Dumps all flags out to debug string.
 	Str dump() {
 		buf := StrBuf(1536)
 		typeof.methods.findAll { it.returns == Bool# && it.params.isEmpty && it.parent == DroneState# }.each {
@@ -158,6 +177,7 @@ const class DroneState {
 	override Str toStr() { dump	}
 }
 
+** Standard telemetry data returned by the Drone.
 const class NavOptionDemo {
 	** Fly State
 	const	FlyState	flyState
@@ -189,14 +209,17 @@ const class NavOptionDemo {
 	new make(|This| f) { f(this) }
 }
 
+** Data available from  
 enum class NavOption {
 	demo, time, rawMeasures, physMeasures, gyrosOffsets, eulerAngles, references, trims, rcReferences, pwm, altitude, visionRaw, visionOf, vision, visionPerf, trackersSend, visionDetect, watchdog, adcDataFrame, videoStream, games, pressureRaw, magneto, windSpeed, kalmanPressure, hdvideoStream, wifi, gps;
 }
 
+** Drone state.
 enum class FlyState {
 	ok, lostAlt, lostAltGoDown, altOutZone, combinedYaw, brake, noVision, 		unknown;
 }
 
+** Flight state.
 enum class CtrlState {
 	def, init, landed, flying, hovering, test, transTakeOff, transGotoFix, transLanding, transLooping;
 }

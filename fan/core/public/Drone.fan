@@ -3,6 +3,7 @@ using concurrent::Actor
 using concurrent::AtomicBool
 using concurrent::AtomicRef
 
+** The main interface to the Parrot AR Drone 2.0.
 const class Drone {
 	private const	Log				log				:= Drone#.pod.log
 	private	const	AtomicRef		navDataRef		:= AtomicRef(null)
@@ -16,20 +17,20 @@ const class Drone {
 			const	DroneConfig		config
 	
 	** Returns a copy of the latest Nav Data.
-	** 'null' if not connected.
+	** Returns 'null' if not connected.
 					NavData?		navData {
 						get { navDataRef.val }
 						private set { }
 					}
 	
-	** The current control (flying) state of the Drone.
+	** Returns the current control (flying) state of the Drone.
 					CtrlState?		state {
 						get { navData?.demoData?.ctrlState }
 						private set { }
 					}
 	
-	** Forces the drone to crash land on disconnect (or VM exit) should it still be flying.
-	** It sets emergency mode which cuts off all engines.
+	** A flag that forces the drone to crash land on disconnect (or VM exit) should it still be 
+	** flying. It sets the emergency mode which cuts off all engines.
 	** 
 	** Given your drone is flying autonomously, consider this a safety net to prevent it hovering 
 	** in the ceiling when your program crashes! 
@@ -38,6 +39,7 @@ const class Drone {
 						set { crashOnExitRef.val = it }
 					}
 	
+	** Creates a 'Drone' instance, optionally passing in default configuration.
 	new make(DroneConfig config := DroneConfig()) {
 		this.actorPool		= ActorPool() { it.name = "Parrot Drone" }
 		this.config			= config
@@ -49,7 +51,11 @@ const class Drone {
 
 	** Sets up the socket connections to the drone. 
 	** Your device must already be connected to the drone's wifi hot spot.
-	This connect() {
+	** 
+	** This method blocks until nav data is being received and all initiating commands have been acknowledged.
+	** 
+	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
+	This connect(Duration? timeout := null) {
 		navDataReader.addListener(#onNavData.func.bind([this]))
 		
 		cmdSender.connect
@@ -57,15 +63,21 @@ const class Drone {
 
 		// send me nav demo data please!
 		cmdSender.send(Cmd.makeConfig("general:navdata_demo", "TRUE"))
+
+		DroneLoop.waitUntilReady(this, timeout ?: config.defaultTimeout)
 		return this
 	}
 	
-	This disconnect() {
+	** Disconnects all comms to the drone. 
+	** Performs the 'crashLandOnExit' strategy should the drone still be flying.
+	**  
+	** This method blocks until it's finished.
+	This disconnect(Duration timeout := 2sec) {
 		doCrashLandOnExit	// our safety net!
 
 		navDataReader.disconnect
 		cmdSender.disconnect
-		actorPool.stop.join(1sec)
+		actorPool.stop.join(timeout)
 		return this
 	}
 	
@@ -80,16 +92,30 @@ const class Drone {
 	
 	// ---- Commands ----
 	
-	** Blocks until nav data is being received and all initiating commands have been acknowledged.
-	Void waitUntilReady(Duration? timeout := null) {
-		DroneLoop.waitUntilReady(this, timeout ?: config.defaultTimeout)
+	** (Advanced) Sends the given Cmd to the drone.
+	@NoDoc
+	Void sendCmd(Cmd cmd) {
+		cmdSender.send(cmd)
 	}
 	
+	** Blocks until the emergency mode flag has been cleared.
+	** 
+	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
 	Void clearEmergencyMode(Duration? timeout := null) {
 		if (navData?.state?.emergencyLanding == true)
 			DroneLoop.clearEmergencyMode(this, timeout ?: config.defaultTimeout)
 	}
 
+	** Sets or clears config and profiles relating to indoor / outdoor flight.
+	** See:
+	**  - 'control:outdoor'
+	**  - 'control:flight_without_shell'
+	Void setOutdoorFlight(Bool outdoors := true) {
+		cmdSender.send(Cmd.makeConfig("control:outdoor", outdoors.toStr.upper))
+		cmdSender.send(Cmd.makeConfig("control:flight_without_shell", outdoors.toStr.upper))
+	}
+	
+	** Sends a emergency signal which cuts off the drone's motors, causing a crash landing.
 	Void crashLand() {
 		if (navData?.state?.emergencyLanding == false)
 			cmdSender.send(Cmd.makeEmergency)
@@ -107,6 +133,11 @@ const class Drone {
 		cmdSender.send(Cmd.makeFlatTrim)
 	}
 
+	** Issues a take off command. 
+	** If 'block' is 'true' then this blocks the thread until a stable hover has been achieved; 
+	** which usually takes ~ 6 seconds.
+	** 
+	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
 	Void takeOff(Bool block := true, Duration? timeout := null) {
 		if (state != CtrlState.landed) {
 			log.warn("Can not take off when state is ${state}")
@@ -118,6 +149,10 @@ const class Drone {
 			cmdSender.send(Cmd.makeTakeOff)
 	}
 
+	** Issues a land command. 
+	** If 'block' is 'true' then this blocks the thread until the drone has landed.
+	** 
+	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
 	Void land(Bool block := true, Duration? timeout := null) {
 		if (state != CtrlState.flying && state != CtrlState.hovering) {
 			log.warn("Can not land when state is ${state}")
@@ -129,15 +164,12 @@ const class Drone {
 			cmdSender.send(Cmd.makeLand)
 	}
 	
-	
 	** Tell the drone to calibrate its magnetometer.
 	** 
-	** This command MUST be sent when the AR.Drone is flying.
-	** When receiving this command, the drone will automatically calibrate its magnetometer by
-	** spinning around itself for a few time.
+	** The drone calibrates its magnetometer by spinning around itself a few times, hence can
+	** only be performed when flying.
 	** 
-	** Does not block
-		// TODO better fandocs
+	** Does not block.
 	Void calibrate(Int deviceNum) {
 		if (state != CtrlState.flying && state != CtrlState.hovering) {
 			log.warn("Can not calibrate magnetometer when state is ${state}")
@@ -146,24 +178,33 @@ const class Drone {
 		cmdSender.send(Cmd.makeCalib(deviceNum))
 	}
 
-	Void animateLeds(LedAnimation anim := LedAnimation.redSnake, Float hz := 2f, Duration duration := 3sec) {
+	** Plays one of the pre-configured LED animation sequences. Example:
+	** 
+	**   syntax: fantom
+	**   drone.animateLeds(LedAnimation.snakeRed, 2f, 3sec)
+	** 
+	** Corresponds to the 'leds:leds_anim' config cmd.
+	Void animateLeds(LedAnimation anim, Float hz, Duration duration) {
 		params := [anim.ordinal, hz.bits32, duration.toSec].join(",")
 		cmdSender.send(Cmd.makeConfig("leds:leds_anim", params))
 	}
 
-//	Void config(Str key, Str val, |->| callback)
-//	
-//Client.prototype.animate = function(animation, duration) {
-//  // @TODO Figure out if we can get a ACK for this, so we don't need to
-//  // repeat it blindly like this
-//  var self = this;
-//  this._repeat(10, function() {
-//    self._udpControl.animate(animation, duration);
-//  });
-//};
-//
-//Client.prototype.animateLeds = function(animation, hz, duration) {
-//	
+	** Performs one of the pre-configured flight sequences.
+	** 
+	**   syntax: fantom
+	**   drone.animateFlight(FlightAnimation.phiDance, 5sec)
+	** 
+	** Corresponds to the 'control:flight_anim' config cmd.
+	Void animateFlight(FlightAnimation anim, Duration duration) {
+		params := [anim.ordinal, duration.toSec].join(",")
+		cmdSender.send(Cmd.makeConfig("control:flight_anim", params))
+	}
+
+	** Sends a config cmd to the drone.
+	Void configCmd(Str key, Str val) {
+		cmdSender.send(Cmd.makeConfig(key, val))
+	}
+
 //	['up', 'down'],
 //	['left', 'right'],
 //	['front', 'back'],
@@ -173,14 +214,14 @@ const class Drone {
 	
 	// ---- Private Stuff ----
 	
-	Void onNavData(NavData navData) {
+	private Void onNavData(NavData navData) {
 		oldNavData	:= (NavData?) navDataRef.val
 		
 		// TODO send event on state change
 		if (oldNavData?.demoData?.ctrlState != navData.demoData?.ctrlState)
 			log.debug("STATE: ${oldNavData?.demoData?.ctrlState} --> ${navData.demoData?.ctrlState}")
 		
-		// TODO send event on Battery Percent change
+		// TODO send event on Battery Percent change - beware navData with NO demo data = false null alerts - update options
 		if (oldNavData?.demoData?.batteryPercentage != navData.demoData?.batteryPercentage)
 			log.debug("Battery now at ${navData.demoData?.batteryPercentage}%")
 		
@@ -203,19 +244,21 @@ const class Drone {
 			log.warn("   !!! Battery Level Too Low !!!")
 	}
 	
-	Void doCrashLandOnExit() {
+	private Void doCrashLandOnExit() {
 		if (crashLandOnExit)
-			if (navData?.state?.flying == true || (state != CtrlState.landed || state != CtrlState.def)) {
+			if (navData?.state?.flying == true || (state != CtrlState.landed && state != CtrlState.def)) {
 				log.warn("Exiting Program --> Crash landing Drone")
 				crashLand
 			}
 	}
 }
 
+** Pre-configured LED animation sequences.
 enum class LedAnimation {
-	blinkGreenRed, blinkGreen, blinkRed, blinkOrange, snakeGreenRed, fire, standard, red, green, redSnake, blank, rightMissile, leftMissile, doubleMissile, frontLeftGreenOthersRed, frontRightGreenOthersRed, rearRightGreenOthersRed, rearLeftGreenOthersRed, leftGreenRightRed, leftRedRightGreen, blinkStandard;
+	blinkGreenRed, blinkGreen, blinkRed, blinkOrange, snakeGreenRed, fire, standard, red, green, snakeRed, blank, rightMissile, leftMissile, doubleMissile, frontLeftGreenOthersRed, frontRightGreenOthersRed, rearRightGreenOthersRed, rearLeftGreenOthersRed, leftGreenRightRed, leftRedRightGreen, blinkStandard;
 }
 
+** Pre-configured flight paths.
 enum class FlightAnimation {
 	phiM30Deg, phi30Deg, thetaM30Deg, theta30Deg, theta20degYaw200deg, theta20degYawM200deg, turnaround, turnaroundGodown, yawShake, yawDance, phiDance, thetaDance, vzDance, wave, phiThetaMixed, doublePhiThetaMixed, flipAhead, flipBehind, flipLeft, flipRight;
 }
