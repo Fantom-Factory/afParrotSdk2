@@ -1,24 +1,18 @@
 using concurrent::Actor
 
-internal class FlightPlan {
+** Kill me!
+class FlightPlan {
 	
 	Void fly(Drone drone) {
 		drone.clearEmergencyMode
 		drone.flatTrim
 		drone.setOutdoorFlight(false)
 
-		Actor.sleep(500ms)
+		drone.animateLeds(LedAnimation.fire, 10f, 10sec)
+		Actor.sleep(11sec)
 
-		drone.animateLeds(LedAnimation.fire, 2f, 10sec)
-		
-//		Actor.sleep(11sec)
-
-//		echo("take off")
-		drone.takeOff
-//		
+//		drone.takeOff
 //		Actor.sleep(5sec)
-//
-//		echo("land")
-		drone.land
+//		drone.land
 	}
 }

@@ -30,13 +30,13 @@ internal const class DroneLoop {
 	
 	static Void waitUntilReady(Drone drone, Duration timeout) {
 		blockAndLog(drone, timeout, |NavData? navData->Bool| {
-			navData?.demoData != null && navData?.state?.controlCommandAck == false
+			navData?.demoData != null && navData?.flags?.controlCommandAck == false
 		}, Cmd.makeCtrl(5, 0), "Drone ready")
 	}
 	
 	static Void clearEmergencyMode(Drone drone, Duration timeout) {
 		blockAndLog(drone, timeout, |NavData? navData->Bool| {
-			navData?.state?.emergencyLanding == false
+			navData?.flags?.emergencyLanding == false
 		}, Cmd.makeEmergency, "Emergency Mode cleared")
 	}
 	

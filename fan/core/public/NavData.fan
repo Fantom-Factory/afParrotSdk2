@@ -2,71 +2,22 @@
 ** Standard navigation data returned by the Drone. 
 ** Common data can be found with the 'state()' and 'demoData()' methods. 
 const class NavData {
-	private const Log		log	:= Drone#.pod.log
-	
-	** The raw flags used in 'DroneState'.
-	const	Int				stateFlags
-	
+		
 	** The sequence number of the originating UDP packet.
-	const	Int				seqNum
+	const Int			seqNum
 	
 	** Vision flags. (I have no idea!)
-	const	Int				visionFlag
+	const Int			visionFlag
 	
 	** State flags wrapped up in handy getter methods.
-	const	DroneState		state
+	const NavDataFlags	flags
 	
 	** A map of nav options.
-	const	NavOption:Obj	options
+	const NavOption:Obj	options
 
-	// It appears there are 2 header numbers
-	// see https://github.com/felixge/node-ar-drone/blob/master/lib/navdata/parseNavdata.js#L592
-	private static const Int navDataHeader1	:= 0x55667788
-	private static const Int navDataHeader2	:= 0x55667789
-
-	** Creates a 'NavData' instance from the contents of a UDP payload. 
+	** (Advanced)
 	@NoDoc
-	new makeBuf(Buf navDataBuf) {
-		in := navDataBuf.in
-		in.endian = Endian.little
-		
-		header := in.readS4
-		if (header != navDataHeader1 && header != navDataHeader2)
-			throw Err("Nav Data Magic Number [${header}] does not equal 0x${navDataHeader1.toHex.upper}")
-		
-		stateFlags	= in.readU4
-		seqNum		= in.readU4
-		visionFlag	= in.readU4
-		state		= DroneState(stateFlags)
-		options		:= NavOption:Obj[:]
-		
-		while (in.avail > 0) {
-			optionId  := in.readU2
-			optionLen := in.readU2
-
-			if (optionId == 0xFFFF) {
-				chkSum	 := in.readU4
-				navDataBuf.size = navDataBuf.pos - 8
-				navDataBuf.trim
-				chkSumIn := navDataBuf.flip.in
-				myChkSum := 0
-				while (chkSumIn.avail > 0) { myChkSum += chkSumIn.read }
-			
-				if (chkSum != myChkSum)
-					throw IOErr("Invalid NavData checksum; expected 0x${chkSum} got 0x${myChkSum}")
-				continue
-			}
-			
-			navOption	:= NavOption.vals[optionId]
-			parseMethod	:= typeof.method("parse${navOption.name.capitalize}", false)
-			if (parseMethod == null) {
-				log.warn("No parse method for NavOption ${navOption}")
-				in.skip(optionLen - 4)
-			} else
-				options[navOption] = parseMethod.call(in, optionLen)
-		}
-		this.options = options
-	}
+	new make(|This| f) { f(this) }
 	
 	** Convenience method to return the 'NavOptionDemo' data (if any) contained in 'options'. 
 	NavOptionDemo? demoData() {
@@ -81,47 +32,12 @@ const class NavData {
 	Obj? get(NavOption navOpt) {
 		options[navOpt]
 	}
-	
-	static internal NavOptionDemo parseDemo(InStream in) {
-		NavOptionDemo {
-			it.flyState				= FlyState.vals.getSafe(in.readU2, FlyState.unknown)
-			it.ctrlState			= CtrlState.vals[in.readU2]
-			it.batteryPercentage	= in.readU4
-			it.theta				= Float.makeBits32(in.readU4) / 1000
-			it.phi					= Float.makeBits32(in.readU4) / 1000
-			it.psi					= Float.makeBits32(in.readU4) / 1000
-			it.altitude				= in.readS4 / 1000
-			it.velocityX			= Float.makeBits32(in.readU4)
-			it.velocityY			= Float.makeBits32(in.readU4)
-			it.velocityZ			= Float.makeBits32(in.readU4)
-			it.frameIndex			= in.readU4
-				detection			:= Str:Obj[
-				"camera"	: Str:Obj[
-					"rotation"		: [0, 0, 0, 0, 0, 0, 0, 0, 0].map |v->Float| { Float.makeBits32(in.readU4) },
-					"translation"	: [0, 0, 0].map |v->Float| { Float.makeBits32(in.readU4) }
-				],
-				"tagIndex"	: in.readU4
-			]
-				detection["camera"]->set("type", in.readU4)
-			it.detection			= detection
-			it.drone				= Str:Obj[
-				"camera"	: Str:Obj[
-					"rotation"		: [0, 0, 0, 0, 0, 0, 0, 0, 0].map |v->Float| { Float.makeBits32(in.readU4) },
-					"translation"	: [0, 0, 0].map |v->Float| { Float.makeBits32(in.readU4) }
-				]
-			]
-		}
-	}
-	
-	static internal Obj parseVisionDetect(InStream in, Int optLen) {
-		in.skip(optLen - 4)
-		return 3
-	}
 }
 
-** Standard state flags for the drone.
-const class DroneState {
-	private const Int stateFlags
+** Standard state flags returned by the drone.
+const class NavDataFlags {
+	** The raw flags data.
+	const Int stateFlags
 
 	@NoDoc
 	new make(Int stateFlags) {
@@ -165,7 +81,7 @@ const class DroneState {
 	** Dumps all flags out to debug string.
 	Str dump() {
 		buf := StrBuf(1536)
-		typeof.methods.findAll { it.returns == Bool# && it.params.isEmpty && it.parent == DroneState# }.each {
+		typeof.methods.findAll { it.returns == Bool# && it.params.isEmpty && it.parent == NavDataFlags# }.each {
 			buf.add(it.name.padr(28, '.'))
 			buf.add(it.callOn(this, null))
 			buf.addChar('\n')

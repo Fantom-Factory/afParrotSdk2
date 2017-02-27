@@ -2,12 +2,14 @@ using concurrent::ActorPool
 using concurrent::Actor
 using concurrent::AtomicBool
 using concurrent::AtomicRef
+using afConcurrent::Synchronized
 
 ** The main interface to the Parrot AR Drone 2.0.
 const class Drone {
 	private const	Log				log				:= Drone#.pod.log
 	private	const	AtomicRef		navDataRef		:= AtomicRef(null)
 	private	const	AtomicBool		crashOnExitRef	:= AtomicBool(true)
+	private	const	Synchronized	mutex
 
 	internal const	CmdSender		cmdSender
 	internal const	NavDataReader	navDataReader
@@ -16,8 +18,8 @@ const class Drone {
 	** The configuration as passed to the ctor.
 			const	DroneConfig		config
 	
-	** Returns a copy of the latest Nav Data.
-	** Returns 'null' if not connected.
+	** Returns the latest Nav Data or 'null' if not connected.
+	** Note that this instance always contains a culmination of all the latest nav options received.
 					NavData?		navData {
 						get { navDataRef.val }
 						private set { }
@@ -45,6 +47,7 @@ const class Drone {
 		this.config			= config
 		this.navDataReader	= NavDataReader(actorPool, config)
 		this.cmdSender		= CmdSender(actorPool, config)
+		this.mutex			= Synchronized(actorPool)
 		navDataRef			:= navDataRef
 		Env.cur.addShutdownHook |->| { doCrashLandOnExit }
 	}
@@ -65,6 +68,7 @@ const class Drone {
 		cmdSender.send(Cmd.makeConfig("general:navdata_demo", "TRUE"))
 
 		DroneLoop.waitUntilReady(this, timeout ?: config.defaultTimeout)
+		log.info("Connected to AR Drone 2.0")
 		return this
 	}
 	
@@ -78,6 +82,7 @@ const class Drone {
 		navDataReader.disconnect
 		cmdSender.disconnect
 		actorPool.stop.join(timeout)
+		log.info("Disonnected from Drone")
 		return this
 	}
 	
@@ -102,7 +107,7 @@ const class Drone {
 	** 
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
 	Void clearEmergencyMode(Duration? timeout := null) {
-		if (navData?.state?.emergencyLanding == true)
+		if (navData?.flags?.emergencyLanding == true)
 			DroneLoop.clearEmergencyMode(this, timeout ?: config.defaultTimeout)
 	}
 
@@ -117,7 +122,7 @@ const class Drone {
 	
 	** Sends a emergency signal which cuts off the drone's motors, causing a crash landing.
 	Void crashLand() {
-		if (navData?.state?.emergencyLanding == false)
+		if (navData?.flags?.emergencyLanding == false)
 			cmdSender.send(Cmd.makeEmergency)
 	}
 	
@@ -205,6 +210,8 @@ const class Drone {
 		cmdSender.send(Cmd.makeConfig(key, val))
 	}
 
+	// FIXME movement cmds
+	
 //	['up', 'down'],
 //	['left', 'right'],
 //	['front', 'back'],
@@ -215,38 +222,51 @@ const class Drone {
 	// ---- Private Stuff ----
 	
 	private Void onNavData(NavData navData) {
+		if (actorPool.isStopped) return
+
 		oldNavData	:= (NavData?) navDataRef.val
 		
+		mutex.synchronized |->| {
+			newOpts := oldNavData?.options?.rw ?: NavOption:Obj[:]
+			newOpts.setAll(navData.options)
+			newNav := NavData {
+				it.flags		= navData.flags
+				it.seqNum		= navData.seqNum
+				it.visionFlag	= navData.visionFlag
+				it.options		= newOpts
+			}
+			navDataRef.val = newNav
+		}
+		
 		// TODO send event on state change
-		if (oldNavData?.demoData?.ctrlState != navData.demoData?.ctrlState)
+		if (navData.demoData != null && navData.demoData.ctrlState != oldNavData?.demoData?.ctrlState)
 			log.debug("STATE: ${oldNavData?.demoData?.ctrlState} --> ${navData.demoData?.ctrlState}")
 		
-		// TODO send event on Battery Percent change - beware navData with NO demo data = false null alerts - update options
-		if (oldNavData?.demoData?.batteryPercentage != navData.demoData?.batteryPercentage)
+		// TODO send event on Battery Percent change
+		if (navData.demoData != null && navData.demoData?.batteryPercentage != oldNavData?.demoData?.batteryPercentage)
 			log.debug("Battery now at ${navData.demoData?.batteryPercentage}%")
-		
 		
 		navDataRef.val = navData
 		
-		if (navData.state.controlCommandAck)
+		if (navData.flags.controlCommandAck)
 			cmdSender.send(Cmd.makeCtrl(5, 0))
 
-		if (navData.state.comWatchdogProblem)
+		if (navData.flags.comWatchdogProblem)
 			cmdSender.send(Cmd.makeKeepAlive)
 
 		// TODO send event on Emergency landing flag
-		if (navData.state.emergencyLanding && navData.state.flying)
+		if (navData.flags.emergencyLanding && navData.flags.flying)
 			// only print the first time - check for change
 			log.warn("   !!! EMERGENCY LANDING !!!   ")
 
 		// TODO send event on Low Battery flag
-		if (navData.state.batteryTooLow)
+		if (navData.flags.batteryTooLow)
 			log.warn("   !!! Battery Level Too Low !!!")
 	}
 	
 	private Void doCrashLandOnExit() {
 		if (crashLandOnExit)
-			if (navData?.state?.flying == true || (state != CtrlState.landed && state != CtrlState.def)) {
+			if (navData?.flags?.flying == true || (state != CtrlState.landed && state != CtrlState.def)) {
 				log.warn("Exiting Program --> Crash landing Drone")
 				crashLand
 			}
