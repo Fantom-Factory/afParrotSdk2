@@ -5,11 +5,19 @@ using concurrent::AtomicRef
 using afConcurrent::Synchronized
 
 ** The main interface to the Parrot AR Drone 2.0.
+** 
+** Once the drone has been disconnected, this class instance can not be re-connected. 
+** Instead create a new 'Drone' instance.
 const class Drone {
-	private const	Log				log				:= Drone#.pod.log
-	private	const	AtomicRef		navDataRef		:= AtomicRef(null)
-	private	const	AtomicBool		crashOnExitRef	:= AtomicBool(true)
+	private const	Log				log					:= Drone#.pod.log
+	private	const	AtomicRef		navDataRef			:= AtomicRef()
+	private	const	AtomicBool		crashOnExitRef		:= AtomicBool(true)
 	private	const	Synchronized	mutex
+	private	const	AtomicRef		onNavDataRef		:= AtomicRef()
+	private	const	AtomicRef		onStateChangeRef	:= AtomicRef()
+	private	const	AtomicRef		onBatterDrainRef	:= AtomicRef()
+	private	const	AtomicRef		onEmergencyRef		:= AtomicRef()
+	private	const	AtomicRef		onBatteryLowRef		:= AtomicRef()
 
 	internal const	CmdSender		cmdSender
 	internal const	NavDataReader	navDataReader
@@ -41,6 +49,55 @@ const class Drone {
 						set { crashOnExitRef.val = it }
 					}
 	
+	** Event hook that's notified when the drone sends new NavData.
+	** Expect the function to be called many times a second.
+	** 
+	** The nav data is raw from the drone so does **not** contain a culmination of all option data.
+	** Note 'Drone.navData' is updated with the new contents before the hook is called.
+	** 
+	** Throws 'NotImmutableErr' if the function is not immutable.
+					|NavData, Drone|?		onNavData {
+						get { onNavDataRef.val }
+						set { onNavDataRef.val = it}
+					}
+
+	** Event hook that's called when the drone's state is changed.
+	** 
+	** Throws 'NotImmutableErr' if the function is not immutable.
+					|CtrlState state, Drone|? onStateChange {
+						get { onStateChangeRef.val }
+						set { onStateChangeRef.val = it}
+					}
+
+	** Event hook that's called when the drone's battery loses a percentage of charge.
+	** The function is called with the new battery percentage level (0 - 100).
+	** 
+	** Throws 'NotImmutableErr' if the function is not immutable.
+					|Int newPercentage, Drone|? onBatteryDrain {
+						get { onBatterDrainRef.val }
+						set { onBatterDrainRef.val = it}
+					}
+
+	** Event hook that's called when the drone enters emergency mode.
+	** When this happens, the engines are cut and the drone will not respond to commands until 
+	** emergency mode is cleared.
+	** 
+	** Note this hook is only called when the drone is flying.
+	** 
+	** Throws 'NotImmutableErr' if the function is not immutable.
+					|Drone|?	onEmergency {
+						get { onEmergencyRef.val }
+						set { onEmergencyRef.val = it}
+					}
+
+	** Event hook that's called when the drone's battery reaches a critical level.
+	** 
+	** Throws 'NotImmutableErr' if the function is not immutable.
+					|Drone|?	onBatteryLow {
+						get { onBatteryLowRef.val }
+						set { onBatteryLowRef.val = it}
+					}
+
 	** Creates a 'Drone' instance, optionally passing in default configuration.
 	new make(DroneConfig config := DroneConfig()) {
 		this.actorPool		= ActorPool() { it.name = "Parrot Drone" }
@@ -59,7 +116,8 @@ const class Drone {
 	** 
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
 	This connect(Duration? timeout := null) {
-		navDataReader.addListener(#onNavData.func.bind([this]))
+		// TODO prevent re-connection
+		navDataReader.addListener(#processNavData.func.bind([this]))
 		
 		cmdSender.connect
 		navDataReader.connect
@@ -77,6 +135,8 @@ const class Drone {
 	**  
 	** This method blocks until it's finished.
 	This disconnect(Duration timeout := 2sec) {
+		if (actorPool.isStopped) return this
+		
 		doCrashLandOnExit	// our safety net!
 
 		navDataReader.disconnect
@@ -84,15 +144,6 @@ const class Drone {
 		actorPool.stop.join(timeout)
 		log.info("Disonnected from Drone")
 		return this
-	}
-	
-	// TODO have onNavData listener class, like fwt
-	Void addNavDataListener(|NavData| f) {
-		navDataReader.addListener(f)
-	}
-	
-	Void removeNavDataListener(|NavData| f) {
-		navDataReader.removeListener(f)
 	}
 	
 	// ---- Commands ----
@@ -174,7 +225,7 @@ const class Drone {
 	** The drone calibrates its magnetometer by spinning around itself a few times, hence can
 	** only be performed when flying.
 	** 
-	** Does not block.
+	** This method does not block.
 	Void calibrate(Int deviceNum) {
 		if (state != CtrlState.flying && state != CtrlState.hovering) {
 			log.warn("Can not calibrate magnetometer when state is ${state}")
@@ -189,6 +240,8 @@ const class Drone {
 	**   drone.animateLeds(LedAnimation.snakeRed, 2f, 3sec)
 	** 
 	** Corresponds to the 'leds:leds_anim' config cmd.
+	** 
+	** This method does not block.
 	Void animateLeds(LedAnimation anim, Float hz, Duration duration) {
 		params := [anim.ordinal, hz.bits32, duration.toSec].join(",")
 		cmdSender.send(Cmd.makeConfig("leds:leds_anim", params))
@@ -200,6 +253,8 @@ const class Drone {
 	**   drone.animateFlight(FlightAnimation.phiDance, 5sec)
 	** 
 	** Corresponds to the 'control:flight_anim' config cmd.
+	** 
+	** This method does not block.
 	Void animateFlight(FlightAnimation anim, Duration duration) {
 		params := [anim.ordinal, duration.toSec].join(",")
 		cmdSender.send(Cmd.makeConfig("control:flight_anim", params))
@@ -212,16 +267,36 @@ const class Drone {
 
 	// FIXME movement cmds
 	
-//	['up', 'down'],
-//	['left', 'right'],
-//	['front', 'back'],
-//	['clockwise', 'counterClockwise'],
+//	Void moveUp() {
+//	}
+//	
+//	Void moveDown() {
+//	}
+//	
+//	Void moveLeft() {
+//	}
 //
-//	Void stop()
+//	Void moveRight() {
+//	}
+//	
+//	Void moveForward() {
+//	}
+//
+//	Void moveBackward() {
+//	}
+//	
+//	Void spinClockwise() {
+//	}
+//	
+//	Void spinAnticlockwise() {
+//	}
+//	
+//	Void stop() {
+//	}	
 	
 	// ---- Private Stuff ----
 	
-	private Void onNavData(NavData navData) {
+	private Void processNavData(NavData navData) {
 		if (actorPool.isStopped) return
 
 		oldNavData	:= (NavData?) navDataRef.val
@@ -238,15 +313,7 @@ const class Drone {
 			navDataRef.val = newNav
 		}
 		
-		// TODO send event on state change
-		if (navData.demoData != null && navData.demoData.ctrlState != oldNavData?.demoData?.ctrlState)
-			log.debug("STATE: ${oldNavData?.demoData?.ctrlState} --> ${navData.demoData?.ctrlState}")
-		
-		// TODO send event on Battery Percent change
-		if (navData.demoData != null && navData.demoData?.batteryPercentage != oldNavData?.demoData?.batteryPercentage)
-			log.debug("Battery now at ${navData.demoData?.batteryPercentage}%")
-		
-		navDataRef.val = navData
+		// ---- perform standard feedback ----
 		
 		if (navData.flags.controlCommandAck)
 			cmdSender.send(Cmd.makeCtrl(5, 0))
@@ -254,14 +321,24 @@ const class Drone {
 		if (navData.flags.comWatchdogProblem)
 			cmdSender.send(Cmd.makeKeepAlive)
 
-		// TODO send event on Emergency landing flag
-		if (navData.flags.emergencyLanding && navData.flags.flying)
-			// only print the first time - check for change
-			log.warn("   !!! EMERGENCY LANDING !!!   ")
+		// ---- call event handlers ----
+		
+		onNavData?.call(navData, this)
+		
+		if (navData.flags.emergencyLanding && oldNavData?.flags?.emergencyLanding != true && navData.flags.flying)
+			onEmergency?.call(this)
 
-		// TODO send event on Low Battery flag
-		if (navData.flags.batteryTooLow)
-			log.warn("   !!! Battery Level Too Low !!!")
+		if (navData.flags.batteryTooLow && oldNavData?.flags?.batteryTooLow != true )
+			onBatteryLow?.call(this)
+		
+		demoData := navData.demoData
+		if (demoData != null) {
+			if (demoData.ctrlState != oldNavData?.demoData?.ctrlState)
+				onStateChange?.call(demoData.ctrlState, this)
+		
+			if (oldNavData?.demoData?.batteryPercentage == null || demoData.batteryPercentage < oldNavData.demoData.batteryPercentage)
+				onBatteryDrain?.call(demoData.batteryPercentage, this)
+		}
 	}
 	
 	private Void doCrashLandOnExit() {

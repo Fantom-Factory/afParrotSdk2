@@ -1,5 +1,5 @@
 
-** Standard navigation data returned by the Drone. 
+** Standard navigation data returned by the drone. 
 ** Common data can be found with the 'state()' and 'demoData()' methods. 
 const class NavData {
 		
@@ -13,6 +13,7 @@ const class NavData {
 	const NavDataFlags	flags
 	
 	** A map of nav options.
+	// TODO store raw buf here, only convert (AtomicMap cache) when asked for 
 	const NavOption:Obj	options
 
 	** (Advanced)
@@ -93,7 +94,7 @@ const class NavDataFlags {
 	override Str toStr() { dump	}
 }
 
-** Standard telemetry data returned by the Drone.
+** Standard telemetry data returned by the drone.
 const class NavOptionDemo {
 	** Fly State
 	const	FlyState	flyState
