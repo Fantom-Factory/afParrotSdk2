@@ -4,7 +4,7 @@ using concurrent::Actor
 class FlightPlan {
 	private static const	Log		log		:= Drone#.pod.log
 
-	Sounds	sounds := Sounds()
+	private Sounds	sounds := Sounds()
 	Bool flying
 	
 	Void fly(Drone drone) {
@@ -22,22 +22,25 @@ class FlightPlan {
 		drone.clearEmergencyMode
 		drone.flatTrim
 		drone.setOutdoorFlight(false)
-		drone.animateLeds(LedAnimation.standard, 1f, 1sec)
-		
-//		Actor.sleep(11sec)
+		drone.animateLeds(LedAnimation.snakeRed, 2f, 3sec)
 
-		drone.takeOff
+		drone.sendCmd(Cmd.makeCtrl(4, 0))
+		drone.controlReader.readControlData
+		
+		Actor.sleep(5sec)
 
-		drone.spinClockwise(-1f, 3sec)
-		
-		sounds.beep
-		drone.animateFlight(FlightAnimation.phi30Deg, 1sec)
-		Actor.sleep(1sec)
-		sounds.beep
-		drone.animateFlight(FlightAnimation.phiM30Deg, 1sec)
-		Actor.sleep(1sec)
-		
-		drone.land
+//		drone.takeOff
+//
+//		drone.spinClockwise(-1f, 3sec)
+//		
+//		sounds.beep
+//		drone.animateFlight(FlightAnimation.phi30Deg, 1sec)
+//		Actor.sleep(1sec)
+//		sounds.beep
+//		drone.animateFlight(FlightAnimation.phiM30Deg, 1sec)
+//		Actor.sleep(1sec)
+//		
+//		drone.land
 
 		drone.disconnect
 	}

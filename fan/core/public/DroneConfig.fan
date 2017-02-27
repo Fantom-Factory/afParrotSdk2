@@ -4,9 +4,16 @@ const class DroneConfig {
 	
 	const Str		droneIpAddr			:= "192.168.1.1"
 
-	const Int		navDataPort			:= 5554
-	const Int		videoPort			:= 5555
-	const Int		controlPort			:= 5556
+	// // from ARDrone_SDK_2_0_1/ARDroneLib/Soft/Common/config.h
+//	const Int		ftpPort				:= 5551	// FTP
+//	const Int		authPort			:= 5552	// AUTH
+//	const Int		videoRecPort		:= 5553	// VIDEO_RECORDER
+	const Int		navDataPort			:= 5554 // NAVDATA
+	const Int		videoPort			:= 5555 // VIDEO
+	const Int		cmdPort				:= 5556	// AT
+//	const Int		capturePort			:= 5557	// CAPTURE
+//	const Int		printfPort			:= 5558	// PRINTF
+	const Int		controlPort			:= 5559	// CONTROL
 	
 	const Duration	cmdInterval			:= 25ms
 

@@ -1,5 +1,5 @@
 
-class Sounds : SoundClips {
+internal class Sounds : SoundClips {
 	
 	SoundClip	beep() 		{ load("beep.wav") }
 

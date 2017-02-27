@@ -26,7 +26,8 @@ internal const class NavDataLoop {
 	
 	static Void waitUntilReady(Drone drone, Duration timeout) {
 		blockAndLog(drone, timeout, |NavData? navData->Bool| {
-			navData?.demoData != null && navData?.flags?.controlCommandAck == false
+			// FIXME why is ack not being reset?
+			navData?.demoData != null 	// && navData?.flags?.controlCommandAck == false
 		}, Cmd.makeCtrl(5, 0), "Drone ready")
 	}
 	

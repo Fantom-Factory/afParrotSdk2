@@ -6,7 +6,7 @@ using [java] javax.sound.sampled::DataLine$Info as Info
 using [java] javax.sound.sampled::FloatControl
 using [java] javax.sound.sampled::FloatControl$Type as FType
 
-class SoundClips {
+internal class SoundClips {
 	private const Log		log			:= typeof.pod.log
 	private Str:SoundClip	soundClips	:= Str:SoundClip[:]
 
@@ -26,14 +26,14 @@ class SoundClips {
 	}
 }
 
-mixin SoundClip {
+internal mixin SoundClip {
 	abstract Float volume
 	abstract Bool loaded()
 	abstract Void play()
 	abstract Void stop()
 }
 
-class SoundClipJava : SoundClip {
+internal class SoundClipJava : SoundClip {
 	private Uri		soundUri
 	private Clip	clip
 	
@@ -82,16 +82,4 @@ class SoundClipJava : SoundClip {
 	override Str toStr() {
 		soundUri.name
 	}
-}
-
-native class SoundClipJs : SoundClip {
-	
-	override Float volume
-	
-	new make(Uri soundUrl)
-	
-	override Bool loaded()
-
-	override Void play()
-	override Void stop()
 }
