@@ -25,29 +25,12 @@ class DroneUi {
 		}
 	}
 	
-	
-	Int oldStateFlags
+	NavDataFlags? oldFlags
 	Void onNavData(NavData navData) {
-		// TODO move to dumpChanged() meth in flags
-		if (oldStateFlags.xor(navData.flags.stateFlags) > 0) {
-			oldState := NavDataFlags(oldStateFlags)
-			buf := StrBuf(1024)
-			NavDataFlags#.methods.findAll { it.returns == Bool# && it.params.isEmpty && it.parent == NavDataFlags# }
-				.exclude { it == NavDataFlags#comWatchdogProblem || it == NavDataFlags#controlCommandAck }
-				.each {
-					oldVal := it.callOn(oldState, null)
-					newVal := it.callOn(navData.flags, null)
-					if (newVal != oldVal) {
-						buf.addChar('\n')
-						buf.add(it.name.padr(28, '.'))
-						buf.add(oldVal).add(" --> ").add(newVal)
-					}
-				}
-			if (!buf.isEmpty)
-				log.debug(buf.toStr)
-			oldStateFlags = navData.flags.stateFlags
-		}
-	
+		str := navData.flags.dumpChanged(oldFlags)
+		if (!str.isEmpty)
+			log.debug("\n${str}")
+		oldFlags = navData.flags
 	}
 	
 	Void shutdown() {

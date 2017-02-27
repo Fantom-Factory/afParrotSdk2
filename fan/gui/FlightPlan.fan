@@ -2,7 +2,7 @@ using concurrent::Actor
 
 ** Kill me!
 class FlightPlan {
-	private const	Log		log		:= Drone#.pod.log
+	private static const	Log		log		:= Drone#.pod.log
 
 	Void fly(Drone drone) {
 		drone.onStateChange		= |state|			{ log.info("State Change: --> ${state}"			) }
@@ -15,12 +15,12 @@ class FlightPlan {
 		drone.flatTrim
 		drone.setOutdoorFlight(false)
 
-		drone.animateLeds(LedAnimation.fire, 10f, 10sec)
-		Actor.sleep(11sec)
+		drone.animateLeds(LedAnimation.standard, 10f, 10sec)
+//		Actor.sleep(11sec)
 
-//		drone.takeOff
-//		Actor.sleep(5sec)
-//		drone.land
+		drone.takeOff
+		Actor.sleep(5sec)
+		drone.land
 
 		drone.disconnect
 	}

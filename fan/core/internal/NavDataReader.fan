@@ -23,6 +23,7 @@ internal const class NavDataReader {
 		this.actorPool	= actorPool
 	}
 	
+	** Only internal listeners should be added here.
 	Void addListener(|NavData| f) {
 		listeners.add(f)
 	}

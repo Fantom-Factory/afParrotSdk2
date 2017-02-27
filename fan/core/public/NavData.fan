@@ -37,57 +37,85 @@ const class NavData {
 
 ** Standard state flags returned by the drone.
 const class NavDataFlags {
-	** The raw flags data.
-	const Int stateFlags
+	private static const Method[] flagMethods := NavDataFlags#.methods.findAll { it.returns == Bool# && it.params.isEmpty && it.parent == NavDataFlags# }
 
+	** The raw flags data.
+	const Int data
+
+	
+	** (Advaned) Used by the 'dump()' methods.
 	@NoDoc
-	new make(Int stateFlags) {
-		this.stateFlags = stateFlags
+	const |Method,Bool?->Str| logFlagValue	:= |Method method, Bool? oldVal -> Str| {
+		val := method.callOn(this, null)
+		buf := StrBuf(64)
+		buf.addChar('\n')
+		buf.add(method.name.padr(28, '.'))
+		if (oldVal != null)
+			buf.add(oldVal).add(" --> ")
+		buf.add(val)		
+		return buf.toStr
 	}
 	
-	Bool	flying()					{ stateFlags.and(1.shiftl( 0)) != 0 }
-	Bool	videoEnabled()				{ stateFlags.and(1.shiftl( 1)) != 0 }
-	Bool	visionEnabled()				{ stateFlags.and(1.shiftl( 2)) != 0 }
-	Bool	eulerAngelsControl()		{ stateFlags.and(1.shiftl( 3)) == 0 }	// yep - this is correct!
-	Bool	angularSpeedControl()		{ stateFlags.and(1.shiftl( 3)) != 0 }
-	Bool	altitudeControlActive()		{ stateFlags.and(1.shiftl( 4)) != 0 }
-	Bool	userFeedbackOn()			{ stateFlags.and(1.shiftl( 5)) != 0 }
-	Bool	controlCommandAck()			{ stateFlags.and(1.shiftl( 6)) != 0 }
-	Bool	cameraReady()				{ stateFlags.and(1.shiftl( 7)) != 0 }
-	Bool	travellingEnabled()			{ stateFlags.and(1.shiftl( 8)) != 0 }
-	Bool	usbReady()					{ stateFlags.and(1.shiftl( 9)) != 0 }
-	Bool	navDataDemo()				{ stateFlags.and(1.shiftl(10)) != 0 }
-	Bool	navDataBootstrap()			{ stateFlags.and(1.shiftl(11)) != 0 }
-	Bool	motorProblem()				{ stateFlags.and(1.shiftl(12)) != 0 }
-	Bool	communicationLost()			{ stateFlags.and(1.shiftl(13)) != 0 }
-	Bool	gyrometersDown()			{ stateFlags.and(1.shiftl(14)) != 0 }
-	Bool	batteryTooLow()				{ stateFlags.and(1.shiftl(15)) != 0 }
-	Bool	userEmergencyLanding()		{ stateFlags.and(1.shiftl(16)) != 0 }
-	Bool	timerElapsed()				{ stateFlags.and(1.shiftl(17)) != 0 }
-	Bool	magnometerNeedsCalibration(){ stateFlags.and(1.shiftl(18)) != 0 }
-	Bool	angelsOutOufRange()			{ stateFlags.and(1.shiftl(19)) != 0 }
-	Bool	tooMuchWind()				{ stateFlags.and(1.shiftl(20)) != 0 }
-	Bool	ultrasonicSensorDeaf()		{ stateFlags.and(1.shiftl(21)) != 0 }
-	Bool	cutoutDetected()			{ stateFlags.and(1.shiftl(22)) != 0 }
-	Bool	picVersionNumberOK()		{ stateFlags.and(1.shiftl(23)) != 0 }
-	Bool	atCodedThreadOn()			{ stateFlags.and(1.shiftl(24)) != 0 }
-	Bool	navDataThreadOn()			{ stateFlags.and(1.shiftl(25)) != 0 }
-	Bool	videoThreadOn()				{ stateFlags.and(1.shiftl(26)) != 0 }
-	Bool	acquisitionThreadOn()		{ stateFlags.and(1.shiftl(27)) != 0 }
-	Bool	controlWatchdogDelayed()	{ stateFlags.and(1.shiftl(28)) != 0 }
-	Bool	adcWatchdogDelayed()		{ stateFlags.and(1.shiftl(29)) != 0 }
-	Bool	comWatchdogProblem()		{ stateFlags.and(1.shiftl(30)) != 0 }
-	Bool	emergencyLanding()			{ stateFlags.and(1.shiftl(31)) != 0 }
+	@NoDoc
+	new make(Int data, |This|? f := null) {
+		this.data = data
+		f?.call(this)
+	}
+	
+	Bool	flying()					{ data.and(1.shiftl( 0)) != 0 }
+	Bool	videoEnabled()				{ data.and(1.shiftl( 1)) != 0 }
+	Bool	visionEnabled()				{ data.and(1.shiftl( 2)) != 0 }
+	Bool	eulerAngelsControl()		{ data.and(1.shiftl( 3)) == 0 }	// yep - this is correct!
+	Bool	angularSpeedControl()		{ data.and(1.shiftl( 3)) != 0 }
+	Bool	altitudeControlActive()		{ data.and(1.shiftl( 4)) != 0 }
+	Bool	userFeedbackOn()			{ data.and(1.shiftl( 5)) != 0 }
+	Bool	controlCommandAck()			{ data.and(1.shiftl( 6)) != 0 }
+	Bool	cameraReady()				{ data.and(1.shiftl( 7)) != 0 }
+	Bool	travellingEnabled()			{ data.and(1.shiftl( 8)) != 0 }
+	Bool	usbReady()					{ data.and(1.shiftl( 9)) != 0 }
+	Bool	navDataDemo()				{ data.and(1.shiftl(10)) != 0 }
+	Bool	navDataBootstrap()			{ data.and(1.shiftl(11)) != 0 }
+	Bool	motorProblem()				{ data.and(1.shiftl(12)) != 0 }
+	Bool	communicationLost()			{ data.and(1.shiftl(13)) != 0 }
+	Bool	gyrometersDown()			{ data.and(1.shiftl(14)) != 0 }
+	Bool	batteryTooLow()				{ data.and(1.shiftl(15)) != 0 }
+	Bool	userEmergencyLanding()		{ data.and(1.shiftl(16)) != 0 }
+	Bool	timerElapsed()				{ data.and(1.shiftl(17)) != 0 }
+	Bool	magnometerNeedsCalibration(){ data.and(1.shiftl(18)) != 0 }
+	Bool	angelsOutOufRange()			{ data.and(1.shiftl(19)) != 0 }
+	Bool	tooMuchWind()				{ data.and(1.shiftl(20)) != 0 }
+	Bool	ultrasonicSensorDeaf()		{ data.and(1.shiftl(21)) != 0 }
+	Bool	cutoutDetected()			{ data.and(1.shiftl(22)) != 0 }
+	Bool	picVersionNumberOK()		{ data.and(1.shiftl(23)) != 0 }
+	Bool	atCodedThreadOn()			{ data.and(1.shiftl(24)) != 0 }
+	Bool	navDataThreadOn()			{ data.and(1.shiftl(25)) != 0 }
+	Bool	videoThreadOn()				{ data.and(1.shiftl(26)) != 0 }
+	Bool	acquisitionThreadOn()		{ data.and(1.shiftl(27)) != 0 }
+	Bool	controlWatchdogDelayed()	{ data.and(1.shiftl(28)) != 0 }
+	Bool	adcWatchdogDelayed()		{ data.and(1.shiftl(29)) != 0 }
+	Bool	comWatchdogProblem()		{ data.and(1.shiftl(30)) != 0 }
+	Bool	emergencyLanding()			{ data.and(1.shiftl(31)) != 0 }
 	
 	** Dumps all flags out to debug string.
 	Str dump() {
-		buf := StrBuf(1536)
-		typeof.methods.findAll { it.returns == Bool# && it.params.isEmpty && it.parent == NavDataFlags# }.each {
-			buf.add(it.name.padr(28, '.'))
-			buf.add(it.callOn(this, null))
-			buf.addChar('\n')
-		}
-		return buf.toStr
+		flagMethods.map { logFlagValue(it, null) }.join("\n")
+	}
+	
+	** Dumps to a debug string all flags that are different to the instance passed in.
+	** May return an empty string if nothing has changed.
+	** 
+	** If 'null' is passed in, all old flags are assumed to be 'false'.
+	** 
+	** Note this ignores changes to common flags 'comWatchdogProblem' and 'controlCommandAck'.
+	Str dumpChanged(NavDataFlags? oldFlags) {
+		if (data.xor(oldFlags?.data ?: 0) == 0)
+			return ""
+		
+		return flagMethods.exclude { it == #comWatchdogProblem || it == #controlCommandAck }.map |method->Str?| {
+			oldVal := method.callOn(oldFlags, null)
+			newVal := method.callOn(this, null)
+			return (newVal == oldVal) ? null : logFlagValue(method, oldVal)
+		}.exclude { it == null }.join("\n")
 	}
 	
 	@NoDoc
@@ -126,7 +154,7 @@ const class NavOptionDemo {
 	new make(|This| f) { f(this) }
 }
 
-** Data available from  
+** Data options returned from the drone.  
 enum class NavOption {
 	demo, time, rawMeasures, physMeasures, gyrosOffsets, eulerAngles, references, trims, rcReferences, pwm, altitude, visionRaw, visionOf, vision, visionPerf, trackersSend, visionDetect, watchdog, adcDataFrame, videoStream, games, pressureRaw, magneto, windSpeed, kalmanPressure, hdvideoStream, wifi, gps;
 }
