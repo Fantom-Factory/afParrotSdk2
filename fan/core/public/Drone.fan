@@ -22,6 +22,7 @@ const class Drone {
 
 	internal const	CmdSender		cmdSender
 	internal const	NavDataReader	navDataReader
+	internal const	ControlReader	controlReader
 	internal const	ActorPool		actorPool
 	
 	** The configuration as passed to the ctor.
@@ -107,9 +108,9 @@ const class Drone {
 						set { onBatteryLowRef.val = it}
 					}
 
-	** Event hook that's called when the drone is disconnected.. 
-	** 'abnormal' is set to 'true' if the drone is disconnected due to a communication / socket error.
-	** This may happen if the battery drains too low or the drone is switched off.
+	** Event hook that's called when the drone is disconnected.
+	** The 'abnormal' boolean is set to 'true' if the drone is disconnected due to a communication 
+	** / socket error. This may happen if the battery drains too low or the drone is switched off.
 	** 
 	** Throws 'NotImmutableErr' if the function is not immutable.
 	** 
@@ -124,6 +125,7 @@ const class Drone {
 		this.actorPool		= ActorPool() { it.name = "Parrot Drone" }
 		this.config			= config
 		this.navDataReader	= NavDataReader(this, actorPool, config)
+		this.controlReader	= ControlReader(this, actorPool, config)
 		this.cmdSender		= CmdSender(this, actorPool, config)
 		this.eventThread	= Synchronized(actorPool)
 		Env.cur.addShutdownHook |->| { doCrashLandOnExit }
@@ -145,11 +147,12 @@ const class Drone {
 		
 		cmdSender.connect
 		navDataReader.connect
+		controlReader.connect
 
 		// send me nav demo data please!
 		cmdSender.send(Cmd.makeConfig("general:navdata_demo", "TRUE"))
-
 		NavDataLoop.waitUntilReady(this, timeout ?: config.defaultTimeout)
+
 		if (!actorPool.isStopped)
 			log.info("Connected to AR Drone 2.0")
 		return this
@@ -162,6 +165,8 @@ const class Drone {
 	This disconnect(Duration timeout := 2sec) {
 		doDisconnect(false, timeout)
 	}
+	
+	
 	
 	// ---- Commands ----
 	
@@ -278,50 +283,71 @@ const class Drone {
 		params := [anim.ordinal, duration.toSec].join(",")
 		cmdSender.send(Cmd.makeConfig("control:flight_anim", params))
 	}
+	
+
+	
+	// ---- Movement Commands ----
 
 	** Sends a config cmd to the drone.
 	Void configCmd(Str key, Str val) {
 		cmdSender.send(Cmd.makeConfig(key, val))
 	}
 
-	// FIXME movement cmds
-	
-	** If a duration is given, then by default this method will block
-//	Void moveUp(Float val, Duration? duration := null, Bool? block := true) {
-//	}
-//	
-//	Void moveDown() {
-//	}
-//	
-//	Void moveLeft() {
-//	}
-//
-//	Void moveRight() {
-//	}
-//	
-//	Void moveForward() {
-//	}
-//
-//	Void moveBackward() {
-//	}
-	
-	Void spinClockwise(Float angularSpeed, Duration? duration := null, Bool? block := true) {
-		// TODO check val 0-1
-		cmd := Cmd.makeMove(0f, 0f, 0f, angularSpeed)
-		
-		if (duration != null) {
-			future := TimedLoop(this, duration, cmd).future
-			if (block) future.get
-		} else
-			cmdSender.send(cmd)
+	** The 'verticalSpeed' is a percentage of the maximum vertical speed.
+	** A positive value makes the drone rise in the air, a negative value makes it go down.	
+	|->|? moveUp(Float verticalSpeed, Duration? duration := null, Bool? block := true) {
+		doMove(Cmd.makeMove(0f, 0f, verticalSpeed, 0f), verticalSpeed, duration, block)
 	}
 	
-	Void spinAnticlockwise() {
+	|->|? moveDown(Float verticalSpeed, Duration? duration := null, Bool? block := true) {
+		doMove(Cmd.makeMove(0f, 0f, -verticalSpeed, 0f), verticalSpeed, duration, block)
+	}
+	
+	** The 'tilt' (aka *roll* or *phi*) is a percentage of the maximum inclination.
+	** A positive value makes the drone tilt to its left, thus flying leftward. A negative value makes the drone tilt to its right.
+	|->|? moveLeft(Float tilt, Duration? duration := null, Bool? block := true) {
+		doMove(Cmd.makeMove(-tilt, 0f, 0f, 0f), tilt, duration, block)
+	}
+
+	** The 'tilt' (aka *roll* or *phi*) is a percentage of the maximum inclination.
+	** A positive value makes the drone tilt to its right, thus flying right. A negative value makes the drone tilt to its left.
+	|->|? moveRight(Float tilt, Duration? duration := null, Bool? block := true) {
+		doMove(Cmd.makeMove(tilt, 0f, 0f, 0f), tilt, duration, block)		
+	}
+	
+	** The 'tilt' (aka *pitch* or *theta*) is a percentage of the maximum inclination.
+	** A negative value drops its nose, thus flying forward. A positive value raises the nose, thus flying backward.
+	|->|? moveForward(Float tilt, Duration? duration := null, Bool? block := true) {
+		doMove(Cmd.makeMove(0f, -tilt, 0f, 0f), tilt, duration, block)
+	}
+
+	|->|? moveBackward(Float tilt, Duration? duration := null, Bool? block := true) {
+		doMove(Cmd.makeMove(0f, tilt, 0f, 0f), tilt, duration, block)
+	}
+	
+	** The 'angularSpeed' (aka *yaw*) is a percentage of the maximum angular speed.
+	** A positive value makes the drone spin clockwise; a negative value makes it spin anti-clockwise.
+	** 
+	**  -1 to 1
+	** 
+	** If 'duration' is given then this method will block and send move cmd to the drone every 
+	** 'config.cmdInterval'.
+	** 
+	** Alternatively, if 'block' is false then the method returns immediately, returning a func that, 
+	** when called, cancels any future cmd sends.
+	|->|? spinClockwise(Float angularSpeed, Duration? duration := null, Bool? block := true) {
+		doMove(Cmd.makeMove(0f, 0f, 0f, angularSpeed), angularSpeed, duration, block)
+	}
+	
+	Void spinAntiClockwise(Float angularSpeed, Duration? duration := null, Bool? block := true) {
+		doMove(Cmd.makeMove(0f, 0f, 0f, -angularSpeed), angularSpeed, duration, block)
 	}
 	
 	Void stop() {
 		cmdSender.send(Cmd.makeHover)
 	}	
+	
+	
 	
 	// ---- Private Stuff ----
 	
@@ -393,18 +419,36 @@ const class Drone {
 		}
 	}
 	
-	private Void callSafe(Func? f, Obj[]? args) {
-		try f?.callList(args)
-		catch (Err err)
-			err.trace
-	}
-	
 	private Void doCrashLandOnExit() {
 		if (crashLandOnExit)
 			if (navData?.flags?.flying == true || (state != null && state != CtrlState.landed && state != CtrlState.def)) {
 				log.warn("Exiting Program --> Crash landing Drone")
 				crashLand
 			}
+	}
+
+	private |->|? doMove(Cmd cmd, Float speed, Duration? duration, Bool? block) {
+		if (speed < -1f || speed > 1f)
+			throw ArgErr("Speed must be between -1 and 1 : ${speed}")
+		
+		if (duration == null) {
+			cmdSender.send(cmd)
+			return null
+		}
+
+		future := TimedLoop(this, duration, cmd).future
+		if (block) {
+			future.get
+			return null 
+		}
+		
+		return |->| { future.cancel }
+	}
+	
+	private Void callSafe(Func? f, Obj[]? args) {
+		try f?.callList(args)
+		catch (Err err)
+			err.trace
 	}
 }
 

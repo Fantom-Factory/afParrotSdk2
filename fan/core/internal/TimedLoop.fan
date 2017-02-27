@@ -27,6 +27,9 @@ internal const class TimedLoop {
 	}
 	
 	private Void sendCmd() {
+		// check if the user cancelled us
+		if (future.state.isComplete) return
+
 		// abandon manoeuvre if an emergency occurs!
 		if ((Duration.now - startTime) >= duration || drone.navData?.flags?.emergencyLanding == true) {
 			future.complete(null)
