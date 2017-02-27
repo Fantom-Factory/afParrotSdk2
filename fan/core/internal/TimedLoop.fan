@@ -4,8 +4,7 @@ using afConcurrent::Synchronized
 
 ** Repeatedly resends a Cmd until a timeout is reached. 
 internal const class TimedLoop {
-	const DroneConfig		config
-	const CmdSender			sender
+	const Drone				drone
 	const Synchronized		mutex
 	const Cmd				cmd
 	const Duration			duration
@@ -13,8 +12,7 @@ internal const class TimedLoop {
 	const Future			future
 	
 	new make(Drone drone, Duration duration, Cmd? cmd) {
-		this.config		= drone.config
-		this.sender		= drone.cmdSender
+		this.drone		= drone
 		this.duration	= duration
 		this.cmd		= cmd
 		this.mutex		= Synchronized(drone.actorPool)
@@ -29,12 +27,12 @@ internal const class TimedLoop {
 	}
 	
 	private Void sendCmd() {
-		// FIXME abandon if emergengy!
-		if ((Duration.now - startTime) < duration) {
-			sender.send(cmd)
-			mutex.asyncLater(config.cmdInterval, #sendCmd.func.bind([this]))
-		} else 
+		// abandon manoeuvre if an emergency occurs!
+		if ((Duration.now - startTime) >= duration || drone.navData?.flags?.emergencyLanding == true) {
 			future.complete(null)
+		} else {
+			drone.cmdSender.send(cmd)
+			mutex.asyncLater(drone.config.cmdInterval, #sendCmd.func.bind([this]))
+		}
 	}
 }
-

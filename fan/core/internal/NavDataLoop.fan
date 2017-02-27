@@ -4,9 +4,7 @@ using afConcurrent::Synchronized
 
 ** Blocks, and optionally resends a Cmd, until certain conditions in nav data have been met. 
 internal const class NavDataLoop {
-	const NavDataReader 	reader
-	const CmdSender			sender
-	const DroneConfig		config
+	const Drone				drone
 	const Func				listener
 	const Future			future
 	const |NavData?->Bool|	process
@@ -14,15 +12,13 @@ internal const class NavDataLoop {
 	const Cmd				cmd
 	
 	new make(Drone drone, |NavData?->Bool| process, Cmd? cmd) {
-		this.reader		= drone.navDataReader
-		this.sender		= drone.cmdSender
-		this.config		= drone.config
+		this.drone		= drone
 		this.listener	= #onNavData.func.bind([this])
 		this.future		= Future()
 		this.process	= process
 		this.cmd		= cmd
 		this.mutex		= Synchronized(drone.actorPool)
-		reader.addListener(listener)
+		drone.navDataReader.addListener(listener)
 		
 		onNavData(drone.navData)
 		sendCmd
@@ -65,14 +61,14 @@ internal const class NavDataLoop {
 	
 	private Void sendCmd() {
 		if (!future.state.isComplete) {
-			sender.send(cmd)
-			mutex.asyncLater(config.cmdInterval, #sendCmd.func.bind([this]))
+			drone.cmdSender.send(cmd)
+			mutex.asyncLater(drone.config.cmdInterval, #sendCmd.func.bind([this]))
 		}
 	}
 	
 	private Void onNavData(NavData? navData) {
 		if (process(navData)) {
-			reader.removeListener(listener)
+			drone.navDataReader.removeListener(listener)
 			future.complete(null)
 		}
 	}
