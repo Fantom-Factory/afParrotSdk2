@@ -26,8 +26,7 @@ internal const class NavDataLoop {
 	
 	static Void waitUntilReady(Drone drone, Duration timeout) {
 		blockAndLog(drone, timeout, |NavData? navData->Bool| {
-			// FIXME why is ack not being reset?
-			navData?.demoData != null 	// && navData?.flags?.controlCommandAck == false
+			navData?.demoData != null && navData?.flags?.controlCommandAck == false
 		}, Cmd.makeCtrl(5, 0), "Drone ready")
 	}
 	
@@ -50,10 +49,10 @@ internal const class NavDataLoop {
 	}
 	
 	private static Void blockAndLog(Drone drone, Duration timeout, |NavData?->Bool| process, Cmd? cmd, Str msg) {
-		t := Timer()
 		try	{
-			NavDataLoop(drone, process, cmd).future.get(timeout)
-			t.finish(msg)
+			Timer.time(msg) |->| {
+				NavDataLoop(drone, process, cmd).future.get(timeout)
+			}
 		}
 		catch (TimeoutErr err)
 			// Suppress TimeoutErr if drone has since disconnected

@@ -6,14 +6,12 @@ using inet::UdpPacket
 
 internal const class CmdSender {
 	private const ActorPool			actorPool
-	private const DroneConfig		config
 	private const SynchronizedState	mutex
 	
 	new make(Drone drone, ActorPool actorPool, DroneConfig config) {
 		this.mutex		= SynchronizedState(actorPool) |->Obj| {
 			CmdSenderImpl(drone, config.droneIpAddr, config.cmdPort)
 		}
-		this.config		= config
 		this.actorPool	= actorPool
 	}
 	
@@ -62,8 +60,8 @@ internal class CmdSenderImpl {
 		if (connected) {
 			try	{
 				socket.send(UdpPacket() { data = cmd.cmdStr(++lastSeq).toBuf.seek(0) })
-				if (cmd.id != "COMWDG" && cmd.id != "REF" && cmd.id != "PCMD" && cmd.id != "CTRL")
-					if (log.isDebug)
+				if (log.isDebug)
+					if (cmd.id != "COMWDG" && cmd.id != "REF" && cmd.id != "PCMD" && cmd.id != "CTRL")
 						log.debug("--> ${cmd.cmdStr(lastSeq).trim}")
 			} catch (IOErr ioe) {
 				if (ioe.msg.contains("java.net.SocketException")) {

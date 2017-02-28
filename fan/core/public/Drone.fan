@@ -11,7 +11,7 @@ using afConcurrent::Synchronized
 const class Drone {
 	private const	Log				log					:= Drone#.pod.log
 	private	const	AtomicRef		navDataRef			:= AtomicRef()
-	private	const	AtomicBool		crashOnExitRef		:= AtomicBool(true)
+	private	const	AtomicRef		exitStrategyRef		:= AtomicRef(ExitStrategy.land)
 	private	const	AtomicRef		onNavDataRef		:= AtomicRef()
 	private	const	AtomicRef		onStateChangeRef	:= AtomicRef()
 	private	const	AtomicRef		onBatterDrainRef	:= AtomicRef()
@@ -19,6 +19,7 @@ const class Drone {
 	private	const	AtomicRef		onBatteryLowRef		:= AtomicRef()
 	private	const	AtomicRef		onDisconnectRef		:= AtomicRef()
 	private	const	Synchronized	eventThread
+	private	const	|->|			shutdownHook
 
 	internal const	CmdSender		cmdSender
 	internal const	NavDataReader	navDataReader
@@ -41,14 +42,19 @@ const class Drone {
 						private set { }
 					}
 	
-	** A flag that forces the drone to crash land on disconnect (or VM exit) should it still be 
-	** flying. It sets the emergency mode which cuts off all engines.
+	** Should this 'Drone' class instance disconnect from the drone whilst it is flying (or the VM 
+	** otherwise exits) then this strategy governs what last commands should be sent to the drone 
+	** before it exits.
 	** 
-	** Given your drone is flying autonomously, consider this a safety net to prevent it hovering 
-	** in the ceiling when your program crashes! 
-					Bool 			crashLandOnExit {
-						get { crashOnExitRef.val }
-						set { crashOnExitRef.val = it }
+	** (It's a useful feature I wish I'd implemented before the time my program crashed and I 
+	** watched my drone sail up, up, and away, over the tree line!)
+	** 
+	** Defaults to 'land'.
+	** 
+	** Note this can not guard against a forced process kill or a 'kill -9' command. 
+					ExitStrategy 	exitStrategy {
+						get { exitStrategyRef.val }
+						set { exitStrategyRef.val = it }
 					}
 	
 	** Event hook that's notified when the drone sends new NavData.
@@ -125,10 +131,10 @@ const class Drone {
 		this.actorPool		= ActorPool() { it.name = "Parrot Drone" }
 		this.config			= config
 		this.navDataReader	= NavDataReader(this, actorPool, config)
-		this.controlReader	= ControlReader(this, actorPool, config)
+		this.controlReader	= ControlReader(this)
 		this.cmdSender		= CmdSender(this, actorPool, config)
 		this.eventThread	= Synchronized(actorPool)
-		Env.cur.addShutdownHook |->| { doCrashLandOnExit }
+		this.shutdownHook	= #onShutdown.func.bind([this])
 	}
 
 	** Sets up the socket connections to the drone. 
@@ -147,11 +153,12 @@ const class Drone {
 		
 		cmdSender.connect
 		navDataReader.connect
-		controlReader.connect
 
 		// send me nav demo data please!
 		cmdSender.send(Cmd.makeConfig("general:navdata_demo", "TRUE"))
 		NavDataLoop.waitUntilReady(this, timeout ?: config.defaultTimeout)
+
+		Env.cur.addShutdownHook(shutdownHook)
 
 		if (!actorPool.isStopped)
 			log.info("Connected to AR Drone 2.0")
@@ -352,9 +359,11 @@ const class Drone {
 	// ---- Private Stuff ----
 	
 	internal This doDisconnect(Bool abnormal, Duration timeout := 2sec) {
+		Env.cur.removeShutdownHook(shutdownHook)
+
 		if (actorPool.isStopped) return this
 		
-		doCrashLandOnExit	// our safety net!
+		shutdownHook.call()
 
 		navDataReader.disconnect
 		cmdSender.disconnect
@@ -390,11 +399,12 @@ const class Drone {
 		
 		// ---- perform standard feedback ----
 		
-		if (navData.flags.controlCommandAck)
-			cmdSender.send(Cmd.makeCtrl(5, 0))
-
 		if (navData.flags.comWatchdogProblem)
 			cmdSender.send(Cmd.makeKeepAlive)
+
+		// okay, so I don't actually understand why I'm doing this! But everything works better when I do!
+		if (navData.flags.controlCommandAck)
+			cmdSender.send(Cmd.makeCtrl(5, 0))
 
 		// ---- call event handlers ----
 		
@@ -419,12 +429,28 @@ const class Drone {
 		}
 	}
 	
-	private Void doCrashLandOnExit() {
-		if (crashLandOnExit)
-			if (navData?.flags?.flying == true || (state != null && state != CtrlState.landed && state != CtrlState.def)) {
-				log.warn("Exiting Program --> Crash landing Drone")
-				crashLand
+	private Void onShutdown() {
+		if (navData?.flags?.flying == true || (state != null && state != CtrlState.landed && state != CtrlState.def)) {
+			switch (exitStrategy) {
+				case ExitStrategy.nothing:
+					log.warn("Enforcing Exit Strategy --> Doing Nothing!")
+				
+				case ExitStrategy.hover:
+					log.warn("Enforcing Exit Strategy --> Hovering Drone")
+					stop
+				
+				case ExitStrategy.land:
+					log.warn("Enforcing Exit Strategy --> Landing Drone")
+					land(false)
+
+				case ExitStrategy.crashLand:
+					log.warn("Enforcing Exit Strategy --> Crash Landing Drone")
+					crashLand
+			
+				default:
+					throw Err("WTF is a '${exitStrategy}' exit strategy ???")
 			}
+		}
 	}
 
 	private |->|? doMove(Cmd cmd, Float speed, Duration? duration, Bool? block) {
@@ -452,6 +478,7 @@ const class Drone {
 	}
 }
 
+// TODO add default Hz
 ** Pre-configured LED animation sequences.
 enum class LedAnimation {
 	blinkGreenRed, blinkGreen, blinkRed, blinkOrange, snakeGreenRed, fire, standard, red, green, snakeRed, blank, rightMissile, leftMissile, doubleMissile, frontLeftGreenOthersRed, frontRightGreenOthersRed, rearRightGreenOthersRed, rearLeftGreenOthersRed, leftGreenRightRed, leftRedRightGreen, blinkStandard;
@@ -483,5 +510,21 @@ enum class LedAnimation {
 
 ** Pre-configured flight paths.
 enum class FlightAnimation {
-	phiM30Deg, phi30Deg, thetaM30Deg, theta30Deg, theta20degYaw200deg, theta20degYawM200deg, turnaround, turnaroundGodown, yawShake, yawDance, phiDance, thetaDance, vzDance, wave, phiThetaMixed, doublePhiThetaMixed, flipAhead, flipBehind, flipLeft, flipRight;
+	phiM30Deg, phi30Deg, thetaM30Deg, theta30Deg, theta20degYaw200Deg, theta20degYawM200Deg, turnaround, turnaroundGodown, yawShake, yawDance, phiDance, thetaDance, vzDance, wave, phiThetaMixed, doublePhiThetaMixed, flipAhead, flipBehind, flipLeft, flipRight;
+}
+
+** Governs what the drone should do if the program exists whilst it's flying.
+** Default is 'land'.
+enum class ExitStrategy {
+	** Do nothing, let the drone continue doing whatever it was programmed to do.
+	nothing, 
+	
+	** Sends a 'stop()' command.
+	hover, 
+	
+	** Sends a 'land() command.
+	land, 
+	
+	** Cuts the drone's engines, forcing a crash landing.
+	crashLand;
 }
