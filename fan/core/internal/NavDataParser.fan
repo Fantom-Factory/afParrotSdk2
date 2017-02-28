@@ -58,8 +58,8 @@ internal class NavDataParser {
 	
 	static internal NavOptionDemo parseDemo(InStream in) {
 		NavOptionDemo {
-			it.flyState				= FlyState.vals.getSafe(in.readU2, FlyState.unknown)
-			it.ctrlState			= CtrlState.vals[in.readU2]
+			it.droneState			= DroneState.vals.getSafe(in.readU2, DroneState.unknown)
+			it.flightState			= FlightState.vals[in.readU2]
 			it.batteryPercentage	= in.readU4
 			it.theta				= Float.makeBits32(in.readU4) / 1000
 			it.phi					= Float.makeBits32(in.readU4) / 1000

@@ -38,13 +38,13 @@ internal const class NavDataLoop {
 	
 	static Void takeOff(Drone drone, Duration timeout) {
 		blockAndLog(drone, timeout, |NavData? navData->Bool| {
-			navData?.demoData?.ctrlState == CtrlState.flying || navData?.demoData?.ctrlState == CtrlState.hovering
+			navData?.demoData?.flightState == FlightState.flying || navData?.demoData?.flightState == FlightState.hovering
 		}, Cmd.makeTakeOff, "Drone took off")
 	}
 	
 	static Void land(Drone drone, Duration timeout) {
 		blockAndLog(drone, timeout, |NavData? navData->Bool| {
-			navData?.demoData?.ctrlState == CtrlState.landed
+			navData?.demoData?.flightState == FlightState.landed
 		}, Cmd.makeLand, "Drone landed")
 	}
 	

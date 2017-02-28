@@ -45,7 +45,7 @@ class FlightPlan {
 	}
 		
 		
-	FlyState? oldState
+	DroneState? oldState
 	NavDataFlags? oldFlags
 	Void onNavData(NavData navData) {
 		str := navData.flags.dumpChanged(oldFlags)
@@ -53,22 +53,22 @@ class FlightPlan {
 			str.splitLines.each { log.debug(it) }
 		oldFlags = navData.flags
 		
-		if (oldState != navData.demoData?.flyState && navData.demoData?.flyState != null) {
-			log.debug("State FLY Change --> ${navData.demoData?.flyState}")
-			oldState = navData.demoData?.flyState
+		if (oldState != navData.demoData?.droneState && navData.demoData?.droneState != null) {
+			log.debug("State Drone Change --> ${navData.demoData?.droneState}")
+			oldState = navData.demoData?.droneState
 		}
 	}
 
-	Void onStateChange(CtrlState state) {
+	Void onStateChange(FlightState state) {
 		switch (state) {
-			case CtrlState.transTakeOff:
+			case FlightState.transTakeOff:
 				sounds.takingOff.play
-			case CtrlState.hovering:
+			case FlightState.hovering:
 				sounds.takeOff.play
 				flying = true
-			case CtrlState.transLanding:
+			case FlightState.transLanding:
 				sounds.landing.play
-			case CtrlState.landed:
+			case FlightState.landed:
 				if (flying)
 					sounds.landed.play
 		}
