@@ -6,7 +6,7 @@ using afConcurrent::Synchronized
 internal const class TimedLoop {
 	const Drone				drone
 	const Synchronized		mutex
-	const Cmd				cmd
+	const Cmd?				cmd
 	const Duration			duration
 	const Duration			startTime
 	const Future			future
@@ -34,7 +34,8 @@ internal const class TimedLoop {
 		if ((Duration.now - startTime) >= duration || drone.navData?.flags?.emergencyLanding == true) {
 			future.complete(null)
 		} else {
-			drone.cmdSender.send(cmd)
+			if (cmd != null)
+				drone.cmdSender.send(cmd)
 			if (!drone.actorPool.isStopped)
 				mutex.asyncLater(drone.config.cmdInterval, #sendCmd.func.bind([this]))
 		}

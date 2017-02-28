@@ -22,11 +22,10 @@ const class Cmd {
 	}
 	
 	** Makes a 'CONFIG' cmd with the given name / value pair. 
-	@Deprecated { msg="use drone.sendConfig() so it blocks"}
 	static Cmd makeConfig(Str name, Str value) {
 		Cmd("CONFIG", [name, value])
 	}
-	
+
 	** Makes a 'CTRL' cmd.
 	** 
 	** Possible states of the drone 'control' thread.
@@ -109,18 +108,20 @@ const class Cmd {
 	
 	** Returns the cmd string to send to the drone.
 	Str cmdStr(Int seq) {
-		if (params.isEmpty)
-			return "AT*${id}=${seq}\r"
-
-		paramStr := params.join(",") |p->Str| {
+		params.isEmpty
+			? "AT*${id}=${seq}\r"
+			: "AT*${id}=${seq},${encodeParams(params)}\r"
+	}
+	
+	internal static Str encodeParams(Obj[] params) {
+		params.join(",") |p->Str| {
 			if (p is Int)	return ((Int  ) p).toStr
 			if (p is Float)	return ((Float) p).bits32.toStr
 			if (p is Str)	return ((Str  ) p).toCode('"')
-			throw Err("WTF is a ${p.typeof} - ${p} ???")
+			throw ArgErr("Param should be an Int, Float, or Str - not ${p.typeof} -> ${p}")
 		}
-		return "AT*${id}=${seq},${paramStr}\r"
 	}
-	
+
 	** Returns the `cmdStr` with a seq of '0'.
 	override Str toStr() { cmdStr(0) }
 }

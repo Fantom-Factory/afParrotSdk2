@@ -154,8 +154,6 @@ const class Drone {
 		cmdSender.connect
 		navDataReader.connect
 
-		// send me nav demo data please!
-		cmdSender.send(Cmd.makeConfig("general:navdata_demo", "TRUE"))
 		NavDataLoop.waitUntilReady(this, timeout ?: config.defaultTimeout)
 
 		Env.cur.addShutdownHook(shutdownHook)
@@ -175,7 +173,7 @@ const class Drone {
 	
 	
 	
-	// ---- Commands ----
+	// ---- Misc Commands ----
 	
 	** (Advanced) Sends the given Cmd to the drone.
 	@NoDoc
@@ -183,12 +181,15 @@ const class Drone {
 		cmdSender.send(cmd)
 	}
 	
-	Void sendConfigStr(Str key, Str val) {
+	** Sends a config cmd to the drone.
+	** 
+	** 'val' may be a Bool, Int, Float, Str, or a List of said types. 
+	Void sendConfig(Str key, Obj val) {
+		if (val is List)
+			val = ((List) val).join(",") { encodeConfigParam(it) }
+		val = encodeConfigParam(val)
+		cmdSender.send(Cmd.makeConfig(key, val))
 		// FIXME block + wait for ack to clear, send, wait for ack, send ack ack, wait for clear
-	}
-
-	Void sendConfigParams(Str key, Obj[] params) {
-		// FIXME
 	}
 	
 	** Blocks until the emergency mode flag has been cleared.
@@ -204,9 +205,8 @@ const class Drone {
 	**  - 'control:outdoor'
 	**  - 'control:flight_without_shell'
 	Void setOutdoorFlight(Bool outdoors := true) {
-		// TODO use sendConfigStr
-		cmdSender.send(Cmd.makeConfig("control:outdoor", outdoors.toStr.upper))
-		cmdSender.send(Cmd.makeConfig("control:flight_without_shell", outdoors.toStr.upper))
+		sendConfig("control:outdoor", outdoors)
+		sendConfig("control:flight_without_shell", outdoors)
 	}
 	
 	** Sends a emergency signal which cuts off the drone's motors, causing a crash landing.
@@ -227,8 +227,56 @@ const class Drone {
 		cmdSender.send(Cmd.makeFlatTrim)
 	}
 
+	** Tell the drone to calibrate its magnetometer.
+	** 
+	** The drone calibrates its magnetometer by spinning around itself a few times, hence can
+	** only be performed when flying.
+	** 
+	** This method does not block.
+	Void calibrate(Int deviceNum) {
+		if (state != CtrlState.flying && state != CtrlState.hovering) {
+			log.warn("Can not calibrate magnetometer when state is ${state}")
+			return
+		}
+		cmdSender.send(Cmd.makeCalib(deviceNum))
+	}
+
+	** Plays one of the pre-configured LED animation sequences. Example:
+	** 
+	**   syntax: fantom
+	**   drone.animateLeds(LedAnimation.snakeRed, 3sec)
+	** 
+	** If 'freqInHz' is 'null' then the default frequency of the enum is used.
+	** 
+	** Corresponds to the 'leds:leds_anim' config cmd.
+	** 
+	** This method does not block.
+	Void animateLeds(LedAnimation anim, Duration duration, Float? freqInHz := null) {
+		params := [anim.ordinal, (freqInHz ?: anim.defaultFrequency), duration.toSec]
+		sendConfig("leds:leds_anim", params)
+	}
+
+	** Performs one of the pre-configured flight sequences.
+	** 
+	**   syntax: fantom
+	**   drone.animateFlight(FlightAnimation.phiDance)
+	** 
+	** If duration is 'null' then the default duration of the enum is used.
+	** 
+	** Corresponds to the 'control:flight_anim' config cmd.
+	Void animateFlight(FlightAnimation anim, Duration? duration := null, Bool block := true) {
+		params := [anim.ordinal, (duration ?: anim.defaultDuration).toSec]
+		sendConfig("control:flight_anim", params)
+		if (block)
+			Actor.sleep(duration ?: anim.defaultDuration)
+	}
+	
+	
+	// ---- Equilibrium Commands ----
+	
 	** Issues a take off command. 
-	** If 'block' is 'true' then this blocks the thread until a stable hover has been achieved; 
+	** 
+	** If 'block' is 'true' then it blocks the thread until a stable hover has been achieved; 
 	** which usually takes ~ 6 seconds.
 	** 
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
@@ -246,8 +294,9 @@ const class Drone {
 			cmdSender.send(Cmd.makeTakeOff)
 	}
 
-	** Issues a land command. 
-	** If 'block' is 'true' then this blocks the thread until the drone has landed.
+	** Repeatedly sends a land cmd to the drone until it reports its state as 'landed'.
+	**  
+	** If 'block' is 'true' then it blocks the thread until the drone has landed.
 	** 
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
 	Void land(Bool block := true, Duration? timeout := null) {
@@ -257,9 +306,7 @@ const class Drone {
 //			log.warn("Can not land when state is ${state}")
 //			return
 //		}
-		
-	//** Repeatedly sends a land cmd to the drone until it reports its state as 'landed'. 
-		
+
 		// Don't land if already landing --> need an internal state: none, landing, takingOff
 		echo("Landing")
 		
@@ -278,60 +325,9 @@ const class Drone {
 		// TODO cancel / ignore all other move commands when landing -> except LAND!
 	}
 	
-	
-	** Tell the drone to calibrate its magnetometer.
-	** 
-	** The drone calibrates its magnetometer by spinning around itself a few times, hence can
-	** only be performed when flying.
-	** 
-	** This method does not block.
-	Void calibrate(Int deviceNum) {
-		if (state != CtrlState.flying && state != CtrlState.hovering) {
-			log.warn("Can not calibrate magnetometer when state is ${state}")
-			return
-		}
-		cmdSender.send(Cmd.makeCalib(deviceNum))
-	}
-
-	** Plays one of the pre-configured LED animation sequences. Example:
-	** 
-	**   syntax: fantom
-	**   drone.animateLeds(LedAnimation.snakeRed, 2f, 3sec)
-	** 
-	** Corresponds to the 'leds:leds_anim' config cmd.
-	** 
-	** This method does not block.
-	Void animateLeds(LedAnimation anim, Float hz, Duration duration) {
-		params := [anim.ordinal, hz.bits32, duration.toSec].join(",")
-		cmdSender.send(Cmd.makeConfig("leds:leds_anim", params))
-		// TODO add default hz to enum
-		// TODO default duration to a 16 bit max to keep it going?
-	}
-
-	** Performs one of the pre-configured flight sequences.
-	** 
-	**   syntax: fantom
-	**   drone.animateFlight(FlightAnimation.phiDance, 5sec)
-	** 
-	** Corresponds to the 'control:flight_anim' config cmd.
-	** 
-	** This method does not block.
-	Void animateFlight(FlightAnimation anim, Duration duration) {
-		params := [anim.ordinal, duration.toSec].join(",")
-		cmdSender.send(Cmd.makeConfig("control:flight_anim", params))
-		
-		// FIXME add default duration to enum
-		// FIXME block for duration
-	}
-	
 
 	
 	// ---- Movement Commands ----
-
-	** Sends a config cmd to the drone.
-	Void configCmd(Str key, Str val) {
-		cmdSender.send(Cmd.makeConfig(key, val))
-	}
 
 	** The 'verticalSpeed' is a percentage of the maximum vertical speed.
 	** A positive value makes the drone rise in the air, a negative value makes it go down.	
@@ -361,6 +357,7 @@ const class Drone {
 		doMove(Cmd.makeMove(0f, -tilt, 0f, 0f), tilt, duration, block)
 	}
 
+	** The 'tilt' (aka *pitch* or *theta*) is a percentage of the maximum inclination.
 	|->|? moveBackward(Float tilt, Duration? duration := null, Bool? block := true) {
 		doMove(Cmd.makeMove(0f, tilt, 0f, 0f), tilt, duration, block)
 	}
@@ -428,6 +425,11 @@ const class Drone {
 		
 		// ---- perform standard feedback ----
 		
+		// send me nav data please!
+		if (!navData.flags.navDataDemo)
+			cmdSender.send(Cmd.makeConfig("general:navdata_demo", "TRUE"))
+
+		// hey! I'm still here!
 		if (navData.flags.comWatchdogProblem)
 			cmdSender.send(Cmd.makeKeepAlive)
 
@@ -500,6 +502,14 @@ const class Drone {
 		return |->| { future.cancel }
 	}
 	
+	private Str encodeConfigParam(Obj? p) {
+		if (p is Bool)	return ((Bool ) p).toStr.upper
+		if (p is Int)	return ((Int  ) p).toStr
+		if (p is Float)	return ((Float) p).bits32.toStr
+		if (p is Str)	return ((Str  ) p)
+		throw ArgErr("Param should be a Bool, Int, Float, or Str - not ${p?.typeof} -> ${p}")
+	}
+
 	private Void callSafe(Func? f, Obj[]? args) {
 		try f?.callList(args)
 		catch (Err err)
@@ -507,39 +517,28 @@ const class Drone {
 	}
 }
 
-// TODO add default Hz
 ** Pre-configured LED animation sequences.
 enum class LedAnimation {
-	blinkGreenRed, blinkGreen, blinkRed, blinkOrange, snakeGreenRed, fire, standard, red, green, snakeRed, blank, rightMissile, leftMissile, doubleMissile, frontLeftGreenOthersRed, frontRightGreenOthersRed, rearRightGreenOthersRed, rearLeftGreenOthersRed, leftGreenRightRed, leftRedRightGreen, blinkStandard;
+	blinkGreenRed(2f), blinkGreen(2f), blinkRed(2f), blinkOrange(2f), snakeGreenRed(0.75f), fire(9f), standard(1f), red(1f), green(1f), snakeRed(1.5f), off(1f), rightMissile(6f), leftMissile(6f), doubleMissile(6f), frontLeftGreenOthersRed(1f), frontRightGreenOthersRed(1f), rearRightGreenOthersRed(1f), rearLeftGreenOthersRed(1f), leftGreenRightRed(1f), leftRedRightGreen(1f), blinkStandard(2f);
+	
+	** A default frequency for the animation.
+	const Float defaultFrequency
+	
+	private new make(Float defaultFrequency) {
+		this.defaultFrequency = defaultFrequency
+	}
 }
-
-// TODO add default duration
-//static const int32_t MAYDAY_TIMEOUT[ARDRONE_NB_ANIM_MAYDAY] = {
-//    1000,  // ARDRONE_ANIM_PHI_M30_DEG
-//    1000,  // ARDRONE_ANIM_PHI_30_DEG
-//    1000,  // ARDRONE_ANIM_THETA_M30_DEG
-//    1000,  // ARDRONE_ANIM_THETA_30_DEG
-//    1000,  // ARDRONE_ANIM_THETA_20DEG_YAW_200DEG
-//    1000,  // ARDRONE_ANIM_THETA_20DEG_YAW_M200DEG
-//    5000,  // ARDRONE_ANIM_TURNAROUND
-//    5000,  // ARDRONE_ANIM_TURNAROUND_GODOWN
-//    2000,  // ARDRONE_ANIM_YAW_SHAKE
-//    5000,  // ARDRONE_ANIM_YAW_DANCE
-//    5000,  // ARDRONE_ANIM_PHI_DANCE
-//    5000,  // ARDRONE_ANIM_THETA_DANCE
-//    5000,  // ARDRONE_ANIM_VZ_DANCE
-//    5000,  // ARDRONE_ANIM_WAVE
-//    5000,  // ARDRONE_ANIM_PHI_THETA_MIXED
-//    5000,  // ARDRONE_ANIM_DOUBLE_PHI_THETA_MIXED
-//    15,  // ARDRONE_ANIM_FLIP_AHEAD
-//    15,  // ARDRONE_ANIM_FLIP_BEHIND
-//    15,  // ARDRONE_ANIM_FLIP_LEFT
-//    15,  // ARDRONE_ANIM_FLIP_RIGHT
-//};
 
 ** Pre-configured flight paths.
 enum class FlightAnimation {
-	phiM30Deg, phi30Deg, thetaM30Deg, theta30Deg, theta20degYaw200Deg, theta20degYawM200Deg, turnaround, turnaroundGodown, yawShake, yawDance, phiDance, thetaDance, vzDance, wave, phiThetaMixed, doublePhiThetaMixed, flipAhead, flipBehind, flipLeft, flipRight;
+	phiM30Deg(1sec), phi30Deg(1sec), thetaM30Deg(1sec), theta30Deg(1sec), theta20degYaw200Deg(1sec), theta20degYawM200Deg(1sec), turnaround(5sec), turnaroundGodown(5sec), yawShake(2sec), yawDance(5sec), phiDance(5sec), thetaDance(5sec), vzDance(5sec), wave(5sec), phiThetaMixed(5sec), doublePhiThetaMixed(5sec), flipAhead(15ms), flipBehind(15ms), flipLeft(15ms), flipRight(15ms);
+
+	** How long the manoeuvre should take.
+	const Duration defaultDuration
+	
+	private new make(Duration defaultDuration) {
+		this.defaultDuration = defaultDuration
+	}
 }
 
 ** Governs what the drone should do if the program exists whilst it's flying.
