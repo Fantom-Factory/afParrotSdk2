@@ -36,9 +36,9 @@ const class Drone {
 						private set { }
 					}
 	
-	** Returns the current control (flying) state of the Drone.
-					CtrlState?		state {
-						get { navData?.demoData?.ctrlState }
+	** Returns the current flight state of the Drone.
+					FlightState?		state {
+						get { navData?.demoData?.flightState }
 						private set { }
 					}
 	
@@ -74,7 +74,7 @@ const class Drone {
 	** Throws 'NotImmutableErr' if the function is not immutable.
 	** 
 	** Note this hook is called from a different Actor / thread to the one that sets it. 
-					|CtrlState state, Drone|? onStateChange {
+					|FlightState state, Drone|? onStateChange {
 						get { onStateChangeRef.val }
 						set { onStateChangeRef.val = it}
 					}
@@ -220,7 +220,7 @@ const class Drone {
 	** Call before each flight, while making sure the drone is sitting horizontally on the ground. 
 	** Not doing so will result in the drone not being unstable.
 	Void flatTrim() {
-		if (state != CtrlState.def && state != CtrlState.init && state != CtrlState.landed) {
+		if (state != FlightState.def && state != FlightState.init && state != FlightState.landed) {
 			log.warn("Can not flat trim when state is ${state}")
 			return
 		}
@@ -234,7 +234,7 @@ const class Drone {
 	** 
 	** This method does not block.
 	Void calibrate(Int deviceNum) {
-		if (state != CtrlState.flying && state != CtrlState.hovering) {
+		if (state != FlightState.flying && state != FlightState.hovering) {
 			log.warn("Can not calibrate magnetometer when state is ${state}")
 			return
 		}
@@ -281,7 +281,7 @@ const class Drone {
 	** 
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
 	Void takeOff(Bool block := true, Duration? timeout := null) {
-		if (state != CtrlState.landed) {
+		if (state != FlightState.landed) {
 			log.warn("Can not take off when state is ${state}")
 			return
 		}
@@ -451,8 +451,8 @@ const class Drone {
 			
 			demoData := navData.demoData
 			if (demoData != null) {
-				if (demoData.ctrlState != oldNavData?.demoData?.ctrlState)
-					callSafe(onStateChange, [demoData.ctrlState, this])
+				if (demoData.flightState != oldNavData?.demoData?.flightState)
+					callSafe(onStateChange, [demoData.flightState, this])
 			
 				if (oldNavData?.demoData?.batteryPercentage == null || demoData.batteryPercentage < oldNavData.demoData.batteryPercentage)
 					callSafe(onBatteryDrain, [demoData.batteryPercentage, this])
@@ -461,7 +461,7 @@ const class Drone {
 	}
 	
 	private Void onShutdown() {
-		if (navData?.flags?.flying == true || (state != null && state != CtrlState.landed && state != CtrlState.def)) {
+		if (navData?.flags?.flying == true || (state != null && state != FlightState.landed && state != FlightState.def)) {
 			switch (exitStrategy) {
 				case ExitStrategy.nothing:
 					log.warn("Enforcing Exit Strategy --> Doing Nothing!")
@@ -550,7 +550,7 @@ enum class ExitStrategy {
 	** Sends a 'stop()' command.
 	hover, 
 	
-	** Sends a 'land() command.
+	** Sends a 'land()' command.
 	land, 
 	
 	** Cuts the drone's engines, forcing a crash landing.

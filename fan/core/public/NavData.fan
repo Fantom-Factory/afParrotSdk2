@@ -125,9 +125,9 @@ const class NavDataFlags {
 ** Standard telemetry data returned by the drone.
 const class NavOptionDemo {
 	** Fly State
-	const	FlyState	flyState
+	const	DroneState	droneState
 	** Control State
-	const	CtrlState	ctrlState
+	const	FlightState	flightState
 	** Battery voltage filtered (mV)
 	const	Int			batteryPercentage
 	** Pitch in milli-degrees
@@ -159,13 +159,13 @@ enum class NavOption {
 	demo, time, rawMeasures, physMeasures, gyrosOffsets, eulerAngles, references, trims, rcReferences, pwm, altitude, visionRaw, visionOf, vision, visionPerf, trackersSend, visionDetect, watchdog, adcDataFrame, videoStream, games, pressureRaw, magneto, windSpeed, kalmanPressure, hdvideoStream, wifi, gps;
 }
 
-** Drone state.
-enum class FlyState {
+** Drone state as returned by 'NavData'.
+enum class DroneState {
 	ok, lostAlt, lostAltGoDown, altOutZone, combinedYaw, brake, noVision, 		unknown;	// unknown appears to be at index 11
 }
 
-** Flight state.
-enum class CtrlState {
+** Flight state as returned by 'NavData'.
+enum class FlightState {
 	def, init, landed, flying, hovering, test, transGotoFix, transTakeOff, transLooping, transLanding;
 }
 
