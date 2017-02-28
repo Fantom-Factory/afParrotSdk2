@@ -8,17 +8,15 @@ using inet::UdpPacket
 
 internal const class NavDataReader {
 	private const ActorPool			actorPool
-	private const SynchronizedState	mutex
 	private const SynchronizedList	listeners
+	private const SynchronizedState	mutex
 	
 	new make(Drone drone, ActorPool actorPool, DroneConfig config) {
+		this.actorPool	= actorPool
+		this.listeners	= SynchronizedList(actorPool) { it.valType = |NavData|# }
 		this.mutex		= SynchronizedState(actorPool) |->Obj?| {
 			NavDataReaderImpl(drone, config.droneIpAddr, config.navDataPort, config.udpReceiveTimeout)
 		}
-		this.listeners	= SynchronizedList(actorPool) {
-			it.valType	= |NavData|#
-		}
-		this.actorPool	= actorPool
 	}
 	
 	** Only internal listeners should be added here.
@@ -43,6 +41,7 @@ internal const class NavDataReader {
 		mutex.withState |NavDataReaderImpl reader| {
 			navData := reader.receive
 			if (navData != null) {
+				// call internal listeners
 				listeners.each {
 					try ((|NavData|) it).call(navData)
 					catch (Err err)	err.trace
@@ -80,8 +79,9 @@ internal class NavDataReaderImpl {
 			disconnect
 
 		// send any old data to the nav port to prompt the drone to start sending stuff back
-		triggerPacket := UdpPacket(null, null, Buf(4).write(1).write(0).write(0).write(0).flip)
+		triggerPacket := UdpPacket(null, null, Buf(4).write(1).write(0).write(0).write(0).flip)		
 		socket.send(triggerPacket)
+
 		connected = true
 	}
 	
@@ -94,7 +94,6 @@ internal class NavDataReaderImpl {
 				drone.doDisconnect(true)
 				return null
 			}
-			err.trace
 			throw err
 		}
 

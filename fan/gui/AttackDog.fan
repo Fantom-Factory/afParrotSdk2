@@ -12,12 +12,13 @@ using afConcurrent::Synchronized
 class AttackDog {
 	private Log				log				:= Drone#.pod.log
 	Drone?	drone
+	Window?	window
 	
 	Void attack() {
 		Drone#.pod.log.level = LogLevel.debug
 		
 		Window {
-			win  := it
+			this.window = it
 			it.title = "A.R. Drone Attack Dog 2.0"
 			it.size = Size(480, 320)
 			
@@ -31,10 +32,10 @@ class AttackDog {
 			}
 			it.add(InsetPane(16) {
 					Button {
-						it.text = "Kill Switch!"
-						it.font = Desktop.sysFont.toSize(48)
-						it.fg	= Color.red
-						it.onAction.add |->| { win.close }
+						it.text = "Land!"
+						it.font = Desktop.sysFont.toSize(64)
+//						it.fg	= Color.red
+						it.onAction.add |->| { drone.land(false) }
 					},
 				}
 			)
@@ -47,6 +48,7 @@ class AttackDog {
 		Synchronized(ActorPool()).async |->| {
 			FlightPlan().fly(droneRef.val)
 		}
+		window.close
 	}
 	
 	Void shutdown() {
