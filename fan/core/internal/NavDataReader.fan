@@ -8,7 +8,6 @@ using inet::UdpPacket
 
 internal const class NavDataReader {
 	private const ActorPool			actorPool
-	private const DroneConfig		config
 	private const SynchronizedState	mutex
 	private const SynchronizedList	listeners
 	
@@ -19,7 +18,6 @@ internal const class NavDataReader {
 		this.listeners	= SynchronizedList(actorPool) {
 			it.valType	= |NavData|#
 		}
-		this.config		= config
 		this.actorPool	= actorPool
 	}
 	
@@ -92,7 +90,7 @@ internal class NavDataReaderImpl {
 		try	packet	= socket.receive
 		catch (IOErr err) {
 			if (err.msg.contains("SocketTimeoutException")) {
-				log.warn("Drone not connected (SocketTimeoutException on navData read) - check your Wifi settings")
+				log.warn("Drone not connected (SocketTimeoutException on NavData read) - check your Wifi settings")
 				drone.doDisconnect(true)
 				return null
 			}
