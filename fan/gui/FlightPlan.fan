@@ -22,10 +22,10 @@ class FlightPlan {
 		drone.clearEmergencyMode
 		drone.flatTrim
 //		drone.setOutdoorFlight(false)
-		drone.animateLeds(LedAnimation.snakeRed, 2f, 15sec)
+		drone.animateLeds(LedAnimation.blinkStandard, 15sec)
 
 //		drone.sendCmd(Cmd.makeCtrl(4, 0))
-		drone.controlReader.read
+//		drone.controlReader.read
 //		drone.controlReader.read
 //		drone.controlReader.read
 		
