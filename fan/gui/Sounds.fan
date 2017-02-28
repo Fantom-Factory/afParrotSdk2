@@ -4,7 +4,7 @@ internal class Sounds : SoundClips {
 	SoundClip	beep() 		{ load("beep.wav") }
 
 	SoundClip	takingOff() { load("takingOff.wav")	}
-	SoundClip	takeOff() 	{ load("takeOff.wav") }
+	SoundClip	takeOff() 	{ load("takeOff.wav") }		// TODO rename / resample flying
 	SoundClip	landing() 	{ load("landing.wav") }
 	SoundClip	landed() 	{ load("landed.wav") }
 

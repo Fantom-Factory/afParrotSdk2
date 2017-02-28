@@ -22,6 +22,7 @@ const class Cmd {
 	}
 	
 	** Makes a 'CONFIG' cmd with the given name / value pair. 
+	@Deprecated { msg="use drone.sendConfig() so it blocks"}
 	static Cmd makeConfig(Str name, Str value) {
 		Cmd("CONFIG", [name, value])
 	}
@@ -97,6 +98,8 @@ const class Cmd {
 		Cmd("REF", [val.or(1.shiftl(18)).or(1.shiftl(20)).or(1.shiftl(22)).or(1.shiftl(24)).or(1.shiftl(28))])
 	}
 
+	// TODO experiment with PCMD_MAG cmds and different absolute / progressive modes
+	
 	** Makes a 'PCMD' cmd.
 	private static Cmd makePcmd(Int mode, Float leftRightTilt, Float frontBackTilt, Float verticalSpeed, Float angularSpeed) {
 		Cmd("PCMD", [mode, leftRightTilt, frontBackTilt, verticalSpeed, angularSpeed])

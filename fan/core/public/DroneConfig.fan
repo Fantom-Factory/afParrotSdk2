@@ -17,6 +17,11 @@ const class DroneConfig {
 	
 	const Duration	cmdInterval			:= 25ms
 
+	// TODO add lots more specific timeouts - if nothing else it helps people understand what the lib does
+	//	configCmdAckTimeout
+	//	configCmdAckClearTimeout
+	//	tcp socket stuff
+	
 	const Duration	udpReceiveTimeout	:= 1sec
 	const Duration	defaultTimeout		:= 10sec
 	
