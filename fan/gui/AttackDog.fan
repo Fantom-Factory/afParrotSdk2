@@ -34,7 +34,6 @@ class AttackDog {
 					Button {
 						it.text = "Land!"
 						it.font = Desktop.sysFont.toSize(64)
-//						it.fg	= Color.red
 						it.onAction.add |->| { drone.land(false) }
 					},
 				}
@@ -44,11 +43,12 @@ class AttackDog {
 	
 	Void startup() {
 		drone = Drone()
-		droneRef := Unsafe(drone)
+		droneRef  := Unsafe(drone)
+		windowRef := Unsafe(window)
 		Synchronized(ActorPool()).async |->| {
 			FlightPlan().fly(droneRef.val)
+			Desktop.callAsync |->| { windowRef.val->close }
 		}
-		window.close
 	}
 	
 	Void shutdown() {

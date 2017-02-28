@@ -5,12 +5,39 @@ using afConcurrent::SynchronizedState
 using inet::IpAddr
 using inet::TcpSocket
 
+using inet::UdpSocket
+using inet::UdpPacket
+
 internal const class ControlReader {
 	private const Log				log		:= Drone#.pod.log
 	private const Drone				drone
 	
 	new make(Drone drone) {
 		this.drone	= drone
+	}
+	
+	static Void read2() {
+		config := DroneConfig()
+
+		sock := UdpSocket {
+			it.options.receiveTimeout = config.udpReceiveTimeout
+		}.connect(IpAddr(config.droneIpAddr), config.cmdPort)
+		sock.send(UdpPacket() { data = Cmd.makeCtrl(4, 0).cmdStr(1).toBuf.seek(0) })
+//		sock.send(UdpPacket() { data = Cmd.makeCtrl(4, 0).cmdStr(2).toBuf.seek(0) })
+//		sock.disconnect
+		
+		Actor.sleep(30ms)
+		
+		socket := TcpSocket {
+			it.options.receiveTimeout = config.udpReceiveTimeout
+		}.connect(IpAddr(config.droneIpAddr), config.controlPort, config.defaultTimeout)
+		echo("connected")
+		
+		buf := Buf() 
+		socket.in.readBuf(buf, 100)
+		echo("BUG $buf.size $buf.flip.toBase64")
+		
+		socket.close
 	}
 	
 	Str? read() {
@@ -20,14 +47,14 @@ internal const class ControlReader {
 			echo("READING")
 			config := drone.config
 			socket := TcpSocket {
-				it.options.receiveTimeout = 10sec	//config.defaultTimeout
+				it.options.receiveTimeout = config.udpReceiveTimeout
 			}.connect(IpAddr(config.droneIpAddr), config.controlPort, config.defaultTimeout)
 			echo("connected")
 				
-			echo("sendCmd")
-			Actor.sleep(1sec)
-			drone.sendCmd(Cmd.makeCtrl(5, 0))
-			Actor.sleep(1sec)
+//			echo("sendCmd")
+//			Actor.sleep(1sec)
+//			drone.sendCmd(Cmd.makeCtrl(5, 0))
+//			Actor.sleep(1sec)
 			
 			props := null as Str
 			try	{

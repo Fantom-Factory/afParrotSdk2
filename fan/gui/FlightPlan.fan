@@ -21,25 +21,24 @@ class FlightPlan {
 		drone.connect
 		drone.clearEmergencyMode
 		drone.flatTrim
-		drone.setOutdoorFlight(false)
-		drone.animateLeds(LedAnimation.snakeRed, 2f, 3sec)
+//		drone.setOutdoorFlight(false)
+		drone.animateLeds(LedAnimation.snakeRed, 2f, 15sec)
 
-		drone.sendCmd(Cmd.makeCtrl(4, 0))
-		drone.controlReader.readControlData
+//		drone.sendCmd(Cmd.makeCtrl(4, 0))
+		drone.controlReader.read
+//		drone.controlReader.read
+//		drone.controlReader.read
 		
-		Actor.sleep(5sec)
+		Actor.sleep(4sec)
 
 //		drone.takeOff
-//
-//		drone.spinClockwise(-1f, 3sec)
-//		
+//		drone.spinClockwise(-1f, 5sec)
 //		sounds.beep
-//		drone.animateFlight(FlightAnimation.phi30Deg, 1sec)
+//		drone.animateFlight(FlightAnimation.phi30Deg, 2sec)
 //		Actor.sleep(1sec)
 //		sounds.beep
-//		drone.animateFlight(FlightAnimation.phiM30Deg, 1sec)
+//		drone.animateFlight(FlightAnimation.phiM30Deg, 2sec)
 //		Actor.sleep(1sec)
-//		
 //		drone.land
 
 		drone.disconnect

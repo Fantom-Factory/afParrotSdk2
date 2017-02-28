@@ -104,7 +104,7 @@ const class Drone {
 						set { onEmergencyRef.val = it}
 					}
 
-	** Event hook that's called when the drone's battery reaches a critical level.
+	** Event hook that's called when the drone's battery reaches a critical level ~ 20%.
 	** 
 	** Throws 'NotImmutableErr' if the function is not immutable.
 	** 
@@ -183,6 +183,14 @@ const class Drone {
 		cmdSender.send(cmd)
 	}
 	
+	Void sendConfigStr(Str key, Str val) {
+		// FIXME block + wait for ack to clear, send, wait for ack, send ack ack, wait for clear
+	}
+
+	Void sendConfigParams(Str key, Obj[] params) {
+		// FIXME
+	}
+	
 	** Blocks until the emergency mode flag has been cleared.
 	** 
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
@@ -196,6 +204,7 @@ const class Drone {
 	**  - 'control:outdoor'
 	**  - 'control:flight_without_shell'
 	Void setOutdoorFlight(Bool outdoors := true) {
+		// TODO use sendConfigStr
 		cmdSender.send(Cmd.makeConfig("control:outdoor", outdoors.toStr.upper))
 		cmdSender.send(Cmd.makeConfig("control:flight_without_shell", outdoors.toStr.upper))
 	}
@@ -228,9 +237,12 @@ const class Drone {
 			log.warn("Can not take off when state is ${state}")
 			return
 		}
+		// Don't takeoff if already taking off --> need an internal state: none, landing, takingOff
+		// FIXME cancel / ignore all other move commands when taking off
 		if (block)
 			NavDataLoop.takeOff(this, timeout ?: config.defaultTimeout)
 		else
+			// FIXME still repeat until takeoff
 			cmdSender.send(Cmd.makeTakeOff)
 	}
 
@@ -245,11 +257,27 @@ const class Drone {
 //			log.warn("Can not land when state is ${state}")
 //			return
 //		}
+		
+	//** Repeatedly sends a land cmd to the drone until it reports its state as 'landed'. 
+		
+		// Don't land if already landing --> need an internal state: none, landing, takingOff
+		echo("Landing")
+		
+		// FIXME cancel / ignore all other move commands when landing
+		
 		if (block)
 			NavDataLoop.land(this, timeout ?: config.defaultTimeout)
 		else
+			// FIXME still repeat until landed
 			cmdSender.send(Cmd.makeLand)
 	}
+	
+	Void hover(Bool block := true, Duration? timeout := null) {
+		cmdSender.send(Cmd.makeHover)
+		// TODO block until hover state???
+		// TODO cancel / ignore all other move commands when landing -> except LAND!
+	}
+	
 	
 	** Tell the drone to calibrate its magnetometer.
 	** 
@@ -276,6 +304,8 @@ const class Drone {
 	Void animateLeds(LedAnimation anim, Float hz, Duration duration) {
 		params := [anim.ordinal, hz.bits32, duration.toSec].join(",")
 		cmdSender.send(Cmd.makeConfig("leds:leds_anim", params))
+		// TODO add default hz to enum
+		// TODO default duration to a 16 bit max to keep it going?
 	}
 
 	** Performs one of the pre-configured flight sequences.
@@ -289,6 +319,9 @@ const class Drone {
 	Void animateFlight(FlightAnimation anim, Duration duration) {
 		params := [anim.ordinal, duration.toSec].join(",")
 		cmdSender.send(Cmd.makeConfig("control:flight_anim", params))
+		
+		// FIXME add default duration to enum
+		// FIXME block for duration
 	}
 	
 
@@ -349,11 +382,7 @@ const class Drone {
 	Void spinAntiClockwise(Float angularSpeed, Duration? duration := null, Bool? block := true) {
 		doMove(Cmd.makeMove(0f, 0f, 0f, -angularSpeed), angularSpeed, duration, block)
 	}
-	
-	Void stop() {
-		cmdSender.send(Cmd.makeHover)
-	}	
-	
+		
 	
 	
 	// ---- Private Stuff ----
@@ -437,7 +466,7 @@ const class Drone {
 				
 				case ExitStrategy.hover:
 					log.warn("Enforcing Exit Strategy --> Hovering Drone")
-					stop
+					hover(false)
 				
 				case ExitStrategy.land:
 					log.warn("Enforcing Exit Strategy --> Landing Drone")

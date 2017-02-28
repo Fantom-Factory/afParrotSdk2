@@ -81,7 +81,7 @@ internal class NavDataReaderImpl {
 		// send any old data to the nav port to prompt the drone to start sending stuff back
 		triggerPacket := UdpPacket(null, null, Buf(4).write(1).write(0).write(0).write(0).flip)		
 		socket.send(triggerPacket)
-
+		
 		connected = true
 	}
 	
