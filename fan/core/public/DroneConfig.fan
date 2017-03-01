@@ -22,8 +22,13 @@ const class DroneConfig {
 	//	configCmdAckClearTimeout
 	//	tcp socket stuff
 	
-	const Duration	udpReceiveTimeout	:= 1sec
-	const Duration	defaultTimeout		:= 10sec
+	// fandox this
+	
+	const Duration	configAckTimeout		:= 0.5sec
+	const Duration	configAckClearTimeout	:= 0.5sec
+	
+	const Duration	udpReceiveTimeout		:= 1sec
+	const Duration	defaultTimeout			:= 10sec
 	
 	** Standard it-block ctor should you wish to change any config.
 	** 
