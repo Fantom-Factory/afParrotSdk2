@@ -30,3 +30,8 @@ How about a X-platform API!? :D
 For fandoc - see the SDK PDF available at 5 mb download - put on aflien-factory
 
 https://github.com/bramp/ffmpeg-cli-wrapper
+
+https://github.com/bklang/ARbDrone/wiki/UndocumentedCommands
+
+http://www.slideserve.com/delora/the-parrot-ar-drone-2-0
+
