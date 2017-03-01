@@ -154,12 +154,17 @@ const class Drone {
 		cmdSender.connect
 		navDataReader.connect
 
+		// send me nav data please!
+		sendConfig("general:navdata_demo", true)
 		NavDataLoop.waitUntilReady(this, timeout ?: config.defaultTimeout)
 
+		// TODO grab some control config!
+		
 		Env.cur.addShutdownHook(shutdownHook)
 
 		if (!actorPool.isStopped)
 			log.info("Connected to AR Drone 2.0")
+
 		return this
 	}
 	
@@ -181,15 +186,19 @@ const class Drone {
 		cmdSender.send(cmd)
 	}
 	
-	** Sends a config cmd to the drone.
+	** Sends a config cmd to the drone, and blocks until it's been acknowledged.
 	** 
 	** 'val' may be a Bool, Int, Float, Str, or a List of said types. 
 	Void sendConfig(Str key, Obj val) {
 		if (val is List)
 			val = ((List) val).join(",") { encodeConfigParam(it) }
 		val = encodeConfigParam(val)
+		
+		block := true
+		NavDataLoop.waitForAckClear	(this, config.configAckClearTimeout, block)
 		cmdSender.send(Cmd.makeConfig(key, val))
-		// FIXME block + wait for ack to clear, send, wait for ack, send ack ack, wait for clear
+		NavDataLoop.waitForAck		(this, config.configAckTimeout, block)
+		NavDataLoop.waitForAckClear	(this, config.configAckClearTimeout, block)
 	}
 	
 	** Blocks until the emergency mode flag has been cleared.
@@ -272,26 +281,21 @@ const class Drone {
 	}
 	
 	
-	// ---- Equilibrium Commands ----
 	
-	** Issues a take off command. 
+	// ---- Stabilising Commands ----
+	
+	** Repeatedly sends a take off cmd to the drone until it reports its state as either 'hovering' or 'flying'.
 	** 
 	** If 'block' is 'true' then it blocks the thread until a stable hover has been achieved; 
 	** which usually takes ~ 6 seconds.
 	** 
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
 	Void takeOff(Bool block := true, Duration? timeout := null) {
-		if (state != FlightState.landed) {
-			log.warn("Can not take off when state is ${state}")
+		if (state == null || ![FlightState.def, FlightState.init, FlightState.landed].contains(state)) {
+			log.warn("Can not take off - flight state is already ${state}")
 			return
 		}
-		// Don't takeoff if already taking off --> need an internal state: none, landing, takingOff
-		// FIXME cancel / ignore all other move commands when taking off
-		if (block)
-			NavDataLoop.takeOff(this, timeout ?: config.defaultTimeout)
-		else
-			// FIXME still repeat until takeoff
-			cmdSender.send(Cmd.makeTakeOff)
+		NavDataLoop.takeOff(this, block, timeout ?: config.defaultTimeout)
 	}
 
 	** Repeatedly sends a land cmd to the drone until it reports its state as 'landed'.
@@ -300,29 +304,26 @@ const class Drone {
 	** 
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
 	Void land(Bool block := true, Duration? timeout := null) {
-		// let's not second guess what state the drone is in
-		// if they wanna land the drone, send the gawd damn land cmd!
-//		if (state != CtrlState.flying && state != CtrlState.hovering) {
-//			log.warn("Can not land when state is ${state}")
-//			return
-//		}
-
-		// Don't land if already landing --> need an internal state: none, landing, takingOff
-		echo("Landing")
-		
-		// FIXME cancel / ignore all other move commands when landing
-		
-		if (block)
-			NavDataLoop.land(this, timeout ?: config.defaultTimeout)
-		else
-			// FIXME still repeat until landed
-			cmdSender.send(Cmd.makeLand)
+		if (state == null || [FlightState.def, FlightState.init, FlightState.landed, FlightState.transLanding].contains(state)) {
+			log.warn("Can not land - flight state is already ${state}")
+			return
+		}
+		NavDataLoop.land(this, block, timeout ?: config.defaultTimeout)
 	}
 	
+	** Repeatedly sends a hover cmd to the drone until it reports its state as 'hovering'.
+	**  
+	** If 'block' is 'true' then it blocks the thread until the drone has landed.
+	** 
+	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
 	Void hover(Bool block := true, Duration? timeout := null) {
-		cmdSender.send(Cmd.makeHover)
-		// TODO block until hover state???
-		// TODO cancel / ignore all other move commands when landing -> except LAND!
+		if (state == null || [FlightState.hovering].contains(state)) {
+			log.warn("Can not hover - flight state is already ${state}")
+			return
+		}
+		// the best way to prevent this from interfering with an emergency land cmd, is to set the
+		// emergency flag (to kill off any existing cmds), clear it, then hover
+		NavDataLoop.hover(this, block, timeout ?: config.defaultTimeout)
 	}
 	
 
@@ -425,17 +426,9 @@ const class Drone {
 		
 		// ---- perform standard feedback ----
 		
-		// send me nav data please!
-		if (!navData.flags.navDataDemo)
-			cmdSender.send(Cmd.makeConfig("general:navdata_demo", "TRUE"))
-
 		// hey! I'm still here!
 		if (navData.flags.comWatchdogProblem)
 			cmdSender.send(Cmd.makeKeepAlive)
-
-		// okay, so I don't actually understand why I'm doing this! But everything works better when I do!
-		if (navData.flags.controlCommandAck)
-			cmdSender.send(Cmd.makeCtrl(5, 0))
 
 		// ---- call event handlers ----
 		

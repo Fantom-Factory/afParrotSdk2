@@ -6,7 +6,8 @@ internal class Timer {
 	new make() { start = Duration.now }
 	
 	Void finish(Str msg) {
-		log.info("$msg in " + (Duration.now - start).toLocale)
+		if (msg.trimToNull != null)
+			log.info("$msg in " + (Duration.now - start).toLocale)
 	}
 	
 	static Obj? time(Str msg, |->Obj?| f) {

@@ -24,3 +24,7 @@ GamePads in Web
 https://www.html5rocks.com/en/tutorials/doodles/gamepad/
 
 How about a X-platform API!? :D
+
+
+
+For fandoc - see the SDK PDF available at 5 mb download - put on aflien-factory

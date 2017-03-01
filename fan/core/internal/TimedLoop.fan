@@ -10,6 +10,7 @@ internal const class TimedLoop {
 	const Duration			duration
 	const Duration			startTime
 	const Future			future
+	const Func				sendCmdFunc	:= #sendCmd.func.bind([this])	// cache the func, no need to make a new one each time
 	
 	new make(Drone drone, Duration duration, Cmd? cmd) {
 		this.drone		= drone
@@ -30,14 +31,20 @@ internal const class TimedLoop {
 		// check if the user cancelled us
 		if (future.state.isComplete) return
 
-		// abandon manoeuvre if an emergency occurs!
-		if ((Duration.now - startTime) >= duration || drone.navData?.flags?.emergencyLanding == true) {
+		// time's up = job done!
+		if ((Duration.now - startTime) >= duration) {
 			future.complete(null)
-		} else {
-			if (cmd != null)
-				drone.cmdSender.send(cmd)
-			if (!drone.actorPool.isStopped)
-				mutex.asyncLater(drone.config.cmdInterval, #sendCmd.func.bind([this]))
+			return
 		}
+		// abandon manoeuvre if an emergency occurs!
+		if (drone.navData?.flags?.emergencyLanding == true || drone.state == FlightState.transLanding) {
+			future.complete(null)
+			return
+		}
+		
+		if (cmd != null)
+			drone.cmdSender.send(cmd)
+		if (!drone.actorPool.isStopped)
+			mutex.asyncLater(drone.config.cmdInterval, sendCmdFunc)
 	}
 }
