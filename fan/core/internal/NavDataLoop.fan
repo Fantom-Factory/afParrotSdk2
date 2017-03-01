@@ -35,19 +35,19 @@ internal const class NavDataLoop {
 	static Void takeOff(Drone drone, Bool block, Duration timeout) {
 		blockAndLog(drone, timeout, |NavData? navData->Bool| {
 			navData?.demoData?.flightState == FlightState.flying || navData?.demoData?.flightState == FlightState.hovering
-		}, Cmd.makeTakeOff, "Drone took off", block, true)
+		}, Cmd.makeTakeOff, "Drone took off", block, true, "Timed out waiting for drone to take off")
 	}
 	
 	static Void land(Drone drone, Bool block, Duration timeout) {
 		blockAndLog(drone, timeout, |NavData? navData->Bool| {
 			navData?.demoData?.flightState == FlightState.landed
-		}, Cmd.makeLand, "Drone landed", block, true)
+		}, Cmd.makeLand, "Drone landed", block, true, "Timed out waiting for drone to land")
 	}
 	
 	static Void hover(Drone drone, Bool block, Duration timeout) {
 		blockAndLog(drone, timeout, |NavData? navData->Bool| {
 			navData?.demoData?.flightState == FlightState.hovering
-		}, Cmd.makeHover, "Drone hovering", block, true)
+		}, Cmd.makeHover, "Drone hovering", block, true, "Timed out waiting for drone to hover")
 	}
 	
 	
@@ -55,35 +55,34 @@ internal const class NavDataLoop {
 	// ---- Misc Commands ----
 	
 	static Void waitUntilReady(Drone drone, Duration timeout) {
-		// FIXME after config ack we shouldn't have to send ack cmds
 		blockAndLog(drone, timeout, |NavData? navData->Bool| {
 			navData?.demoData != null && navData?.flags?.controlCommandAck == false
-		}, null, "Drone ready", true, false)
+		}, null, "Drone ready", true, false, "Timed out waiting for initial demo data")
 	}
 	
 	static Void clearEmergencyMode(Drone drone, Duration timeout) {
 		blockAndLog(drone, timeout, |NavData? navData->Bool| {
 			navData?.flags?.emergencyLanding == false
-		}, Cmd.makeEmergency, "Emergency Mode cleared", true, false)
+		}, Cmd.makeEmergency, "Emergency Mode cleared", true, false, "Timed out waiting for emergency flag to clear")
 	}
 	
 	static Void waitForAckClear(Drone drone, Duration timeout, Bool block) {
 		blockAndLog(drone, timeout, |NavData? navData->Bool| {
 			navData?.flags?.controlCommandAck == false
-		}, Cmd.makeCtrl(5, 0), "", block, false)
+		}, Cmd.makeCtrl(5, 0), "", block, false, "Timed out waiting for Config Cmd Ack flag to clear")
 	}
 	
 	static Void waitForAck(Drone drone, Duration timeout, Bool block) {
 		blockAndLog(drone, timeout, |NavData? navData->Bool| {
 			navData?.flags?.controlCommandAck == true
-		}, null, "", block, false)
+		}, null, "", block, false, "Timed out waiting for a Config Cmd Ack")
 	}
 	
 	
 	
 	// ---- Private Stuff ----
 	
-	private static Void blockAndLog(Drone drone, Duration timeout, |NavData?->Bool| process, Cmd? cmd, Str msg, Bool block, Bool completeOnEmergency) {
+	private static Void blockAndLog(Drone drone, Duration timeout, |NavData?->Bool| process, Cmd? cmd, Str msg, Bool block, Bool completeOnEmergency, Str timeoutErrMsg) {
 		Timer.time(msg) |->| {
 			try {
 				future := NavDataLoop(drone, process, cmd, completeOnEmergency).future
@@ -92,7 +91,9 @@ internal const class NavDataLoop {
 			}
 			catch (TimeoutErr err)
 				// Suppress TimeoutErr if drone has since disconnected
-				if ((drone.navData?.flags?.batteryTooLow == true || drone.actorPool.isStopped).not) throw err
+				if (drone.navData?.flags?.batteryTooLow == true || drone.actorPool.isStopped)
+					return
+				throw TimeoutErr(timeoutErrMsg)
 		}
 	}
 	

@@ -2,33 +2,64 @@
 ** Default drone configuration.
 const class DroneConfig {
 	
+	** The drone's IP address.
 	const Str		droneIpAddr			:= "192.168.1.1"
 
-	// // from ARDrone_SDK_2_0_1/ARDroneLib/Soft/Common/config.h
+	
+	
+	// ---- Drone Comms Ports ----
+	// taken from ARDrone_SDK_2_0_1/ARDroneLib/Soft/Common/config.h
+	
+	// Not used
 //	const Int		ftpPort				:= 5551	// FTP
-//	const Int		authPort			:= 5552	// AUTH
-//	const Int		videoRecPort		:= 5553	// VIDEO_RECORDER
-	const Int		navDataPort			:= 5554 // NAVDATA
-	const Int		videoPort			:= 5555 // VIDEO
-	const Int		cmdPort				:= 5556	// AT
-//	const Int		capturePort			:= 5557	// CAPTURE
-//	const Int		printfPort			:= 5558	// PRINTF
-	const Int		controlPort			:= 5559	// CONTROL
-	
-	const Duration	cmdInterval			:= 25ms
 
-	// TODO add lots more specific timeouts - if nothing else it helps people understand what the lib does
-	//	configCmdAckTimeout
-	//	configCmdAckClearTimeout
-	//	tcp socket stuff
+	// Not used
+//	const Int		authPort			:= 5552	// AUTH
 	
-	// fandox this
+	// Not used
+//	const Int		videoRecPort		:= 5553	// VIDEO_RECORDER
 	
-	const Duration	configAckTimeout		:= 0.5sec
-	const Duration	configAckClearTimeout	:= 0.5sec
+	** The port that UDP NavData packets are received on.
+	const Int		navDataPort			:= 5554 // NAVDATA
 	
+	** The port that TCP Video data is received on.
+	const Int		videoPort			:= 5555 // VIDEO
+
+	** The port that UDP Command packets are transmitted on.
+	const Int		cmdPort				:= 5556	// AT
+	
+	// Not used
+//	const Int		capturePort			:= 5557	// CAPTURE
+
+	// Not used
+//	const Int		printfPort			:= 5558	// PRINTF
+	
+	** The port that TCP config data is received on.
+	const Int		controlPort			:= 5559	// CONTROL
+
+	
+	
+	// ---- Interval and Timeouts ----
+	
+	** The interval to wait in between sending repeated commands to the drone, such as 'takeOff' 
+	** or 'moveLeft'. 
+	const Duration	cmdInterval			:= 25ms
+	
+	** The timeout used when waiting for a config command acknowledgement.
+	** See 'NavDataFlags.controlCommandAck'.
+	const Duration	configCmdAckTimeout		:= 1sec
+
+	** The timeout used when waiting for the config command acknowledgement flag to clear.
+	** See 'NavDataFlags.controlCommandAck'.
+	const Duration	configCmdAckClearTimeout	:= 1sec
+
+	** The timeout used when waiting to receive data on a UDP port.
 	const Duration	udpReceiveTimeout		:= 1sec
-	const Duration	defaultTimeout			:= 10sec
+	
+	** The timeout used when waiting for actions to complete, such as 'takeOff' or 'hover'.
+	const Duration	actionTimeout			:= 10sec
+	
+	// ----
 	
 	** Standard it-block ctor should you wish to change any config.
 	** 

@@ -156,7 +156,7 @@ const class Drone {
 
 		// send me nav data please!
 		sendConfig("general:navdata_demo", true)
-		NavDataLoop.waitUntilReady(this, timeout ?: config.defaultTimeout)
+		NavDataLoop.waitUntilReady(this, timeout ?: config.actionTimeout)
 
 		// TODO grab some control config!
 		
@@ -195,18 +195,18 @@ const class Drone {
 		val = encodeConfigParam(val)
 		
 		block := true
-		NavDataLoop.waitForAckClear	(this, config.configAckClearTimeout, block)
+		NavDataLoop.waitForAckClear	(this, config.configCmdAckClearTimeout, block)
 		cmdSender.send(Cmd.makeConfig(key, val))
-		NavDataLoop.waitForAck		(this, config.configAckTimeout, block)
-		NavDataLoop.waitForAckClear	(this, config.configAckClearTimeout, block)
+		NavDataLoop.waitForAck		(this, config.configCmdAckTimeout, block)
+		NavDataLoop.waitForAckClear	(this, config.configCmdAckClearTimeout, block)
 	}
 	
 	** Blocks until the emergency mode flag has been cleared.
 	** 
-	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
+	** If 'timeout' is 'null' it defaults to 'DroneConfig.configCmdAckTimeout'.
 	Void clearEmergencyMode(Duration? timeout := null) {
 		if (navData?.flags?.emergencyLanding == true)
-			NavDataLoop.clearEmergencyMode(this, timeout ?: config.defaultTimeout)
+			NavDataLoop.clearEmergencyMode(this, timeout ?: config.configCmdAckTimeout)
 	}
 
 	** Sets or clears config and profiles relating to indoor / outdoor flight.
@@ -295,7 +295,7 @@ const class Drone {
 			log.warn("Can not take off - flight state is already ${state}")
 			return
 		}
-		NavDataLoop.takeOff(this, block, timeout ?: config.defaultTimeout)
+		NavDataLoop.takeOff(this, block, timeout ?: config.actionTimeout)
 	}
 
 	** Repeatedly sends a land cmd to the drone until it reports its state as 'landed'.
@@ -308,7 +308,7 @@ const class Drone {
 			log.warn("Can not land - flight state is already ${state}")
 			return
 		}
-		NavDataLoop.land(this, block, timeout ?: config.defaultTimeout)
+		NavDataLoop.land(this, block, timeout ?: config.actionTimeout)
 	}
 	
 	** Repeatedly sends a hover cmd to the drone until it reports its state as 'hovering'.
@@ -323,7 +323,7 @@ const class Drone {
 		}
 		// the best way to prevent this from interfering with an emergency land cmd, is to set the
 		// emergency flag (to kill off any existing cmds), clear it, then hover
-		NavDataLoop.hover(this, block, timeout ?: config.defaultTimeout)
+		NavDataLoop.hover(this, block, timeout ?: config.actionTimeout)
 	}
 	
 

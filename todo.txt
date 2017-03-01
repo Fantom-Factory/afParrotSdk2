@@ -28,3 +28,5 @@ How about a X-platform API!? :D
 
 
 For fandoc - see the SDK PDF available at 5 mb download - put on aflien-factory
+
+https://github.com/bramp/ffmpeg-cli-wrapper

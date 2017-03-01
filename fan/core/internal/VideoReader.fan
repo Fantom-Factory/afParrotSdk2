@@ -13,7 +13,7 @@ internal const class VideoReader {
 		config := DroneConfig()
 		socket := TcpSocket {
 			it.options.receiveTimeout = config.udpReceiveTimeout
-		}.connect(IpAddr(config.droneIpAddr), config.videoPort, config.defaultTimeout)
+		}.connect(IpAddr(config.droneIpAddr), config.videoPort, config.actionTimeout)
 		echo("connected")
 			
 		buf := Buf() 
