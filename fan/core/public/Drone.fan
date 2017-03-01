@@ -18,6 +18,7 @@ const class Drone {
 	private	const	AtomicRef		onEmergencyRef		:= AtomicRef()
 	private	const	AtomicRef		onBatteryLowRef		:= AtomicRef()
 	private	const	AtomicRef		onDisconnectRef		:= AtomicRef()
+	private	const	AtomicRef		droneVersionRef		:= AtomicRef()
 	private	const	Synchronized	eventThread
 	private	const	|->|			shutdownHook
 
@@ -26,6 +27,12 @@ const class Drone {
 	internal const	ControlReader	controlReader
 	internal const	ActorPool		actorPool
 	
+	** The version of the drone, as reported by an FTP of 'version.txt'.
+					Version?		droneVersion {
+						get { droneVersionRef.val }
+						private set { droneVersionRef.val = it }
+					}
+	
 	** The configuration as passed to the ctor.
 			const	DroneConfig		config
 	
@@ -33,11 +40,11 @@ const class Drone {
 	** Note that this instance always contains a culmination of all the latest nav options received.
 					NavData?		navData {
 						get { navDataRef.val }
-						private set { }
+						private set { navDataRef.val = it }
 					}
 	
 	** Returns the current flight state of the Drone.
-					FlightState?		state {
+					FlightState?	state {
 						get { navData?.demoData?.flightState }
 						private set { }
 					}
@@ -163,11 +170,15 @@ const class Drone {
 		NavDataLoop.waitForAckClear	(this, config.configCmdAckClearTimeout, true)
 		NavDataLoop.waitUntilReady	(this, timeout ?: config.actionTimeout)
 
+		try droneVersion = BareBonesFtp().readVersion(config)
+		catch (Err err)
+			log.warn("Could not FTP version.txt from drone", err)
+		
 		// TODO grab some control config!
 	
 		Env.cur.addShutdownHook(shutdownHook)
 
-		log.info("Connected to AR Drone 2.0")
+		log.info("Connected to AR Drone ${droneVersion}")
 		return this
 	}
 	
@@ -200,8 +211,8 @@ const class Drone {
 		block := true
 		NavDataLoop.waitForAckClear	(this, config.configCmdAckClearTimeout, block)
 		cmdSender.send(Cmd.makeConfig(key, val))
-//		NavDataLoop.waitForAck		(this, config.configCmdAckTimeout, block)
-//		NavDataLoop.waitForAckClear	(this, config.configCmdAckClearTimeout, block)
+		NavDataLoop.waitForAck		(this, config.configCmdAckTimeout, block)
+		NavDataLoop.waitForAckClear	(this, config.configCmdAckClearTimeout, block)
 	}
 	
 	** Blocks until the emergency mode flag has been cleared.
@@ -277,10 +288,20 @@ const class Drone {
 	** 
 	** Corresponds to the 'control:flight_anim' config cmd.
 	Void animateFlight(FlightAnimation anim, Duration? duration := null, Bool block := true) {
-		params := [anim.ordinal, (duration ?: anim.defaultDuration).toSec]
-		sendConfig("control:flight_anim", params)
-		if (block)
-			Actor.sleep(duration ?: anim.defaultDuration)
+		params	:= [anim.ordinal, (duration ?: anim.defaultDuration).toSec].join(",")
+		cmd		:= Cmd.makeConfig("control:flight_anim", params)
+
+		future := TimedLoop(this, duration ?: anim.defaultDuration, cmd).future
+		if (block) {
+			future.get
+			return null 
+		}
+		
+		return |->| { future.cancel }
+	
+//		sendConfig("control:flight_anim", params)
+//		if (block)
+//			Actor.sleep(duration ?: anim.defaultDuration)
 	}
 	
 	
