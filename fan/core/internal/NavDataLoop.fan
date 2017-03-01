@@ -34,7 +34,9 @@ internal const class NavDataLoop {
 	
 	static Void takeOff(Drone drone, Bool block, Duration timeout) {
 		blockAndLog(drone, timeout, |NavData? navData->Bool| {
-			navData?.demoData?.flightState == FlightState.flying || navData?.demoData?.flightState == FlightState.hovering
+			state := navData?.demoData?.flightState
+			// stop taking off if we start landing -> landing takes precedence!
+			return state == FlightState.flying || state == FlightState.hovering || state == FlightState.transLanding
 		}, Cmd.makeTakeOff, "Drone took off", block, true, "Timed out waiting for drone to take off")
 	}
 	
@@ -66,16 +68,16 @@ internal const class NavDataLoop {
 		}, Cmd.makeEmergency, "Emergency Mode cleared", true, false, "Timed out waiting for emergency flag to clear")
 	}
 	
-	static Void waitForAckClear(Drone drone, Duration timeout, Bool block) {
-		blockAndLog(drone, timeout, |NavData? navData->Bool| {
-			navData?.flags?.controlCommandAck == false
-		}, Cmd.makeCtrl(5, 0), "", block, false, "Timed out waiting for Config Cmd Ack flag to clear")
-	}
-	
 	static Void waitForAck(Drone drone, Duration timeout, Bool block) {
 		blockAndLog(drone, timeout, |NavData? navData->Bool| {
 			navData?.flags?.controlCommandAck == true
 		}, null, "", block, false, "Timed out waiting for a Config Cmd Ack")
+	}
+	
+	static Void waitForAckClear(Drone drone, Duration timeout, Bool block) {
+		blockAndLog(drone, timeout, |NavData? navData->Bool| {
+			navData?.flags?.controlCommandAck == false
+		}, Cmd.makeCtrl(5, 0), "", block, false, "Timed out waiting for Config Cmd Ack flag to clear")
 	}
 	
 	
@@ -84,16 +86,21 @@ internal const class NavDataLoop {
 	
 	private static Void blockAndLog(Drone drone, Duration timeout, |NavData?->Bool| process, Cmd? cmd, Str msg, Bool block, Bool completeOnEmergency, Str timeoutErrMsg) {
 		Timer.time(msg) |->| {
+			future := null as Future
 			try {
-				future := NavDataLoop(drone, process, cmd, completeOnEmergency).future
+				future = NavDataLoop(drone, process, cmd, completeOnEmergency).future
 				if (block)
 					future.get(timeout)
 			}
-			catch (TimeoutErr err)
+			catch (TimeoutErr err) {
+				// complete the future to prevent the sendCmd() from sending stuff  
+				future.completeErr(err)
+				
 				// Suppress TimeoutErr if drone has since disconnected
 				if (drone.navData?.flags?.batteryTooLow == true || drone.actorPool.isStopped)
 					return
 				throw TimeoutErr(timeoutErrMsg)
+			}
 		}
 	}
 	

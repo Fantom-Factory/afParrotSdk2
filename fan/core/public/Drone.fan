@@ -155,16 +155,19 @@ const class Drone {
 		navDataReader.connect
 
 		// send me nav data please!
-		sendConfig("general:navdata_demo", true)
-		NavDataLoop.waitUntilReady(this, timeout ?: config.actionTimeout)
+		cmdSender.send(Cmd.makeConfig("general:navdata_demo", "TRUE"))
+		if (actorPool.isStopped)
+			throw IOErr("Drone Connection Error")
+		
+		NavDataLoop.waitForAck		(this, config.configCmdAckTimeout, true)
+		NavDataLoop.waitForAckClear	(this, config.configCmdAckClearTimeout, true)
+		NavDataLoop.waitUntilReady	(this, timeout ?: config.actionTimeout)
 
 		// TODO grab some control config!
-		
+	
 		Env.cur.addShutdownHook(shutdownHook)
 
-		if (!actorPool.isStopped)
-			log.info("Connected to AR Drone 2.0")
-
+		log.info("Connected to AR Drone 2.0")
 		return this
 	}
 	
@@ -197,8 +200,8 @@ const class Drone {
 		block := true
 		NavDataLoop.waitForAckClear	(this, config.configCmdAckClearTimeout, block)
 		cmdSender.send(Cmd.makeConfig(key, val))
-		NavDataLoop.waitForAck		(this, config.configCmdAckTimeout, block)
-		NavDataLoop.waitForAckClear	(this, config.configCmdAckClearTimeout, block)
+//		NavDataLoop.waitForAck		(this, config.configCmdAckTimeout, block)
+//		NavDataLoop.waitForAckClear	(this, config.configCmdAckClearTimeout, block)
 	}
 	
 	** Blocks until the emergency mode flag has been cleared.
@@ -512,7 +515,48 @@ const class Drone {
 
 ** Pre-configured LED animation sequences.
 enum class LedAnimation {
-	blinkGreenRed(2f), blinkGreen(2f), blinkRed(2f), blinkOrange(2f), snakeGreenRed(0.75f), fire(9f), standard(1f), red(1f), green(1f), snakeRed(1.5f), off(1f), rightMissile(6f), leftMissile(6f), doubleMissile(6f), frontLeftGreenOthersRed(1f), frontRightGreenOthersRed(1f), rearRightGreenOthersRed(1f), rearLeftGreenOthersRed(1f), leftGreenRightRed(1f), leftRedRightGreen(1f), blinkStandard(2f);
+	** Alternates all LEDs between red and green.
+	blinkGreenRed(2f), 
+	** Alternates all LEDs between green and off.
+	blinkGreen(2f), 
+	** Alternates all LEDs between red and off.
+	blinkRed(2f), 
+	** Alternates all LEDs between orange (red and green at the same time) and off.
+	blinkOrange(2f), 
+	** Rotates the green and red LEDs around the drone.
+	snakeGreenRed(0.75f), 
+	** Flashes the front LEDs orange (red and green at the same time).
+	fire(9f),
+	** Turns the front LEDs green and the rear LEDs red.
+	standard(1f), 
+	** Turns all LEDs red.
+	red(1f), 
+	** Turns all LEDs green.
+	green(1f), 
+	** Rotates the red LED around the drone.
+	snakeRed(1.5f), 
+	** Turns all LEDs off.
+	off(1f),
+	** Flashes the front LED orange and the rear LED red - right side only.
+	rightMissile(6f), 
+	** Flashes the front LED orange and the rear LED red - left side only.
+	leftMissile(6f), 
+	** Flashes the front LEDs orange and the rear LEDs red - both sides.
+	doubleMissile(6f), 
+	** Turns the front left LED green and the others red.
+	frontLeftGreenOthersRed(1f), 
+	** Turns the front right LED green and the others red.
+	frontRightGreenOthersRed(1f), 
+	** Turns the rear right LED green and the others red.
+	rearRightGreenOthersRed(1f), 
+	** Turns the rear left LED green and the others red.
+	rearLeftGreenOthersRed(1f), 
+	** Turns the left LEDs green and the right LEDs red.
+	leftGreenRightRed(1f), 
+	** Turns the left LEDs red and the right LEDs green.
+	leftRedRightGreen(1f), 
+	** Alternates all LEDs between standard (front LEDs green and rear LEDs red) and off.
+	blinkStandard(2f);
 	
 	** A default frequency for the animation.
 	const Float defaultFrequency
