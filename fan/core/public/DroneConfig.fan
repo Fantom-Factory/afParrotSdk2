@@ -1,9 +1,10 @@
+using inet::IpAddr
 
 ** Default drone configuration.
 const class DroneConfig {
 	
 	** The drone's IP address.
-	const Str		droneIpAddr			:= "192.168.1.1"
+	const IpAddr	droneIpAddr			:= IpAddr("192.168.1.1")
 
 	
 	
@@ -11,7 +12,7 @@ const class DroneConfig {
 	// taken from ARDrone_SDK_2_0_1/ARDroneLib/Soft/Common/config.h
 	
 	// Not used
-//	const Int		ftpPort				:= 5551	// FTP
+	const Int		ftpPort				:= 5551	// FTP
 
 	// Not used
 //	const Int		authPort			:= 5552	// AUTH
@@ -53,6 +54,12 @@ const class DroneConfig {
 	** See 'NavDataFlags.controlCommandAck'.
 	const Duration	configCmdAckClearTimeout	:= 1sec
 
+	** The timeout used when opening a TCP connection.
+	const Duration	tcpConnectTimeout		:= 2sec
+	
+	** The timeout used when waiting to receive data on a TCP port.
+	const Duration	tcpReceiveTimeout		:= 1sec
+	
 	** The timeout used when waiting to receive data on a UDP port.
 	const Duration	udpReceiveTimeout		:= 1sec
 	

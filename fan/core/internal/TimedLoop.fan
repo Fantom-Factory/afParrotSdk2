@@ -23,10 +23,6 @@ internal const class TimedLoop {
 		sendCmd
 	}
 	
-	private static Future startLoop(Drone drone, Duration duration, Cmd? cmd) {
-		TimedLoop(drone, duration, cmd).future
-	}
-	
 	private Void sendCmd() {
 		// check if the user cancelled us
 		if (future.state.isComplete) return

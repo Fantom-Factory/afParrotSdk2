@@ -1,9 +1,7 @@
-
 using concurrent::Actor
 using concurrent::ActorPool
 using afConcurrent::SynchronizedList
 using afConcurrent::SynchronizedState
-using inet::IpAddr
 using inet::TcpSocket
 
 internal const class VideoReader {
@@ -13,7 +11,7 @@ internal const class VideoReader {
 		config := DroneConfig()
 		socket := TcpSocket {
 			it.options.receiveTimeout = config.udpReceiveTimeout
-		}.connect(IpAddr(config.droneIpAddr), config.videoPort, config.actionTimeout)
+		}.connect(config.droneIpAddr, config.videoPort, config.actionTimeout)
 		echo("connected")
 			
 		buf := Buf() 
