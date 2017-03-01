@@ -76,9 +76,9 @@ internal class NavDataReaderImpl {
 	Int				lastSeqNum
 	NavDataParser	parser	:= NavDataParser()
 	
-	new make(Drone drone, Str ipAddr, Int port, Duration receiveTimeout) {
+	new make(Drone drone, IpAddr ipAddr, Int port, Duration receiveTimeout) {
 		this.drone  = drone
-		this.socket = UdpSocket().connect(IpAddr(ipAddr), port) {
+		this.socket = UdpSocket().connect(ipAddr, port) {
 			it.options.receiveTimeout = receiveTimeout
 		}
 	}

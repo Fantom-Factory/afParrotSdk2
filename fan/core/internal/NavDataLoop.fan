@@ -58,7 +58,8 @@ internal const class NavDataLoop {
 	
 	static Void waitUntilReady(Drone drone, Duration timeout) {
 		blockAndLog(drone, timeout, |NavData? navData->Bool| {
-			navData?.demoData != null && navData?.flags?.controlCommandAck == false
+			flags := navData?.flags
+			return navData?.demoData != null && flags?.controlCommandAck == false && flags?.emergencyLanding == false && flags?.userEmergencyLanding == false
 		}, null, "Drone ready", true, false, "Timed out waiting for initial demo data")
 	}
 	

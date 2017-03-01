@@ -45,9 +45,9 @@ internal class CmdSenderImpl {
 	Bool		connected
 	Int			lastSeq
 	
-	new make(Drone drone, Str ipAddr, Int port) {
+	new make(Drone drone, IpAddr ipAddr, Int port) {
 		this.drone = drone
-		this.socket = UdpSocket().connect(IpAddr(ipAddr), port)
+		this.socket = UdpSocket().connect(ipAddr, port)
 	}
 	
 	Void connect() {
