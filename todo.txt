@@ -35,3 +35,9 @@ https://github.com/bklang/ARbDrone/wiki/UndocumentedCommands
 
 http://www.slideserve.com/delora/the-parrot-ar-drone-2-0
 
+
+droneduino - parrot ar drone 2.0 arduino communication with node
+https://gist.github.com/maxogden/4152815
+
+
+see \ARDrone_SDK_2_0_1\ARDroneLib\Soft\Common\at_msgs.h for ALL undocumented AT cmds

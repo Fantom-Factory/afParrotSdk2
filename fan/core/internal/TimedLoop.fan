@@ -33,7 +33,8 @@ internal const class TimedLoop {
 			return
 		}
 		// abandon manoeuvre if an emergency occurs!
-		if (drone.navData?.flags?.emergencyLanding == true || drone.state == FlightState.transLanding) {
+		flags := drone.navData?.flags
+		if (flags?.emergencyLanding == true || flags?.userEmergencyLanding == true || drone.state == FlightState.transLanding) {
 			future.complete(null)
 			return
 		}

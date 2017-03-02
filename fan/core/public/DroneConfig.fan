@@ -1,6 +1,7 @@
 using inet::IpAddr
 
-** Default drone configuration.
+// TODO rename to DroneTimeouts / DroneSys / NetworkConfig ??? ports may be hardcoded - they're not gonna change
+** Default network configuration when communicating with the drone.
 const class DroneConfig {
 	
 	** The drone's IP address.
@@ -11,32 +12,32 @@ const class DroneConfig {
 	// ---- Drone Comms Ports ----
 	// taken from ARDrone_SDK_2_0_1/ARDroneLib/Soft/Common/config.h
 	
-	// Not used
-	const Int		ftpPort				:= 5551	// FTP
+	** Used to retrieve 'version.txt' on drone connect. 
+	const Int	ftpPort				:= 5551	// FTP
 
 	// Not used
-//	const Int		authPort			:= 5552	// AUTH
+//	const Int	authPort			:= 5552	// AUTH
 	
 	// Not used
-//	const Int		videoRecPort		:= 5553	// VIDEO_RECORDER
+//	const Int	videoRecPort		:= 5553	// VIDEO_RECORDER
 	
 	** The port that UDP NavData packets are received on.
-	const Int		navDataPort			:= 5554 // NAVDATA
+	const Int	navDataPort			:= 5554 // NAVDATA
 	
 	** The port that TCP Video data is received on.
-	const Int		videoPort			:= 5555 // VIDEO
+	const Int	videoPort			:= 5555 // VIDEO
 
 	** The port that UDP Command packets are transmitted on.
-	const Int		cmdPort				:= 5556	// AT
+	const Int	cmdPort				:= 5556	// AT
 	
 	// Not used
-//	const Int		capturePort			:= 5557	// CAPTURE
+//	const Int	capturePort			:= 5557	// CAPTURE
 
 	// Not used
-//	const Int		printfPort			:= 5558	// PRINTF
+//	const Int	printfPort			:= 5558	// PRINTF
 	
 	** The port that TCP config data is received on.
-	const Int		controlPort			:= 5559	// CONTROL
+	const Int	controlPort			:= 5559	// CONTROL
 
 	
 	
@@ -44,7 +45,7 @@ const class DroneConfig {
 	
 	** The interval to wait in between sending repeated commands to the drone, such as 'takeOff' 
 	** or 'moveLeft'. 
-	const Duration	cmdInterval			:= 25ms
+	const Duration	cmdInterval				:= 25ms
 	
 	** The timeout used when waiting for a config command acknowledgement.
 	** See 'NavDataFlags.controlCommandAck'.
@@ -52,7 +53,7 @@ const class DroneConfig {
 
 	** The timeout used when waiting for the config command acknowledgement flag to clear.
 	** See 'NavDataFlags.controlCommandAck'.
-	const Duration	configCmdAckClearTimeout	:= 1sec
+	const Duration	configCmdAckClearTimeout:= 1sec
 
 	** The timeout used when opening a TCP connection.
 	const Duration	tcpConnectTimeout		:= 2sec
