@@ -22,27 +22,32 @@ class FlightPlan {
 		drone.connect
 		drone.clearEmergencyMode
 		drone.flatTrim
-		drone.setOutdoorFlight(false)
+//		drone.setOutdoorFlight(false)
 		drone.animateLeds(LedAnimation.blinkGreenRed, 15sec)
 
 //		drone.sendCmd(Cmd.makeCtrl(4, 0))
-//		drone.sendCmd(Cmd.makeCtrl(4, 0))
-//		drone.sendCmd(Cmd.makeCtrl(4, 0))
-//		drone.sendCmd(Cmd.makeCtrl(4, 0))
 //		props	:= socket.in.readAllStr {echo("[$it]")}
 //		socket.close
-//			
+			
 //		drone.takeOff
 //
-		Actor.sleep(400sec)
+////		drone.moveUp(0.5f, 2sec)
+////		drone.spinClockwise(1f, 6sec)
 //
-////		drone.spinClockwise(-1f, 5sec)
+//		drone.animateFlight(FlightAnimation.theta20degYawM200Deg)
+//		drone.animateFlight(FlightAnimation.theta20degYawM200Deg)
+//		drone.animateFlight(FlightAnimation.theta20degYawM200Deg)
+//		drone.animateFlight(FlightAnimation.theta20degYawM200Deg)
+//
+//		//		sounds.beep
+////		drone.animateFlight(FlightAnimation.turnaround)
 ////		sounds.beep
-////		drone.animateFlight(FlightAnimation.phi30Deg, 2sec)
-////		Actor.sleep(1sec)
+////		drone.animateFlight(FlightAnimation.phiM30Deg)
 ////		sounds.beep
-////		drone.animateFlight(FlightAnimation.phiM30Deg, 2sec)
-////		Actor.sleep(1sec)
+////		drone.animateFlight(FlightAnimation.phi30Deg)
+////		sounds.beep
+////		drone.animateFlight(FlightAnimation.phiM30Deg)
+//
 //		drone.land
 
 		drone.disconnect

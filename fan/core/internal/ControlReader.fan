@@ -19,25 +19,35 @@ internal const class ControlReader {
 	static Void read2() {
 		config := DroneConfig()
 
+		socket := TcpSocket {
+			it.options.receiveTimeout = config.udpReceiveTimeout
+		}.connect(config.droneIpAddr, config.controlPort, config.actionTimeout)
+		echo("connected")
+
+		Actor.sleep(300ms)
+
 		sock := UdpSocket {
 			it.options.receiveTimeout = config.udpReceiveTimeout
-		}.connect(IpAddr(config.droneIpAddr), config.cmdPort)
+		}.connect(config.droneIpAddr, config.cmdPort)
 		sock.send(UdpPacket() { data = Cmd.makeCtrl(4, 0).cmdStr(1).toBuf.seek(0) })
 //		sock.send(UdpPacket() { data = Cmd.makeCtrl(4, 0).cmdStr(2).toBuf.seek(0) })
 //		sock.disconnect
 		
-		Actor.sleep(30ms)
+		Actor.sleep(300ms)
 		
-		socket := TcpSocket {
-			it.options.receiveTimeout = config.udpReceiveTimeout
-		}.connect(IpAddr(config.droneIpAddr), config.controlPort, config.defaultTimeout)
-		echo("connected")
+		
+		socket.out.writeBuf(Cmd.makeCtrl(4, 0).cmdStr(1).toBuf.seek(0)).flush
 		
 		buf := Buf() 
 		socket.in.readBuf(buf, 100)
+//		socket.in.readBufFully(buf, 100)
 		echo("BUG $buf.size $buf.flip.toBase64")
 		
 		socket.close
+	}
+	
+	static Void main(Str[] args) {
+		read2
 	}
 	
 	Str? read() {
@@ -48,7 +58,7 @@ internal const class ControlReader {
 			config := drone.config
 			socket := TcpSocket {
 				it.options.receiveTimeout = config.udpReceiveTimeout
-			}.connect(IpAddr(config.droneIpAddr), config.controlPort, config.defaultTimeout)
+			}.connect(config.droneIpAddr, config.controlPort, config.actionTimeout)
 			echo("connected")
 				
 //			echo("sendCmd")
