@@ -22,10 +22,12 @@ const class Drone {
 	private	const	Synchronized	eventThread
 	private	const	|->|			shutdownHook
 
-	internal const	CmdSender		cmdSender
-	internal const	NavDataReader	navDataReader
-	internal const	ControlReader	controlReader
-	internal const	ActorPool		actorPool
+	private const	CmdSender		cmdSender
+	private const	NavDataReader	navDataReader
+	private const	ControlReader	controlReader
+
+	** The 'ActorPool' responsible for controlling all the threads handled by this drone.
+	@NoDoc	const	ActorPool		actorPool
 	
 	** The version of the drone, as reported by an FTP of 'version.txt'.
 					Version?		droneVersion {
@@ -34,7 +36,7 @@ const class Drone {
 					}
 	
 	** The network configuration as passed to the ctor.
-			const	NetworkConfig		config
+			const	NetworkConfig		networkConfig
 	
 	** Returns the latest Nav Data or 'null' if not connected.
 	** Note that this instance always contains a culmination of all the latest nav options received.
@@ -134,12 +136,12 @@ const class Drone {
 					}
 
 	** Creates a 'Drone' instance, optionally passing in network configuration.
-	new make(NetworkConfig config := NetworkConfig()) {
+	new make(NetworkConfig networkConfig := NetworkConfig()) {
 		this.actorPool		= ActorPool() { it.name = "Parrot Drone" }
-		this.config			= config
-		this.navDataReader	= NavDataReader(this, actorPool, config)
+		this.networkConfig	= networkConfig
+		this.navDataReader	= NavDataReader(this, actorPool)
 		this.controlReader	= ControlReader(this)
-		this.cmdSender		= CmdSender(this, actorPool, config)
+		this.cmdSender		= CmdSender(this, actorPool)
 		this.eventThread	= Synchronized(actorPool)
 		this.shutdownHook	= #onShutdown.func.bind([this])
 	}
@@ -166,11 +168,11 @@ const class Drone {
 		if (actorPool.isStopped)
 			throw IOErr("Drone Connection Error")
 		
-		NavDataLoop.waitForAck		(this, config.configCmdAckTimeout, true)
-		NavDataLoop.waitForAckClear	(this, config.configCmdAckClearTimeout, true)
-		NavDataLoop.waitUntilReady	(this, timeout ?: config.actionTimeout)
+		NavDataLoop.waitForAck		(this, networkConfig.configCmdAckTimeout, true)
+		NavDataLoop.waitForAckClear	(this, networkConfig.configCmdAckClearTimeout, true)
+		NavDataLoop.waitUntilReady	(this, timeout ?: networkConfig.actionTimeout)
 
-		try droneVersion = BareBonesFtp().readVersion(config)
+		try droneVersion = BareBonesFtp().readVersion(networkConfig)
 		catch (Err err)
 			log.warn("Could not FTP version.txt from drone", err)
 
@@ -187,7 +189,7 @@ const class Drone {
 	**  
 	** This method blocks until it's finished.
 	This disconnect(Duration timeout := 2sec) {
-		doDisconnect(false, timeout)
+		_doDisconnect(false, timeout)
 	}
 	
 	
@@ -211,10 +213,10 @@ const class Drone {
 		val = encodeConfigParam(val)
 		
 		block := true
-		NavDataLoop.waitForAckClear	(this, config.configCmdAckClearTimeout, block)
+		NavDataLoop.waitForAckClear	(this, networkConfig.configCmdAckClearTimeout, block)
 		cmdSender.send(Cmd.makeConfig(key, val))
-		NavDataLoop.waitForAck		(this, config.configCmdAckTimeout, block)
-		NavDataLoop.waitForAckClear	(this, config.configCmdAckClearTimeout, block)
+		NavDataLoop.waitForAck		(this, networkConfig.configCmdAckTimeout, block)
+		NavDataLoop.waitForAckClear	(this, networkConfig.configCmdAckClearTimeout, block)
 	}
 
 	Void setEmergencyMode() {
@@ -227,18 +229,8 @@ const class Drone {
 	Void clearEmergencyMode(Duration? timeout := null) {
 		flags := navData?.flags
 		if (flags?.emergencyLanding == true || flags?.userEmergencyLanding == true)
-			NavDataLoop.clearEmergencyMode(this, timeout ?: config.configCmdAckTimeout)
+			NavDataLoop.clearEmergencyMode(this, timeout ?: networkConfig.configCmdAckTimeout)
 	}
-
-	// TODO move to DroneConfig class
-//	** Sets or clears config and profiles relating to indoor / outdoor flight.
-//	** See:
-//	**  - 'control:outdoor'
-//	**  - 'control:flight_without_shell'
-//	Void setOutdoorFlight(Bool outdoors := true) {
-//		sendConfig("control:outdoor", outdoors)
-//		sendConfig("control:flight_without_shell", outdoors)
-//	}
 	
 	** Sends a emergency signal which cuts off the drone's motors, causing a crash landing.
 	** 
@@ -260,20 +252,6 @@ const class Drone {
 			return
 		}
 		cmdSender.send(Cmd.makeFlatTrim)
-	}
-
-	** Tell the drone to calibrate its magnetometer.
-	** 
-	** The drone calibrates its magnetometer by spinning around itself a few times, hence can
-	** only be performed when flying.
-	** 
-	** This method does not block.
-	Void calibrate(Int deviceNum) {
-		if (state != FlightState.flying && state != FlightState.hovering) {
-			log.warn("Can not calibrate magnetometer when state is ${state}")
-			return
-		}
-		cmdSender.send(Cmd.makeCalib(deviceNum))
 	}
 
 	** Plays one of the pre-configured LED animation sequences. Example:
@@ -321,7 +299,7 @@ const class Drone {
 			log.warn("Can not take off - flight state is already ${state}")
 			return
 		}
-		NavDataLoop.takeOff(this, block, timeout ?: config.actionTimeout)
+		NavDataLoop.takeOff(this, block, timeout ?: networkConfig.actionTimeout)
 	}
 
 	** Repeatedly sends a land command to the drone until it reports its state as 'landed'.
@@ -334,7 +312,7 @@ const class Drone {
 			log.warn("Can not land - flight state is already ${state}")
 			return
 		}
-		NavDataLoop.land(this, block, timeout ?: config.actionTimeout)
+		NavDataLoop.land(this, block, timeout ?: networkConfig.actionTimeout)
 	}
 	
 	** Repeatedly sends a hover command to the drone until it reports its state as 'hovering'.
@@ -349,7 +327,7 @@ const class Drone {
 		}
 		// the best way to prevent this from interfering with an emergency land cmd, is to set the
 		// emergency flag (to kill off any existing cmds), clear it, then hover
-		NavDataLoop.hover(this, block, timeout ?: config.actionTimeout)
+		NavDataLoop.hover(this, block, timeout ?: networkConfig.actionTimeout)
 	}
 	
 
@@ -608,7 +586,7 @@ const class Drone {
 	
 	// ---- Private Stuff ----
 	
-	internal This doDisconnect(Bool abnormal, Duration timeout := 2sec) {
+	internal This _doDisconnect(Bool abnormal, Duration timeout := 2sec) {
 		Env.cur.removeShutdownHook(shutdownHook)
 
 		if (actorPool.isStopped) return this
@@ -629,6 +607,14 @@ const class Drone {
 
 		log.info("Disconnected from Drone")
 		return this
+	}
+	
+	internal Void _addNavDataListener(|NavData| f) {
+		navDataReader.addListener(f)
+	}
+
+	internal Void _removeNavDataListener(|NavData| f) {
+		navDataReader.removeListener(f)		
 	}
 	
 	private Void processNavData(NavData navData) {

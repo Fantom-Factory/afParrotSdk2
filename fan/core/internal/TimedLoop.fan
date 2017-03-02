@@ -40,8 +40,8 @@ internal const class TimedLoop {
 		}
 		
 		if (cmd != null)
-			drone.cmdSender.send(cmd)
+			drone.sendCmd(cmd)
 		if (!drone.actorPool.isStopped)
-			mutex.asyncLater(drone.config.cmdInterval, sendCmdFunc)
+			mutex.asyncLater(drone.networkConfig.cmdInterval, sendCmdFunc)
 	}
 }
