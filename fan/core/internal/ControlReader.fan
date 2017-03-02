@@ -24,25 +24,35 @@ internal const class ControlReader {
 		}.connect(config.droneIpAddr, config.controlPort, config.actionTimeout)
 		echo("connected")
 
-		Actor.sleep(300ms)
+//		Actor.sleep(300ms)
 
 		sock := UdpSocket {
 			it.options.receiveTimeout = config.udpReceiveTimeout
 		}.connect(config.droneIpAddr, config.cmdPort)
-		sock.send(UdpPacket() { data = Cmd.makeCtrl(4, 0).cmdStr(1).toBuf.seek(0) })
-//		sock.send(UdpPacket() { data = Cmd.makeCtrl(4, 0).cmdStr(2).toBuf.seek(0) })
-//		sock.disconnect
+		sock.send(UdpPacket() { data = Cmd.makeCtrl(5, 0).cmdStr(1).toBuf.seek(0) })
+		sock.send(UdpPacket() { data = Cmd.makeCtrl(4, 0).cmdStr(2).toBuf.seek(0) })
+		sock.disconnect
 		
-		Actor.sleep(300ms)
+//		Actor.sleep(300ms)
 		
 		
-		socket.out.writeBuf(Cmd.makeCtrl(4, 0).cmdStr(1).toBuf.seek(0)).flush
+//		socket.out.writeBuf(Cmd.makeCtrl(4, 0).cmdStr(1).toBuf.seek(0)).flush
 		
 		buf := Buf() 
 		socket.in.readBuf(buf, 100)
 //		socket.in.readBufFully(buf, 100)
-		echo("BUG $buf.size $buf.flip.toBase64")
+//		echo("BUG $buf.size $buf.flip.toBase64")
+		echo("BUG $buf.size $buf.flip.readAllStr")
 		
+		w:= socket.in.readNullTerminatedStr
+		echo(w)
+		
+//		line := "" as Str
+//		while (line != null) {
+//			line = socket.in.readLine
+//			echo(line)
+//		}
+		echo("DONE")
 		socket.close
 	}
 	
@@ -55,7 +65,7 @@ internal const class ControlReader {
 		Timer.time("Read config") |->| {
 			drone.sendCmd(Cmd.makeCtrl(4, 0))
 			echo("READING")
-			config := drone.config
+			config := drone.networkConfig
 			socket := TcpSocket {
 				it.options.receiveTimeout = config.udpReceiveTimeout
 			}.connect(config.droneIpAddr, config.controlPort, config.actionTimeout)
@@ -78,7 +88,7 @@ internal const class ControlReader {
 			catch (IOErr err) {
 				if (err.msg.contains("SocketTimeoutException")) {
 					log.warn("Drone not connected (SocketTimeoutException on Control read) - check your Wifi settings")
-					drone.doDisconnect(true)
+					drone._doDisconnect(true)
 					return null
 				}
 				throw err
