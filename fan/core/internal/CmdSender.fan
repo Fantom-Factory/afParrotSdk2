@@ -8,9 +8,9 @@ internal const class CmdSender {
 	private const ActorPool			actorPool
 	private const SynchronizedState	mutex
 	
-	new make(Drone drone, ActorPool actorPool, NetworkConfig config) {
+	new make(Drone drone, ActorPool actorPool) {
 		this.mutex		= SynchronizedState(actorPool) |->Obj| {
-			CmdSenderImpl(drone, config.droneIpAddr, config.cmdPort)
+			CmdSenderImpl(drone)
 		}
 		this.actorPool	= actorPool
 	}
@@ -45,9 +45,11 @@ internal class CmdSenderImpl {
 	Bool		connected
 	Int			lastSeq
 	
-	new make(Drone drone, IpAddr ipAddr, Int port) {
+	new make(Drone drone) {
 		this.drone = drone
-		this.socket = UdpSocket().connect(ipAddr, port)
+		this.socket = UdpSocket().connect(drone.networkConfig.droneIpAddr, drone.networkConfig.cmdPort) {
+			it.options.receiveTimeout = drone.networkConfig.udpReceiveTimeout
+		}
 	}
 	
 	Void connect() {
@@ -61,12 +63,12 @@ internal class CmdSenderImpl {
 			try	{
 				socket.send(UdpPacket() { data = cmd.cmdStr(++lastSeq).toBuf.seek(0) })
 				if (log.isDebug)
-					if (cmd.id != "COMWDG" && cmd.id != "REF" && cmd.id != "PCMD" && cmd.id != "CTRL")
+//					if (cmd.id != "COMWDG" && cmd.id != "REF" && cmd.id != "PCMD" && cmd.id != "CTRL")
 						log.debug("--> ${cmd.cmdStr(lastSeq).trim}")
 			} catch (IOErr ioe) {
 				if (ioe.msg.contains("java.net.SocketException")) {
 					log.warn("Drone not connected (could not send cmd) - check the drone's power")
-					drone.doDisconnect(true)
+					drone._doDisconnect(true)
 					return
 				}
 				throw ioe

@@ -21,7 +21,7 @@ internal const class NavDataLoop {
 		this.cmd		= cmd
 		this.thread		= Synchronized(drone.actorPool)
 		this.completeOnEmergency = completeOnEmergency
-		drone.navDataReader.addListener(listener)
+		drone._addNavDataListener(listener)
 		
 		// there are 2 loops here; 1 called by onNavData, the other is an interval loop calling sendCmd
 		onNavData(drone.navData)
@@ -107,7 +107,7 @@ internal const class NavDataLoop {
 	
 	private Void onNavData(NavData? navData) {
 		if (process(navData) || (completeOnEmergency && drone.navData?.flags?.emergencyLanding == true)) {
-			drone.navDataReader.removeListener(listener)
+			drone._removeNavDataListener(listener)
 			future.complete(null)
 		}
 	}
@@ -116,8 +116,8 @@ internal const class NavDataLoop {
 		if (future.state.isComplete || drone.actorPool.isStopped)
 			return
 		if (cmd != null)
-			drone.cmdSender.send(cmd)
-		thread.asyncLater(drone.config.cmdInterval, sendCmdFunc)
+			drone.sendCmd(cmd)
+		thread.asyncLater(drone.networkConfig.cmdInterval, sendCmdFunc)
 	}
 }
 
