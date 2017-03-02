@@ -1,8 +1,7 @@
 using inet::IpAddr
 
-// TODO rename to DroneTimeouts / DroneSys / NetworkConfig ??? ports may be hardcoded - they're not gonna change
 ** Default network configuration when communicating with the drone.
-const class DroneConfig {
+const class NetworkConfig {
 	
 	** The drone's IP address.
 	const IpAddr	droneIpAddr			:= IpAddr("192.168.1.1")

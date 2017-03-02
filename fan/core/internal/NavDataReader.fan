@@ -11,7 +11,7 @@ internal const class NavDataReader {
 	private const SynchronizedList	listeners
 	private const SynchronizedState	mutex
 	
-	new make(Drone drone, ActorPool actorPool, DroneConfig config) {
+	new make(Drone drone, ActorPool actorPool, NetworkConfig config) {
 		this.actorPool	= actorPool
 		this.listeners	= SynchronizedList(actorPool) { it.valType = |NavData|# }
 		this.mutex		= SynchronizedState(actorPool) |->Obj?| {

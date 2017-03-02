@@ -17,7 +17,7 @@ internal const class ControlReader {
 	}
 	
 	static Void read2() {
-		config := DroneConfig()
+		config := NetworkConfig()
 
 		socket := TcpSocket {
 			it.options.receiveTimeout = config.udpReceiveTimeout

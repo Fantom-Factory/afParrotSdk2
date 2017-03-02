@@ -33,8 +33,8 @@ const class Drone {
 						private set { droneVersionRef.val = it }
 					}
 	
-	** The configuration as passed to the ctor.
-			const	DroneConfig		config
+	** The network configuration as passed to the ctor.
+			const	NetworkConfig		config
 	
 	** Returns the latest Nav Data or 'null' if not connected.
 	** Note that this instance always contains a culmination of all the latest nav options received.
@@ -133,8 +133,8 @@ const class Drone {
 						set { onDisconnectRef.val = it}
 					}
 
-	** Creates a 'Drone' instance, optionally passing in default configuration.
-	new make(DroneConfig config := DroneConfig()) {
+	** Creates a 'Drone' instance, optionally passing in network configuration.
+	new make(NetworkConfig config := NetworkConfig()) {
 		this.actorPool		= ActorPool() { it.name = "Parrot Drone" }
 		this.config			= config
 		this.navDataReader	= NavDataReader(this, actorPool, config)

@@ -8,7 +8,7 @@ internal const class CmdSender {
 	private const ActorPool			actorPool
 	private const SynchronizedState	mutex
 	
-	new make(Drone drone, ActorPool actorPool, DroneConfig config) {
+	new make(Drone drone, ActorPool actorPool, NetworkConfig config) {
 		this.mutex		= SynchronizedState(actorPool) |->Obj| {
 			CmdSenderImpl(drone, config.droneIpAddr, config.cmdPort)
 		}
