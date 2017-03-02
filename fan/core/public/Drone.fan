@@ -321,7 +321,7 @@ const class Drone {
 	** 
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
 	Void hover(Bool block := true, Duration? timeout := null) {
-		if (state == null || [FlightState.hovering].contains(state)) {
+		if (state == null || [FlightState.hovering, FlightState.landed, FlightState.transLanding].contains(state)) {
 			log.warn("Can not hover - flight state is already ${state}")
 			return
 		}
@@ -334,6 +334,25 @@ const class Drone {
 	
 	// ---- Movement Commands ----
 
+	// TODO set absolute compass position
+	
+	** A combined move method encapsulating:
+	**  - 'moveRight()'
+	**  - 'moveBackward()'
+	**  - 'moveUp()'
+	**  - 'spinClickwise()'
+	|->|? move(Float tiltRight, Float tiltBackward, Float verticalSpeed, Float clockwiseSpin, Duration? duration := null, Bool? block := true) {
+		if (tiltRight < -1f || tiltRight > 1f)
+			throw ArgErr("tiltRight must be between -1 and 1 : ${tiltRight}")
+		if (tiltBackward < -1f || tiltBackward > 1f)
+			throw ArgErr("tiltBackward must be between -1 and 1 : ${tiltBackward}")
+		if (verticalSpeed < -1f || verticalSpeed > 1f)
+			throw ArgErr("verticalSpeed must be between -1 and 1 : ${verticalSpeed}")
+		if (clockwiseSpin < -1f || clockwiseSpin > 1f)
+			throw ArgErr("clockwiseSpin must be between -1 and 1 : ${clockwiseSpin}")
+		return doMove(Cmd.makeMove(tiltRight, tiltBackward, verticalSpeed, clockwiseSpin), tiltRight, duration, block)
+	}
+	
 	** Moves the drone vertically upwards.
 	** 
 	** 'verticalSpeed' is a percentage of the maximum vertical speed and should be a value between -1 and 1.

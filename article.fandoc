@@ -1,0 +1,53 @@
+
+SDK Explained
+
+What is the AR Drone?
+*********************
+
+The Parrot A.R. Drone
+
+Augmented Reality
+
+What is the SDK?
+****************
+
+You
+
+`http://developer.parrot.com/docs/SDK2/ARDrone_SDK_2_0_1.zip` (61.1 MB)
+
+
+Emergency Landing
+*****************
+
+The SDK speaks of an *Emergency Mode* but doesn't fully explain it.
+
+When the drone enters *Emergency Mode*, all motors are turned off and the drone refuses to honour any further commands until the emergency is resolved. This effectivily drops the drone out of the sky like a brick, ensuring a pretty heavy crash landing. Or as the developer guide elegantly puts it:
+
+> Engines are cut-off no matter the drone state. (ie. the drone crashes, potentially violently)
+
+This obviously isn't good for the drone, but it may prevent it from sailing uncontrollably out to sea, or over the tree line, or into someone's face!
+
+If you look at the 'StateMask' flags in the NavData you'll see there are 2 emergency flags:
+
+ - 'userEmergencyLanding' - bit 16
+ - 'emergencyLanding' - bit 31
+
+Or as detailed in 'ARDrone_SDK_2_0_1/ARDroneLib/Soft/Common/config.h'
+pre>
+Define masks for ARDrone state
+31                                                             0
+ x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x -> state
+ |                             |
+ |                             User Emergency Landing : (1) User EL is ON, (0) User EL is OFF
+ |
+ Emergency landing : (0) no emergency, (1) emergency
+<pre
+
+The drone can set and clear the 'Emergency landing' flag itself. When connected to the drone, you can see this in action simply by turning the drone upside down.
+
+When upside down the drone sets the 'emergencyLanding' flag and all the LEDs turn red.
+
+If you then right the drone, the 'emergencyLanding' flag is cleared and all LEDs turn back to green.
+
+
+
