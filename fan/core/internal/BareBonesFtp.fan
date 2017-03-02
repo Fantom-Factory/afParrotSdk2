@@ -3,7 +3,7 @@ using inet
 internal class BareBonesFtp {
 	private static const	Log	log	:= Drone#.pod.log
 
-	Version readVersion(DroneConfig config) {
+	Version readVersion(NetworkConfig config) {
 //		log.debug("FTP --- Opening TCP connection on ${config.droneIpAddr}::${config.ftpPort}")
 		ctrlSock := TcpSocket().connect(config.droneIpAddr, config.ftpPort, config.tcpConnectTimeout) { it.options.receiveTimeout = config.tcpReceiveTimeout }
 		line	 := null as Str
@@ -53,6 +53,6 @@ internal class BareBonesFtp {
 	
 	static Void main(Str[] args) {
 		log.level = LogLevel.debug
-		BareBonesFtp().readVersion(DroneConfig())
+		BareBonesFtp().readVersion(NetworkConfig())
 	}
 }

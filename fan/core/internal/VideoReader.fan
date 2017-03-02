@@ -8,7 +8,7 @@ internal const class VideoReader {
 	private const Log				log		:= Drone#.pod.log
 	
 	Void? read() {
-		config := DroneConfig()
+		config := NetworkConfig()
 		socket := TcpSocket {
 			it.options.receiveTimeout = config.udpReceiveTimeout
 		}.connect(config.droneIpAddr, config.videoPort, config.actionTimeout)
