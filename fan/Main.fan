@@ -6,7 +6,7 @@ internal class Main {
 
 //		VideoReader().read
 		
-		AttackDog().attack()
+		Frame().attack()
 		
 //		FlightPlan().fly(Drone())
 	}

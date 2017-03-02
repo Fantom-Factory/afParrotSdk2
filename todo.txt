@@ -22,7 +22,6 @@ https://github.com/nyholku/purejavahidapi
 
 GamePads in Web
 https://www.html5rocks.com/en/tutorials/doodles/gamepad/
-
 How about a X-platform API!? :D
 
 
@@ -41,3 +40,9 @@ https://gist.github.com/maxogden/4152815
 
 
 see \ARDrone_SDK_2_0_1\ARDroneLib\Soft\Common\at_msgs.h for ALL undocumented AT cmds
+
+
+https://github.com/seannicholls/ARDroneDocs/wiki/Technical-Specifications
+
+
+http://www.iflscience.com/technology/googles-deepmind-ai-understands-the-benefits-of-betrayal/
