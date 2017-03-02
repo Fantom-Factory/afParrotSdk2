@@ -20,10 +20,22 @@ class FlightPlan {
 		
 		// initiating pre-flight system checks
 		drone.connect
-		drone.clearEmergencyMode
+//		drone.clearEmergencyMode
 		drone.flatTrim
+		
+		Actor.sleep(0.5sec)
+		drone.setEmergencyLanding
+//		drone.sendCmd(Cmd.makeEmergency)
+//		drone.sendCmd(Cmd.makeEmergency2)
+//		drone.crashLand
+//		drone.crashLand
+		
+		Actor.sleep(0.5sec)
+
+		drone.clearEmergencyLanding
+		
 //		drone.setOutdoorFlight(false)
-		drone.animateLeds(LedAnimation.blinkGreenRed, 15sec)
+//		drone.animateLeds(LedAnimation.blinkGreenRed, 15sec)
 
 //		drone.sendCmd(Cmd.makeCtrl(4, 0))
 //		props	:= socket.in.readAllStr {echo("[$it]")}

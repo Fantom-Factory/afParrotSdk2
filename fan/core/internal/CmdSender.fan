@@ -23,10 +23,10 @@ internal const class CmdSender {
 			}
 	}
 	
-	Void send(Cmd cmd) {
+	Void send(Cmd cmd, Cmd? cmd2 := null) {
 		if (!actorPool.isStopped)
 			mutex.withState |CmdSenderImpl sender| {
-				sender.send(cmd)
+				sender.send(cmd, cmd2)
 			}
 	}
 	
@@ -58,13 +58,16 @@ internal class CmdSenderImpl {
 		connected = true
 	}
 	
-	Void send(Cmd cmd) {
+	Void send(Cmd cmd, Cmd? cmd2) {
 		if (connected) {
 			try	{
-				socket.send(UdpPacket() { data = cmd.cmdStr(++lastSeq).toBuf.seek(0) })
+				cmdStr := cmd.cmdStr(++lastSeq)
+				if (cmd2 != null)
+					cmdStr += cmd2.cmdStr(++lastSeq)				
+				socket.send(UdpPacket() { data = cmdStr.toBuf.seek(0) })
 				if (log.isDebug)
-//					if (cmd.id != "COMWDG" && cmd.id != "REF" && cmd.id != "PCMD" && cmd.id != "CTRL")
-						log.debug("--> ${cmd.cmdStr(lastSeq).trim}")
+					if (cmd.id != "COMWDG" && cmd.id != "REF" && cmd.id != "PCMD" && cmd.id != "CTRL")
+						log.debug("--> " + cmdStr.trim.replace("\r", "  "))
 			} catch (IOErr ioe) {
 				if (ioe.msg.contains("java.net.SocketException")) {
 					log.warn("Drone not connected (could not send cmd) - check the drone's power")

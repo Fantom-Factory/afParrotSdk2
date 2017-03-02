@@ -59,14 +59,22 @@ internal const class NavDataLoop {
 	static Void waitUntilReady(Drone drone, Duration timeout) {
 		blockAndLog(drone, timeout, |NavData? navData->Bool| {
 			flags := navData?.flags
-			return navData?.demoData != null && flags?.controlCommandAck == false && flags?.emergencyLanding == false && flags?.userEmergencyLanding == false
+			return navData?.demoData != null && flags?.controlCommandAck == false
 		}, null, "Drone ready", true, false, "Timed out waiting for initial demo data")
 	}
 	
-	static Void clearEmergencyMode(Drone drone, Duration timeout) {
+	static Void setEmergency(Drone drone, Duration timeout) {
 		blockAndLog(drone, timeout, |NavData? navData->Bool| {
-			navData?.flags?.emergencyLanding == false
-		}, Cmd.makeEmergency, "Emergency Mode cleared", true, false, "Timed out waiting for emergency flag to clear")
+			flags := navData?.flags
+			return flags?.emergencyLanding == true || flags?.userEmergencyLanding == true
+		}, null, "Emergency Landing set", true, false, "Timed out waiting for emergency flag to set")
+	}
+	
+	static Void clearEmergency(Drone drone, Duration timeout) {
+		blockAndLog(drone, timeout, |NavData? navData->Bool| {
+			flags := navData?.flags
+			return flags?.emergencyLanding == false && flags?.userEmergencyLanding == false
+		}, null, "Emergency Landing cleared", true, false, "Timed out waiting for emergency flag to clear")
 	}
 	
 	static Void waitForAck(Drone drone, Duration timeout, Bool block) {
