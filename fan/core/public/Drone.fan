@@ -20,11 +20,10 @@ const class Drone {
 	private	const	AtomicRef		onDisconnectRef		:= AtomicRef()
 	private	const	AtomicRef		droneVersionRef		:= AtomicRef()
 	private	const	Synchronized	eventThread
-	private	const	|->|			shutdownHook
-
 	private const	CmdSender		cmdSender
 	private const	NavDataReader	navDataReader
 	private const	ControlReader	controlReader
+	private	const	|->|			shutdownHook
 
 	** The 'ActorPool' responsible for controlling all the threads handled by this drone.
 	@NoDoc	const	ActorPool		actorPool
@@ -168,7 +167,6 @@ const class Drone {
 		if (actorPool.isStopped)
 			throw IOErr("Drone Connection Error")
 		
-		NavDataLoop.waitForAck		(this, networkConfig.configCmdAckTimeout, true)
 		NavDataLoop.waitForAckClear	(this, networkConfig.configCmdAckClearTimeout, true)
 		NavDataLoop.waitUntilReady	(this, timeout ?: networkConfig.actionTimeout)
 
@@ -204,6 +202,7 @@ const class Drone {
 		cmdSender.send(cmd)
 	}
 	
+	** (Advanced) 
 	** Sends a config cmd to the drone, and blocks until it's been acknowledged.
 	** 
 	** 'val' may be a Bool, Int, Float, Str, or a List of said types. 
@@ -219,25 +218,26 @@ const class Drone {
 		NavDataLoop.waitForAckClear	(this, networkConfig.configCmdAckClearTimeout, block)
 	}
 
-	Void setEmergencyMode() {
-		// TODO
-	}
-
-	** Blocks until the emergency mode flag has been cleared.
+	** Blocks until the emergency landing flag has been cleared.
 	** 
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.configCmdAckTimeout'.
-	Void clearEmergencyMode(Duration? timeout := null) {
+	Void clearEmergencyLanding(Duration? timeout := null) {
 		flags := navData?.flags
-		if (flags?.emergencyLanding == true || flags?.userEmergencyLanding == true)
-			NavDataLoop.clearEmergencyMode(this, timeout ?: networkConfig.configCmdAckTimeout)
+		if (flags?.emergencyLanding == true || flags?.userEmergencyLanding == true) {
+			cmdSender.send(Cmd.makeEmergency)
+			NavDataLoop.clearEmergency(this, timeout ?: networkConfig.configCmdAckTimeout)
+		}
 	}
 	
 	** Sends a emergency signal which cuts off the drone's motors, causing a crash landing.
 	** 
-	** This method does not block.
-	Void crashLand() {
-		if (navData?.flags?.emergencyLanding == false)
-			cmdSender.send(Cmd.makeEmergency)
+	** If 'timeout' is 'null' it defaults to 'DroneConfig.configCmdAckTimeout'.
+	Void setEmergencyLanding(Duration? timeout := null) {
+		echo(navData?.flags?.emergencyLanding)
+		if (navData?.flags?.emergencyLanding == false) {
+			cmdSender.send(Cmd.makeLand, Cmd.makeEmergency)
+			NavDataLoop.setEmergency(this, timeout ?: networkConfig.configCmdAckTimeout)
+		}
 	}
 	
 	** Sets a horizontal plane reference for the drone's internal control system.
@@ -678,7 +678,7 @@ const class Drone {
 
 				case ExitStrategy.crashLand:
 					log.warn("Enforcing Exit Strategy --> Crash Landing Drone")
-					crashLand
+					setEmergencyLanding
 			
 				default:
 					throw Err("WTF is a '${exitStrategy}' exit strategy ???")
