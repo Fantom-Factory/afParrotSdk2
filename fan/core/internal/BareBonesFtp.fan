@@ -1,6 +1,6 @@
 using inet
 
-class BareBonesFtp {
+internal class BareBonesFtp {
 	private static const	Log	log	:= Drone#.pod.log
 
 	Version readVersion(DroneConfig config) {

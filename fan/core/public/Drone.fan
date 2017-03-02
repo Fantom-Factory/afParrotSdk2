@@ -173,9 +173,9 @@ const class Drone {
 		try droneVersion = BareBonesFtp().readVersion(config)
 		catch (Err err)
 			log.warn("Could not FTP version.txt from drone", err)
-		
+
 		// TODO grab some control config!
-	
+
 		Env.cur.addShutdownHook(shutdownHook)
 
 		log.info("Connected to AR Drone ${droneVersion}")
@@ -195,6 +195,8 @@ const class Drone {
 	// ---- Misc Commands ----
 	
 	** (Advanced) Sends the given Cmd to the drone.
+	** 
+	** This method does not block.
 	@NoDoc
 	Void sendCmd(Cmd cmd) {
 		cmdSender.send(cmd)
@@ -214,25 +216,33 @@ const class Drone {
 		NavDataLoop.waitForAck		(this, config.configCmdAckTimeout, block)
 		NavDataLoop.waitForAckClear	(this, config.configCmdAckClearTimeout, block)
 	}
-	
+
+	Void setEmergencyMode() {
+		// TODO
+	}
+
 	** Blocks until the emergency mode flag has been cleared.
 	** 
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.configCmdAckTimeout'.
 	Void clearEmergencyMode(Duration? timeout := null) {
-		if (navData?.flags?.emergencyLanding == true)
+		flags := navData?.flags
+		if (flags?.emergencyLanding == true || flags?.userEmergencyLanding == true)
 			NavDataLoop.clearEmergencyMode(this, timeout ?: config.configCmdAckTimeout)
 	}
 
-	** Sets or clears config and profiles relating to indoor / outdoor flight.
-	** See:
-	**  - 'control:outdoor'
-	**  - 'control:flight_without_shell'
-	Void setOutdoorFlight(Bool outdoors := true) {
-		sendConfig("control:outdoor", outdoors)
-		sendConfig("control:flight_without_shell", outdoors)
-	}
+	// TODO move to DroneConfig class
+//	** Sets or clears config and profiles relating to indoor / outdoor flight.
+//	** See:
+//	**  - 'control:outdoor'
+//	**  - 'control:flight_without_shell'
+//	Void setOutdoorFlight(Bool outdoors := true) {
+//		sendConfig("control:outdoor", outdoors)
+//		sendConfig("control:flight_without_shell", outdoors)
+//	}
 	
 	** Sends a emergency signal which cuts off the drone's motors, causing a crash landing.
+	** 
+	** This method does not block.
 	Void crashLand() {
 		if (navData?.flags?.emergencyLanding == false)
 			cmdSender.send(Cmd.makeEmergency)
@@ -242,6 +252,8 @@ const class Drone {
 	** 
 	** Call before each flight, while making sure the drone is sitting horizontally on the ground. 
 	** Not doing so will result in the drone not being unstable.
+	** 
+	** This method does not block.
 	Void flatTrim() {
 		if (state != FlightState.def && state != FlightState.init && state != FlightState.landed) {
 			log.warn("Can not flat trim when state is ${state}")
@@ -288,29 +300,19 @@ const class Drone {
 	** 
 	** Corresponds to the 'control:flight_anim' config cmd.
 	Void animateFlight(FlightAnimation anim, Duration? duration := null, Bool block := true) {
-		params	:= [anim.ordinal, (duration ?: anim.defaultDuration).toSec].join(",")
-		cmd		:= Cmd.makeConfig("control:flight_anim", params)
-
-		future := TimedLoop(this, duration ?: anim.defaultDuration, cmd).future
-		if (block) {
-			future.get
-			return null 
-		}
-		
-		return |->| { future.cancel }
-	
-//		sendConfig("control:flight_anim", params)
-//		if (block)
-//			Actor.sleep(duration ?: anim.defaultDuration)
+		params	:= [anim.ordinal, (duration ?: anim.defaultDuration).toMillis].join(",")	
+		sendConfig("control:flight_anim", params)
+		if (block)
+			Actor.sleep(duration ?: anim.defaultDuration)
 	}
 	
 	
 	
 	// ---- Stabilising Commands ----
 	
-	** Repeatedly sends a take off cmd to the drone until it reports its state as either 'hovering' or 'flying'.
+	** Repeatedly sends a take off command to the drone until it reports its state as either 'hovering' or 'flying'.
 	** 
-	** If 'block' is 'true' then it blocks the thread until a stable hover has been achieved; 
+	** If 'block' is 'true' then this method blocks until a stable hover has been achieved; 
 	** which usually takes ~ 6 seconds.
 	** 
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
@@ -322,9 +324,9 @@ const class Drone {
 		NavDataLoop.takeOff(this, block, timeout ?: config.actionTimeout)
 	}
 
-	** Repeatedly sends a land cmd to the drone until it reports its state as 'landed'.
+	** Repeatedly sends a land command to the drone until it reports its state as 'landed'.
 	**  
-	** If 'block' is 'true' then it blocks the thread until the drone has landed.
+	** If 'block' is 'true' then this method blocks until the drone has landed.
 	** 
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
 	Void land(Bool block := true, Duration? timeout := null) {
@@ -335,9 +337,9 @@ const class Drone {
 		NavDataLoop.land(this, block, timeout ?: config.actionTimeout)
 	}
 	
-	** Repeatedly sends a hover cmd to the drone until it reports its state as 'hovering'.
+	** Repeatedly sends a hover command to the drone until it reports its state as 'hovering'.
 	**  
-	** If 'block' is 'true' then it blocks the thread until the drone has landed.
+	** If 'block' is 'true' then this method blocks until the drone hovers.
 	** 
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
 	Void hover(Bool block := true, Duration? timeout := null) {
@@ -354,53 +356,250 @@ const class Drone {
 	
 	// ---- Movement Commands ----
 
-	** The 'verticalSpeed' is a percentage of the maximum vertical speed.
+	** Moves the drone vertically upwards.
+	** 
+	** 'verticalSpeed' is a percentage of the maximum vertical speed and should be a value between -1 and 1.
 	** A positive value makes the drone rise in the air, a negative value makes it go down.	
+	** 
+	** 'duration' is how long the drone should move for, during which the move command is resent every 'config.cmdInterval'.
+	** Movement is cancelled if 'land()' is called or an emergency flag is set. 
+	** 
+	** Should 'block' be 'false', this method returns immediately and movement commands are sent in the background. 
+	** Call the returned function to cancel movement before the 'duration' interval is reached. 
+	** Calling the function after 'duration' does nothing. 
+	** 
+	** pre>
+	** syntax: fantom
+	** // move the drone
+	** cancel := drone.moveUp(0.5f, 5sec, false)
+	**
+	** // wait a bit
+	** Actor.sleep(2sec) 
+	** 
+	** // cancel the move
+	** cancel()
+	** <pre 
+	** 
+	** If 'duration' is 'null' then the movement command is sent just the once.
+	** 
+	** See config commands 'control:altitude_max', 'control:control_vz_max'.
 	|->|? moveUp(Float verticalSpeed, Duration? duration := null, Bool? block := true) {
 		doMove(Cmd.makeMove(0f, 0f, verticalSpeed, 0f), verticalSpeed, duration, block)
 	}
 	
+	** Moves the drone vertically downwards.
+	** 
+	** 'verticalSpeed' is a percentage of the maximum vertical speed and should be a value between -1 and 1.
+	** A positive value makes the drone descend in the air, a negative value makes it go up.	
+	** 
+	** 'duration' is how long the drone should move for, during which the move command is resent every 'config.cmdInterval'.
+	** Movement is cancelled if 'land()' is called or an emergency flag is set. 
+	** 
+	** Should 'block' be 'false', this method returns immediately and movement commands are sent in the background. 
+	** Call the returned function to cancel movement before the 'duration' interval is reached. 
+	** Calling the function after 'duration' does nothing. 
+	** 
+	** pre>
+	** syntax: fantom
+	** // move the drone
+	** cancel := drone.moveDown(0.5f, 5sec, false)
+	**
+	** // wait a bit
+	** Actor.sleep(2sec) 
+	** 
+	** // cancel the move
+	** cancel()
+	** <pre 
+	** 
+	** If 'duration' is 'null' then the movement command is sent just the once.
+	** 
+	** See config commands 'control:altitude_min', 'control:control_vz_max'.
 	|->|? moveDown(Float verticalSpeed, Duration? duration := null, Bool? block := true) {
 		doMove(Cmd.makeMove(0f, 0f, -verticalSpeed, 0f), verticalSpeed, duration, block)
 	}
 	
-	** The 'tilt' (aka *roll* or *phi*) is a percentage of the maximum inclination.
+	** Moves the drone to the left.
+	** 
+	** 'tilt' (aka *roll* or *phi*) is a percentage of the maximum inclination and should be a value between -1 and 1.
 	** A positive value makes the drone tilt to its left, thus flying leftward. A negative value makes the drone tilt to its right.
+	** 
+	** 'duration' is how long the drone should move for, during which the move command is resent every 'config.cmdInterval'.
+	** Movement is cancelled if 'land()' is called or an emergency flag is set. 
+	** 
+	** Should 'block' be 'false', this method returns immediately and movement commands are sent in the background. 
+	** Call the returned function to cancel movement before the 'duration' interval is reached. 
+	** Calling the function after 'duration' does nothing. 
+	** 
+	** pre>
+	** syntax: fantom
+	** // move the drone
+	** cancel := drone.moveLeft(0.5f, 5sec, false)
+	**
+	** // wait a bit
+	** Actor.sleep(2sec) 
+	** 
+	** // cancel the move
+	** cancel()
+	** <pre 
+	** 
+	** If 'duration' is 'null' then the movement command is sent just the once.
+	** 
+	** See config command 'control:euler_angle_max'.
 	|->|? moveLeft(Float tilt, Duration? duration := null, Bool? block := true) {
 		doMove(Cmd.makeMove(-tilt, 0f, 0f, 0f), tilt, duration, block)
 	}
 
-	** The 'tilt' (aka *roll* or *phi*) is a percentage of the maximum inclination.
+	** Moves the drone to the right.
+	** 
+	** The 'tilt' (aka *roll* or *phi*) is a percentage of the maximum inclination and should be a value between -1 and 1.
 	** A positive value makes the drone tilt to its right, thus flying right. A negative value makes the drone tilt to its left.
+	** 
+	** 'duration' is how long the drone should move for, during which the move command is resent every 'config.cmdInterval'.
+	** Movement is cancelled if 'land()' is called or an emergency flag is set. 
+	** 
+	** Should 'block' be 'false', this method returns immediately and movement commands are sent in the background. 
+	** Call the returned function to cancel movement before the 'duration' interval is reached. 
+	** Calling the function after 'duration' does nothing. 
+	** 
+	** pre>
+	** syntax: fantom
+	** // move the drone
+	** cancel := drone.moveRight(0.5f, 5sec, false)
+	**
+	** // wait a bit
+	** Actor.sleep(2sec) 
+	** 
+	** // cancel the move
+	** cancel()
+	** <pre 
+	** 
+	** If 'duration' is 'null' then the movement command is sent just the once.
+	** 
+	** See config command 'control:euler_angle_max'.
 	|->|? moveRight(Float tilt, Duration? duration := null, Bool? block := true) {
 		doMove(Cmd.makeMove(tilt, 0f, 0f, 0f), tilt, duration, block)		
 	}
 	
-	** The 'tilt' (aka *pitch* or *theta*) is a percentage of the maximum inclination.
-	** A negative value drops its nose, thus flying forward. A positive value raises the nose, thus flying backward.
+	** Moves the drone forward.
+	** 
+	** The 'tilt' (aka *pitch* or *theta*) is a percentage of the maximum inclination and should be a value between -1 and 1.
+	** A positive value makes the drone drop its nose, thus flying forward. A negative value makes the drone tilt back.
+	** 
+	** 'duration' is how long the drone should move for, during which the move command is resent every 'config.cmdInterval'.
+	** Movement is cancelled if 'land()' is called or an emergency flag is set. 
+	** 
+	** Should 'block' be 'false', this method returns immediately and movement commands are sent in the background. 
+	** Call the returned function to cancel movement before the 'duration' interval is reached. 
+	** Calling the function after 'duration' does nothing. 
+	** 
+	** pre>
+	** syntax: fantom
+	** // move the drone
+	** cancel := drone.moveForward(0.5f, 5sec, false)
+	**
+	** // wait a bit
+	** Actor.sleep(2sec) 
+	** 
+	** // cancel the move
+	** cancel()
+	** <pre 
+	** 
+	** If 'duration' is 'null' then the movement command is sent just the once.
+	** 
+	** See config command 'control:euler_angle_max'.
 	|->|? moveForward(Float tilt, Duration? duration := null, Bool? block := true) {
 		doMove(Cmd.makeMove(0f, -tilt, 0f, 0f), tilt, duration, block)
 	}
 
-	** The 'tilt' (aka *pitch* or *theta*) is a percentage of the maximum inclination.
+	** Moves the drone backward.
+	** 
+	** The 'tilt' (aka *pitch* or *theta*) is a percentage of the maximum inclination and should be a value between -1 and 1.
+	** A positive value makes the drone raise its nose, thus flying forward. A negative value makes the drone tilt forward.
+	** 
+	** 'duration' is how long the drone should move for, during which the move command is resent every 'config.cmdInterval'.
+	** Movement is cancelled if 'land()' is called or an emergency flag is set. 
+	** 
+	** Should 'block' be 'false', this method returns immediately and movement commands are sent in the background. 
+	** Call the returned function to cancel movement before the 'duration' interval is reached. 
+	** Calling the function after 'duration' does nothing. 
+	** 
+	** pre>
+	** syntax: fantom
+	** // move the drone
+	** cancel := drone.moveBackward(0.5f, 5sec, false)
+	**
+	** // wait a bit
+	** Actor.sleep(2sec) 
+	** 
+	** // cancel the move
+	** cancel()
+	** <pre 
+	** 
+	** If 'duration' is 'null' then the movement command is sent just the once.
+	** 
+	** See config command 'control:euler_angle_max'.
 	|->|? moveBackward(Float tilt, Duration? duration := null, Bool? block := true) {
 		doMove(Cmd.makeMove(0f, tilt, 0f, 0f), tilt, duration, block)
 	}
 	
-	** The 'angularSpeed' (aka *yaw*) is a percentage of the maximum angular speed.
+	** Spins the drone clockwise.
+	** 
+	** The 'angularSpeed' (aka *yaw*) is a percentage of the maximum angular speed and should be a value between -1 and 1.
 	** A positive value makes the drone spin clockwise; a negative value makes it spin anti-clockwise.
 	** 
-	**  -1 to 1
+	** 'duration' is how long the drone should move for, during which the move command is resent every 'config.cmdInterval'.
+	** Movement is cancelled if 'land()' is called or an emergency flag is set. 
 	** 
-	** If 'duration' is given then this method will block and send move cmd to the drone every 
-	** 'config.cmdInterval'.
+	** Should 'block' be 'false', this method returns immediately and movement commands are sent in the background. 
+	** Call the returned function to cancel movement before the 'duration' interval is reached. 
+	** Calling the function after 'duration' does nothing. 
 	** 
-	** Alternatively, if 'block' is false then the method returns immediately, returning a func that, 
-	** when called, cancels any future cmd sends.
+	** pre>
+	** syntax: fantom
+	** // move the drone
+	** cancel := drone.spinClockwise(0.5f, 5sec, false)
+	**
+	** // wait a bit
+	** Actor.sleep(2sec) 
+	** 
+	** // cancel the move
+	** cancel()
+	** <pre 
+	** 
+	** If 'duration' is 'null' then the movement command is sent just the once.
+	** 
+	** See config command 'control:control_yaw'.
 	|->|? spinClockwise(Float angularSpeed, Duration? duration := null, Bool? block := true) {
 		doMove(Cmd.makeMove(0f, 0f, 0f, angularSpeed), angularSpeed, duration, block)
 	}
 	
+	** Spins the drone anti-clockwise.
+	** 
+	** The 'angularSpeed' (aka *yaw*) is a percentage of the maximum angular speed and should be a value between -1 and 1.
+	** A positive value makes the drone spin anti-clockwise; a negative value makes it spin clockwise.
+	** 
+	** 'duration' is how long the drone should move for, during which the move command is resent every 'config.cmdInterval'.
+	** Movement is cancelled if 'land()' is called or an emergency flag is set. 
+	** 
+	** Should 'block' be 'false', this method returns immediately and movement commands are sent in the background. 
+	** Call the returned function to cancel movement before the 'duration' interval is reached. 
+	** Calling the function after 'duration' does nothing. 
+	** 
+	** pre>
+	** syntax: fantom
+	** // move the drone
+	** cancel := drone.spinAntiClockwise(0.5f, 5sec, false)
+	**
+	** // wait a bit
+	** Actor.sleep(2sec) 
+	** 
+	** // cancel the move
+	** cancel()
+	** <pre 
+	** 
+	** If 'duration' is 'null' then the movement command is sent just the once.
+	** 
+	** See config command 'control:control_yaw'.
 	Void spinAntiClockwise(Float angularSpeed, Duration? duration := null, Bool? block := true) {
 		doMove(Cmd.makeMove(0f, 0f, 0f, -angularSpeed), angularSpeed, duration, block)
 	}
@@ -516,7 +715,7 @@ const class Drone {
 			return null 
 		}
 		
-		return |->| { future.cancel }
+		return |->| { if (!future.state.isComplete) future.cancel }
 	}
 	
 	private Str encodeConfigParam(Obj? p) {
@@ -599,7 +798,7 @@ enum class FlightAnimation {
 	}
 }
 
-** Governs what the drone should do if the program exists whilst it's flying.
+** Governs what the drone should do if the program exists whilst flying.
 ** Default is 'land'.
 enum class ExitStrategy {
 	** Do nothing, let the drone continue doing whatever it was programmed to do.
