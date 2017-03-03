@@ -7,8 +7,6 @@ internal class Main {
 //		VideoReader().read
 		
 		Frame().boot()
-		
-//		FlightPlan().fly(Drone())
 	}
 	
 }

@@ -1,49 +1,46 @@
 using gfx
 using fwt
-using afFish2
 
 class ScreenIntro : Screen {
 	
-	new make(AnsiTerminal text, Drone drone) : super(text, drone) { }
+	new make(Label screen, Drone drone) : super(screen, drone) { }
 	
 	override Void onEnter() {
 		try {
 			drone.connect
+			drone.clearEmergencyLanding
+			drone.flatTrim
 		} catch {
 			exit
-			ScreenDisconnect(terminal, drone).enter
+			ScreenDisconnect(screen, drone).enter
 			return
 		}
 
-		showLogo(AnsiBuf().fgIdx(10).add("Connected to Drone v${drone.droneVersion}").reset)
-		terminal.print("\n")
-		terminal.print(centre("--- KEYS ----")).print("\n")
-		terminal.print("\n")
-		terminal.print(centre("ESC ......... Initiate Emergency Landing")).print("\n")
-		terminal.print(centre("ENTER ....... Take off / Land           ")).print("\n")
-		terminal.print(centre("SPACE ....... Hover                     ")).print("\n")
-		terminal.print("\n")
-		terminal.print(centre("1-9 ......... Max Power / Tilt Angle    ")).print("\n")
-		terminal.print(centre("WASD ........ Move                      ")).print("\n")
-		terminal.print(centre("Q E ......... Spin                      ")).print("\n")
-		terminal.print(centre("Up / Down ... Altitude                  ")).print("\n")
-		terminal.print("\n")
-		terminal.print(centre(".... press any key to continue...")).print("\n")
+		showLogo("Connected to Drone v${drone.droneVersion}")
+		text := ""
+		text += "\n"
+		text += centre("--- KEYS ----") + "\n"
+		text += "\n"
+		text += centre("ESC ......... Initiate Emergency Landing") + "\n"
+		text += centre("ENTER ....... Take off / Land           ") + "\n"
+		text += centre("SPACE ....... Hover                     ") + "\n"
+		text += "\n"
+		text += centre("1-9 ......... Max Power / Tilt Angle    ") + "\n"
+		text += centre("WASD ........ Move                      ") + "\n"
+		text += centre("Q E ......... Spin                      ") + "\n"
+		text += centre("Up / Down ... Altitude                  ") + "\n"
+		text += "\n"
+		text += centre(".... press any key to continue...") + "\n"
+		
+		screen.text += text
+		vpad
 	}
 	
 	override Void onKeyUp(Event e) {
 		if (drone.isConnected) {
 			exit
-			ScreenMain(terminal, drone).enter
+			ScreenMain(screen, drone).enter
 		}
 	}
 }
 
-class ScreenDisconnect : Screen {
-	new make(AnsiTerminal text, Drone drone) : super(text, drone) { }
-	
-	override Void onEnter() {
-		showLogo(AnsiBuf().fg(terminal.errStyle.fg).add("!!! DISCONNECTED !!!").reset)
-		terminal.printErr("\n" + centre(" --- check your wifi settings ---") + "\n")
-	}
-}

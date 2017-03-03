@@ -1,48 +1,50 @@
 using fwt
-using afFish2
 
 class Screen {
-	AnsiTerminal	terminal
-	Drone			drone
-	Int				maxWidth() { terminal.cols.max(48) }
+	Label	screen
+	Drone	drone
+	Int		maxWidth() { (screen.bounds.w / screen.font.width("W") - 4).max(48) }
 	
 	private	|Event| onKeyDownListener	:= #onKeyDown.func.bind([this])
 	private	|Event| onKeyUpListener		:= #onKeyUp.func.bind([this])
 
-	new make(AnsiTerminal terminal, Drone drone) {
-		this.terminal	= terminal
-		this.drone		= drone
+	new make(Label screen, Drone drone) {
+		this.screen	= screen
+		this.drone	= drone
 	}
 	
 	Void enter() {
-		terminal.richText.onVerifyKey.add	(onKeyDownListener)
-		terminal.richText.onKeyUp.add	(onKeyUpListener)
-		terminal.clear
+		screen.window.onKeyDown.add(onKeyDownListener)
+		screen.window.onKeyUp.add	(onKeyUpListener)
 		onEnter
 	}
 	
 	Void exit() {
-		terminal.richText.onKeyDown.remove	(onKeyDownListener)
-		terminal.richText.onKeyUp.remove	(onKeyUpListener)
+		screen.window.onKeyDown.remove(onKeyDownListener)
+		screen.window.onKeyUp.remove  (onKeyUpListener)
 		onExit
 	}
 	
-	Void showLogo(Obj text := "") {
-		str		 := text.toStr
+	Void showLogo(Str text := "") {
 		title	 := "A.R. Drone Controller ${typeof.pod.version}"
 		titlePad := "".justl(maxWidth - 9 - title.size)
-		textPad  := "".justl(maxWidth - 9 - AnsiBuf(str).toPlain.size)
-		buf := AnsiBuf().clearScreen.add(
+		textPad  := "".justl(maxWidth - 9 - text.size)
+		logo	 := 
 			"  _____  \n" +
-			" /X | X\\ " + titlePad).underline.add(title).underline(false).add("\n" + 
+			" /X | X\\ " + titlePad + title + "\n" + 
 			"|__\\|/__|" + "by Alien-Factory".justr(maxWidth - 9) + "\n" + 
 			"|  /|\\  |" + "\n" + 
-			" \\X_|_X/ " + textPad + str + "\n")
-		terminal.print(buf.toAnsi)
+			" \\X_|_X/ " + textPad + text + "\n"
+		
+		screen.text = logo
 	}
 	
-	Str centre(Str txt) {
-		"".justl((maxWidth - txt.size) / 2) + txt
+	Str centre(Str txt, Int width := maxWidth) {
+		("".justl((width - txt.size) / 2) + txt).justl(width)
+	}
+	
+	Void vpad() {
+		(20 - screen.text.numNewlines).times { screen.text += "\n" }
 	}
 	
 	virtual Void onKeyDown(Event e) { }
