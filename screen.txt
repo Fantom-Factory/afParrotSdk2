@@ -12,9 +12,9 @@ Velocity    : [X] -24.04   [Y]  3.99  [Z] 40.00
 
 Power : ================================== 100%
 
-    FF            -- Flying --             E2
-  --  --      *** USER EMERGENCY ***     21  --
-    --         *** BATTERY LOW ***         --
+    FF          -- Flying --             E2      
+  --  --    *** USER EMERGENCY ***     21  --  
+    --       *** BATTERY LOW ***         --
   
 !!! motorProblem / gyrometersDown / magnometerNeedsCalibration !!!
 anglesOutOufRange / too much tilt

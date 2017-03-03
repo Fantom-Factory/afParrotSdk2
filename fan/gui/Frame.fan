@@ -1,42 +1,40 @@
-using concurrent::Actor
-using concurrent::ActorPool
 using gfx
 using fwt
-using afConcurrent::Synchronized
-using afFish2
 
 ** Kill me!
 class Frame {
 	private Log				log				:= Drone#.pod.log
 
-	Drone?			drone
-	Window?			window
-	Widget?			text
-	AnsiTerminal?	terminal
+	Drone?	drone
+	Window?	window
+	Label?	screen
 	
 	Void boot() {
 		Drone#.pod.log.level = LogLevel.debug
-		
-		terminal := AnsiTerminal()
 		
 		Window {
 			this.window = it
 			it.title = "A.R. Drone SDK Demo for Fantom"
 			it.size = Size(440, 340)
-//			it.resizable = false
 			
 			it.onOpen.add |->| {
 				drone = Drone()
-				terminal.print("Connecting to drone...")
+				screen.text = "Connecting to drone..."
+				ScreenIntro(screen, drone).vpad
+				window.focus
 				Desktop.callLater(50ms) |->| {
-					ScreenIntro(terminal, drone).enter
+					ScreenIntro(screen, drone).enter
 				}
 			}
 			it.onClose.add |->| {
 				drone.disconnect
 			}
 			it.add(
-				terminal.richText
+				screen = Label {
+					it.font = Font { name = "Consolas"; size = 10}
+					it.bg	= Color(0x202020)
+					it.fg	= Color(0x31E722)
+				}
 			)
 		}.open
 	}

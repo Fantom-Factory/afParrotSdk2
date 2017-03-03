@@ -238,7 +238,6 @@ const class Drone {
 	** 
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.configCmdAckTimeout'.
 	Void setEmergencyLanding(Duration? timeout := null) {
-		echo(navData?.flags?.emergencyLanding)
 		if (navData?.flags?.emergencyLanding == false) {
 			cmdSender.send(Cmd.makeLand, Cmd.makeEmergency)
 			NavDataLoop.setEmergency(this, timeout ?: networkConfig.configCmdAckTimeout)
