@@ -61,10 +61,11 @@ const class NavDataFlags {
 		f?.call(this)
 	}
 	
+	** The drone is in the air.
 	Bool	flying()					{ data.and(1.shiftl( 0)) != 0 }
 	Bool	videoEnabled()				{ data.and(1.shiftl( 1)) != 0 }
 	Bool	visionEnabled()				{ data.and(1.shiftl( 2)) != 0 }
-	Bool	eulerAngelsControl()		{ data.and(1.shiftl( 3)) == 0 }	// yep - this is correct!
+	Bool	eulerAnglesControl()		{ data.and(1.shiftl( 3)) == 0 }	// yep - this is correct!
 	Bool	angularSpeedControl()		{ data.and(1.shiftl( 3)) != 0 }
 	Bool	altitudeControlActive()		{ data.and(1.shiftl( 4)) != 0 }
 	Bool	userFeedbackOn()			{ data.and(1.shiftl( 5)) != 0 }
@@ -73,18 +74,23 @@ const class NavDataFlags {
 	Bool	travellingEnabled()			{ data.and(1.shiftl( 8)) != 0 }
 	Bool	usbReady()					{ data.and(1.shiftl( 9)) != 0 }
 	Bool	navDataDemo()				{ data.and(1.shiftl(10)) != 0 }
+	** Bootstap mode is on.
 	Bool	navDataBootstrap()			{ data.and(1.shiftl(11)) != 0 }
 	Bool	motorProblem()				{ data.and(1.shiftl(12)) != 0 }
 	Bool	communicationLost()			{ data.and(1.shiftl(13)) != 0 }
 	Bool	gyrometersDown()			{ data.and(1.shiftl(14)) != 0 }
+	** Battery level is at or below 20%
 	Bool	batteryTooLow()				{ data.and(1.shiftl(15)) != 0 }
+	** The user initiated an emergency landing (sent an emergency AT*REF command)
 	Bool	userEmergencyLanding()		{ data.and(1.shiftl(16)) != 0 }
 	Bool	timerElapsed()				{ data.and(1.shiftl(17)) != 0 }
 	Bool	magnometerNeedsCalibration(){ data.and(1.shiftl(18)) != 0 }
-	Bool	angelsOutOufRange()			{ data.and(1.shiftl(19)) != 0 }
+	** Drone exceeded maximum tilt. This also sets 'emergencyLanding'.
+	Bool	anglesOutOufRange()			{ data.and(1.shiftl(19)) != 0 }
+	** Too much wind.
 	Bool	tooMuchWind()				{ data.and(1.shiftl(20)) != 0 }
 	Bool	ultrasonicSensorDeaf()		{ data.and(1.shiftl(21)) != 0 }
-	Bool	cutoutDetected()			{ data.and(1.shiftl(22)) != 0 }
+	Bool	cutOutDetected()			{ data.and(1.shiftl(22)) != 0 }
 	Bool	picVersionNumberOK()		{ data.and(1.shiftl(23)) != 0 }
 	Bool	atCodedThreadOn()			{ data.and(1.shiftl(24)) != 0 }
 	Bool	navDataThreadOn()			{ data.and(1.shiftl(25)) != 0 }
@@ -93,6 +99,7 @@ const class NavDataFlags {
 	Bool	controlWatchdogDelayed()	{ data.and(1.shiftl(28)) != 0 }
 	Bool	adcWatchdogDelayed()		{ data.and(1.shiftl(29)) != 0 }
 	Bool	comWatchdogProblem()		{ data.and(1.shiftl(30)) != 0 }
+	** The drone initiated an emergency landing.
 	Bool	emergencyLanding()			{ data.and(1.shiftl(31)) != 0 }
 	
 	** Dumps all flags out to debug string.
@@ -146,9 +153,9 @@ const class NavOptionDemo {
 	const	Float		velocityZ
 	** Streamed frame index. Not used -> To integrate in video stage.
 	const	Int			frameIndex
-	** (Deprecated) Camera parameters compute by detection
+	** (Deprecated) Camera parameters computed by detection
 	const	Str:Obj		detection
-	** (Deprecated) Camera parameters compute by drone
+	** (Deprecated) Camera parameters computed by drone
 	const	Str:Obj		drone
 	@NoDoc
 	new make(|This| f) { f(this) }
