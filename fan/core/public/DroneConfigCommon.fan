@@ -1,4 +1,6 @@
 
+** Drone config in the Common category.
+** This is the default category, common to all applications.
 const class DroneConfigCommon {
 	private const Drone drone
 	
@@ -132,15 +134,6 @@ const class DroneConfigCommon {
 		set { setConfig("GENERAL:navdata_demo", it.toStr.upper) }		
 	}
 
-	** When using 'navDataDemo', this configuration allows the application to ask for other navData packets.
-	** Most common example is the 'default_navdata_options' macro defined in the 'config_key.h' file.
-	** The full list of the possible navData packets can be found in the 'navdata_common.h' file.
-	// TODO map to navdata_options enum / flags
-	Int navDataOptions {
-		get { getConfig("GENERAL:navdata_options").toInt }
-		set { setConfig("GENERAL:navdata_options", it.toStr) }		
-	}
-
 //	** Time the drone can wait without receiving any command from a client program. Beyond this 
 //	** delay, the drone will enter in a *Com Watchdog triggered* state and hover on top a fixed point.
 //	** 
@@ -168,6 +161,7 @@ const class DroneConfigCommon {
 		set { setConfig("GENERAL:vbat_min", it.toStr) }		
 	}
 
+	** Dumps all fields to debug string.
 	Str dump() {
 		fields := typeof.fields.findAll { it.isPublic && it.parent == this.typeof }
 		names  := (Str[]) fields.map { it.name.toDisplayName }

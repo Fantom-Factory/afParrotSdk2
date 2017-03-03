@@ -1,30 +1,4 @@
 
-http://motioninjoy.en.uptodown.com/windows
-
-PS3 - "HID API connected SonyPS3Controller"
-    private static final int VENDOR_ID          = 1356;
-    private static final int PRODUCT_ID         = 616;
-    private static final int BUFSIZE            = 64;
-    private static final int EXPECTED_BUFSIZE   = 32;
-    private static final int EXPECTED_BUFSIZE_2 = 49;
-    
-    
-"HID API MotioninJoy VirtualController for PS3"
-    private static final int VENDOR_ID          = 34952;
-    private static final int PRODUCT_ID         = 776; 
-    private static final int BUFSIZE            = 64;
-    private static final int EXPECTED_BUFSIZE   = 11;
-
-Pure Java HID-API    
-https://github.com/nyholku/purejavahidapi
-
-
-
-GamePads in Web
-https://www.html5rocks.com/en/tutorials/doodles/gamepad/
-How about a X-platform API!? :D
-
-
 
 For fandoc - see the SDK PDF available at 5 mb download - put on aflien-factory
 
