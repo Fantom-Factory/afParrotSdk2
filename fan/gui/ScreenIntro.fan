@@ -7,10 +7,13 @@ class ScreenIntro : Screen {
 	
 	override Void onEnter() {
 		try {
+			StateLogger().start(drone)
 			drone.connect
 			drone.clearEmergencyLanding
 			drone.flatTrim
-		} catch {
+
+		} catch(Err err) {
+			err.trace
 			exit
 			ScreenDisconnect(screen, drone).enter
 			return
