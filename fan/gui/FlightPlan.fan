@@ -29,6 +29,8 @@ class FlightPlan {
 		drone.clearEmergencyLanding
 		drone.flatTrim
 		
+		drone.setEmergencyLanding
+		
 		return ctrlLoop
 		
 		
@@ -165,7 +167,7 @@ class FlightPlan {
 		roll  := 0f
 		pitch := 0f
 
-		if (keyMap.containsKey(Key.d))		roll  = -power
+		if (keyMap.containsKey(Key.a))		roll  = -power
 		if (keyMap.containsKey(Key.d))		roll  =  power
 		if (keyMap.containsKey(Key.w))		pitch = -power
 		if (keyMap.containsKey(Key.s))		pitch =  power

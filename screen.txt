@@ -1,0 +1,53 @@
+  _____
+ /X | X\           A.R. Drone Controller v0.0.2
+|__\|/__|                      by Alien-Factory 
+|  /|\  |
+ \X_|_X/              Connected to Drone v2.4.9
+ 
+Flight Status: Landed       Battery Level : 57%
+
+Altitude    : 30 cm
+Orientation : [X] -24.04   [Y]  3.99  [Z] 40.00
+Velocity    : [X] -24.04   [Y]  3.99  [Z] 40.00
+
+Power : ================================== 100%
+
+    FF            -- Flying --             E2
+  --  --      *** USER EMERGENCY ***     21  --
+    --         *** BATTERY LOW ***         --
+  
+!!! motorProblem / gyrometersDown / magnometerNeedsCalibration !!!
+anglesOutOufRange / too much tilt
+tooMuchWind / ultrasonicSensorDeaf / cutOutDetected
+
+
+---------------------------------------------------
+  _____
+ /X | X\            A.R. Drone Controller v0.0.2
+|__\|/__|                       by Alien-Factory 
+|  /|\  |
+ \X_|_X/                    !!! DISCONNECTED !!!
+ 
+    --- Check your WiFi connection settings ---
+    
+    
+---------------------------------------------------
+  _____
+ /X | X\           A.R. Drone Controller v0.0.2
+|__\|/__|                      by Alien-Factory 
+|  /|\  |
+ \X_|_X/              Connected to Drone v2.4.9
+ 
+                 --- Keys ----
+ 
+    ESC ......... Initiate Emergency Landing
+    ENTER ....... Take off / Land
+    SPACE ....... Hover
+ 
+    1-9 ......... Max Power / Tilt Angle
+    WASD ........ Move
+    Q E ......... Spin 
+    Up / Down ... Altitude
+
+         .... press any key to continue...
+  

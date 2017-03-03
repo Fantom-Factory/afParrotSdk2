@@ -190,6 +190,11 @@ const class Drone {
 		_doDisconnect(false, timeout)
 	}
 	
+	** Returns 'true' if connected to the drone.
+	Bool isConnected() {
+		!actorPool.isStopped
+	}
+	
 	
 	
 	// ---- Misc Commands ----

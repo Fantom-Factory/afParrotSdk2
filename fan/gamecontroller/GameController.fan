@@ -17,18 +17,18 @@ class GameController {
 			if (info.getVendorId == 3727 && info.getProductId == 12557)
 				gamePadInfo = info
 		}
-
-		oldDat := Buf()
-		PureJavaHidApi.openDevice(gamePadInfo).setInputReportListener |HidDevice? source, Int id, ByteArray? data, Int len| {
-			for (i := 0; i < data.size; ++i) {
-				d:=data.get(i)
-				Env.cur.out.print(d.and(0xFF).toHex(2)).print(" ")
-			}
-			Env.cur.out.printLine
-			
-		}
-		
-		Actor.sleep(20sec)
+//
+//		oldDat := Buf()
+//		PureJavaHidApi.openDevice(gamePadInfo).setInputReportListener |HidDevice? source, Int id, ByteArray? data, Int len| {
+//			for (i := 0; i < data.size; ++i) {
+//				d:=data.get(i)
+//				Env.cur.out.print(d.and(0xFF).toHex(2)).print(" ")
+//			}
+//			Env.cur.out.printLine
+//			
+//		}
+//		
+//		Actor.sleep(20sec)
 		
 	}
 	

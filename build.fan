@@ -20,6 +20,7 @@ class Build : BuildPod {
 			"gfx  1.0.69 - 1.0",
 
 			"afConcurrent 1.0.17 - 1.0", 
+			"afFish2 0+", 
 		]
 
 		srcDirs = [`fan/`, `fan/core/`, `fan/core/advanced/`, `fan/core/internal/`, `fan/core/public/`, `fan/gamecontroller/`, `fan/gui/`]
