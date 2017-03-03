@@ -7,22 +7,13 @@ class ScreenMain : Screen {
 
 	ActorPool		actorPool	:= ActorPool()
 	Synchronized?	thread
-	private Sounds	sounds 		:= Sounds()
-	Bool 			flying
 	Float			maxPower	:= 0.5f
 	Key:Int			keyMap		:= Key:Int[:] 
-
 	
 	new make(Label screen, Drone drone) : super(screen, drone) { }
 	
 	override Void onEnter() {
 		thisRef := Unsafe(this)
-		
-		drone.onNavData			= |navData|			{ thisRef.val->onNavData(navData)				  }
-		drone.onStateChange		= |state|			{ log.info("State Change: --> ${state}"); thisRef.val->onStateChange(state)	}
-		drone.onBatteryDrain	= |newPercentage|	{ log.info("Battery now at ${newPercentage}%"	) }
-		drone.onBatteryLow		= |->|				{ log.warn("   !!! Battery Level Low !!!"		) }
-		drone.onEmergency		= |->|				{ log.warn("   !!! EMERGENCY LANDING !!!   "	) }
 		drone.onDisconnect = |abnormal| {
 			Desktop.callAsync |->| {
 				if (abnormal) log.warn("   !!! DISCONNECTED !!!   "	)
@@ -142,31 +133,6 @@ class ScreenMain : Screen {
 		buf.add("[").add(str).add("]")
 		buf.add(num.toLocale("0.00").justr(7))
 		buf.add("   ")
-	}
-	
-	DroneState? oldState
-	NavDataFlags? oldFlags
-	Void onNavData(NavData navData) {
-		str := navData.flags.dumpChanged(oldFlags)
-		if (!str.isEmpty)
-			str.splitLines.each { log.debug(it) }
-		oldFlags = navData.flags
-	}
-
-	Void onStateChange(FlightState state) {
-		switch (state) {
-			case FlightState.transTakeOff:
-				sounds.takingOff.play
-			case FlightState.hovering:
-				sounds.hovering.play
-				flying = true
-			case FlightState.transLanding:
-				sounds.landing.play
-			case FlightState.landed:
-				if (flying)
-					sounds.landed.play
-				flying = false
-		}
 	}
 
 	override Void onKeyUp(Event event) {

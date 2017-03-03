@@ -3,6 +3,7 @@ using concurrent::Actor
 using concurrent::AtomicBool
 using concurrent::AtomicRef
 using afConcurrent::Synchronized
+using afConcurrent::AtomicMap
 
 ** The main interface to the Parrot AR Drone 2.0.
 ** 
@@ -19,6 +20,7 @@ const class Drone {
 	private	const	AtomicRef		onBatteryLowRef		:= AtomicRef()
 	private	const	AtomicRef		onDisconnectRef		:= AtomicRef()
 	private	const	AtomicRef		droneVersionRef		:= AtomicRef()
+	private	const	AtomicMap		configMap			:= AtomicMap { it.keyType = Str#; it.valType = Str#; it.caseInsensitive = true }
 	private	const	Synchronized	eventThread
 	private const	CmdSender		cmdSender
 	private const	NavDataReader	navDataReader
@@ -166,7 +168,6 @@ const class Drone {
 		cmdSender.send(Cmd.makeConfig("general:navdata_demo", "TRUE"))
 		if (actorPool.isStopped)
 			throw IOErr("Drone Connection Error")
-		
 		NavDataLoop.waitForAckClear	(this, networkConfig.configCmdAckClearTimeout, true)
 		NavDataLoop.waitUntilReady	(this, timeout ?: networkConfig.actionTimeout)
 
@@ -174,7 +175,8 @@ const class Drone {
 		catch (Err err)
 			log.warn("Could not FTP version.txt from drone", err)
 
-		// TODO grab some control config!
+		// grab some config
+		config(true)
 
 		Env.cur.addShutdownHook(shutdownHook)
 
@@ -195,7 +197,18 @@ const class Drone {
 		!actorPool.isStopped
 	}
 	
-	
+	** Returns a read only map of all the drones configuration data, as read from the drone's 
+	** control (TCP 5559) port.
+	** 
+	** All config data is cached, pass a 'reRead' value of 'true' to obtain fresh data from the 
+	** drone.
+	Str:Str config(Bool reRead := false) {
+		if (reRead || configMap.isEmpty)
+			configMap.map = ControlReader(this).read
+		return configMap.map
+	}
+
+
 	
 	// ---- Misc Commands ----
 	
@@ -640,6 +653,11 @@ const class Drone {
 		navDataReader.removeListener(f)		
 	}
 	
+	internal Void _updateConfig(Str key, Str val) {
+		// selectively update config (i.e. MY code!) 'cos we don't trust the user not to add random shite! 
+		configMap[key] = val
+	}
+	
 	private Void processNavData(NavData navData) {
 		if (actorPool.isStopped) return
 
@@ -680,6 +698,7 @@ const class Drone {
 					callSafe(onStateChange, [demoData.flightState, this])
 			
 				if (oldNavData?.demoData?.batteryPercentage == null || demoData.batteryPercentage < oldNavData.demoData.batteryPercentage)
+					// sometimes the percentage jumps up a bit, then drains backdown: 46% -> 47% -> 46% so we get 2 x battery events @ 46%
 					callSafe(onBatteryDrain, [demoData.batteryPercentage, this])
 			}
 		}
