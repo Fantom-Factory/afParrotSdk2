@@ -16,10 +16,17 @@ internal const class ControlReader {
 		}.connect(config.droneIpAddr, config.controlPort, config.actionTimeout)
 		
 		try {
+			NavDataLoop.waitForAckClear	(drone, drone.networkConfig.configCmdAckClearTimeout, true)
+
 			drone.sendCmd(Cmd.makeCtrl(4, 0))
 			
 			// config is usually ~ 4.5 KB
 			configStr := socket.in.readNullTerminatedStr(1024 * 8)
+			
+			NavDataLoop.waitForAck		(drone, drone.networkConfig.configCmdAckTimeout, true)
+			NavDataLoop.waitForAckClear	(drone, drone.networkConfig.configCmdAckClearTimeout, true)
+
+			echo(configStr)
 
 			return Str:Str[:] { caseInsensitive=true }.addAll(configStr.in.readProps)
 		} finally			

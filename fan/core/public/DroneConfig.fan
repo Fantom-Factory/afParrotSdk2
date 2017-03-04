@@ -1,13 +1,36 @@
+using concurrent::AtomicRef
 
-class DroneConfig {
-	private const	Log				log					:= Drone#.pod.log
+const class DroneConfig {
+	private const	Log		log		:= Drone#.pod.log
 
-	private const Drone drone
+	** The wrapped drone.
+	const Drone 	drone
+
+	private const AtomicRef	appId	:= AtomicRef("00000000")
+	private const AtomicRef	userId	:= AtomicRef("00000000")
+	private const AtomicRef	sessId	:= AtomicRef("00000000")
 	
 	new make(Drone drone) {
 		this.drone = drone
 	}
-	
+
+	** Gets or makes application config.
+	DroneConfigApplication applicationConfig(Str? appicationName := null) {
+		appConfig := DroneConfigApplication(this, false)
+		if (appicationName != null) {
+			id := appicationName.toBuf.crc("CRC-32-Adler").toHex(8).upper
+			if (id != appId.val) {
+				_sendMultiConfig("CUSTOM:application_id", id)
+//				drone.sendConfig("CUSTOM:application_id", id)
+				appId.val = id
+				_sendMultiConfig("CUSTOM:application_desc", appicationName)
+				drone.config(true)
+			}
+		}
+		return appConfig
+	}
+
+	// FIXME delete?
 	** Sets or clears config and profiles relating to indoor / outdoor flight.
 	** See:
 	**  - 'control:outdoor'
@@ -17,17 +40,10 @@ class DroneConfig {
 		drone.sendConfig("control:flight_without_shell", outdoors)
 	}
 
-	** Tell the drone to calibrate its magnetometer.
-	** 
-	** The drone calibrates its magnetometer by spinning around itself a few times, hence can
-	** only be performed when flying.
-	** 
-	** This method does not block.
-	Void calibrate(Int deviceNum) {
-		if (drone.state != FlightState.flying && drone.state != FlightState.hovering) {
-			log.warn("Can not calibrate magnetometer when state is ${drone.state}")
-			return
-		}
-		drone.sendCmd(Cmd.makeCalib(deviceNum))
+	internal Void _sendMultiConfig(Str key, Str val) {
+//		drone.sendConfig(key, val, sessId.val, userId.val, appId.val)
+
+		drone.sendCmd(Cmd.makeConfigIds(sessId.val, userId.val, appId.val))
+		drone.sendConfig(key, val)
 	}
 }

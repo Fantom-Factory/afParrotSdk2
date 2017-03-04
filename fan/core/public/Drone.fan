@@ -213,25 +213,37 @@ const class Drone {
 	// ---- Misc Commands ----
 	
 	** (Advanced) Sends the given Cmd to the drone.
+	** If a second Cmd is given, it is sent in the same UDP data packet.
 	** 
 	** This method does not block.
 	@NoDoc
-	Void sendCmd(Cmd cmd) {
-		cmdSender.send(cmd)
+	Void sendCmd(Cmd cmd, Cmd? cmd2 := null) {
+		cmdSender.send(cmd, cmd2)
 	}
 	
 	** (Advanced) 
 	** Sends a config cmd to the drone, and blocks until it's been acknowledged.
 	** 
-	** 'val' may be a Bool, Int, Float, Str, or a List of said types. 
-	Void sendConfig(Str key, Obj val) {
+	** 'val' may be a Bool, Int, Float, Str, or a List of said types.
+	** 
+	** For multi-config support, pass in the appropirate IDs. 
+	Void sendConfig(Str key, Obj val, Str? sessionId := null, Str? userId := null, Str? appId := null) {
+		// see http://stackoverflow.com/questions/3466452/xor-of-three-values
+		diff := (sessionId != null ? 1 : 0) + (userId != null ? 1 : 0) + (appId != null ? 1 : 0)
+		if (diff != 0 && diff != 3)
+			throw ArgErr("For multi-config support, either ALL IDs must be set or NONE - ${sessionId} : ${userId} : ${appId}")
 		if (val is List)
 			val = ((List) val).join(",") { encodeConfigParam(it) }
 		val = encodeConfigParam(val)
 		
 		block := true
 		NavDataLoop.waitForAckClear	(this, networkConfig.configCmdAckClearTimeout, block)
-		cmdSender.send(Cmd.makeConfig(key, val))
+
+		if (sessionId != null)
+			cmdSender.send(Cmd.makeConfigIds(sessionId, userId, appId), Cmd.makeConfig(key, val))
+		else
+			cmdSender.send(Cmd.makeConfig(key, val))
+
 		NavDataLoop.waitForAck		(this, networkConfig.configCmdAckTimeout, block)
 		NavDataLoop.waitForAckClear	(this, networkConfig.configCmdAckClearTimeout, block)
 	}
@@ -271,6 +283,20 @@ const class Drone {
 		cmdSender.send(Cmd.makeFlatTrim)
 	}
 
+	** Tell the drone to calibrate its magnetometer.
+	** 
+	** The drone calibrates its magnetometer by spinning around itself a few times, hence can
+	** only be performed when flying.
+	** 
+	** This method does not block.
+	Void calibrate(Int deviceNum) {
+		if (state != FlightState.flying && state != FlightState.hovering) {
+			log.warn("Can not calibrate magnetometer when state is ${state}")
+			return
+		}
+		sendCmd(Cmd.makeCalib(deviceNum))
+	}
+	
 	** Plays one of the pre-configured LED animation sequences. Example:
 	** 
 	**   syntax: fantom

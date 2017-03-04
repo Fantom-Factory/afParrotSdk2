@@ -64,7 +64,7 @@ internal class NavDataParser {
 			it.theta				= Float.makeBits32(in.readU4) / 1000
 			it.phi					= Float.makeBits32(in.readU4) / 1000
 			it.psi					= Float.makeBits32(in.readU4) / 1000
-			it.altitude				= in.readS4 / 1000
+			it.altitude				= in.readS4 / 1000f
 			it.velocityX			= Float.makeBits32(in.readU4)
 			it.velocityY			= Float.makeBits32(in.readU4)
 			it.velocityZ			= Float.makeBits32(in.readU4)
