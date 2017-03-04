@@ -25,6 +25,11 @@ const class Cmd {
 	static Cmd makeConfig(Str name, Str value) {
 		Cmd("CONFIG", [name, value])
 	}
+	
+	** Makes a 'CONFIG_IDS' cmd with the given IDs. 
+	static Cmd makeConfigIds(Str sessionId, Str userId, Str applicationId) {
+		Cmd("CONFIG_IDS", [sessionId, userId, applicationId])
+	}
 
 	** Makes a 'CTRL' cmd.
 	** 

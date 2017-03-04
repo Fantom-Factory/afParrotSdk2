@@ -118,7 +118,8 @@ const class NavDataFlags {
 		if (data.xor(oldFlags.data) == 0)
 			return ""
 		
-		return flagMethods.exclude { it == #comWatchdogProblem || it == #controlCommandAck }.map |method->Str?| {
+//		return flagMethods.exclude { it == #comWatchdogProblem || it == #controlCommandAck }.map |method->Str?| {
+		return flagMethods.map |method->Str?| {
 			oldVal := method.callOn(oldFlags, null)
 			newVal := method.callOn(this, null)
 			return (newVal == oldVal) ? null : logFlagValue(method, oldVal)
@@ -143,8 +144,8 @@ const class NavOptionDemo {
 	const	Float		phi
 	** Yaw in milli-degrees
 	const	Float		psi
-	** Altitude in centimeters
-	const	Int			altitude
+	** Altitude in metres
+	const	Float		altitude
 	** Estimated linear velocity
 	const	Float		velocityX
 	** Estimated linear velocity
