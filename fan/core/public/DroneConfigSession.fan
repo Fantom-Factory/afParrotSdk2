@@ -1,6 +1,7 @@
 
 ** Drone config in the Session category.
 ** These setting are be saved for the current flight session, regardless of application / user.
+@NoDoc
 const class DroneConfigSession {
 	private const Drone drone
 	

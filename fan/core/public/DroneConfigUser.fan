@@ -1,6 +1,7 @@
 
 ** Drone config in the User category.
 ** These settings are be saved for the current user / profile, regardless of the application.
+@NoDoc
 const class DroneConfigUser {
 	private const Drone drone
 	

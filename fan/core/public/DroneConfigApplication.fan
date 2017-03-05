@@ -1,6 +1,7 @@
 
 ** Drone config in the Application category.
 ** These settings are be saved for the current application.
+@NoDoc
 const class DroneConfigApplication {
 	private const Log			log		:= Drone#.pod.log
 	private const DroneConfig	config
