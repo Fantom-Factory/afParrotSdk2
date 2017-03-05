@@ -47,7 +47,7 @@ const class Drone {
 					}
 	
 	** Returns the current flight state of the Drone.
-					FlightState?	state {
+					FlightState?	flightState {
 						get { navData?.demoData?.flightState }
 						private set { }
 					}
@@ -276,8 +276,8 @@ const class Drone {
 	** 
 	** This method does not block.
 	Void flatTrim() {
-		if (state != FlightState.def && state != FlightState.init && state != FlightState.landed) {
-			log.warn("Can not flat trim when state is ${state}")
+		if (flightState != FlightState.def && flightState != FlightState.init && flightState != FlightState.landed) {
+			log.warn("Can not flat trim when state is ${flightState}")
 			return
 		}
 		cmdSender.send(Cmd.makeFlatTrim)
@@ -290,8 +290,8 @@ const class Drone {
 	** 
 	** This method does not block.
 	Void calibrate(Int deviceNum) {
-		if (state != FlightState.flying && state != FlightState.hovering) {
-			log.warn("Can not calibrate magnetometer when state is ${state}")
+		if (flightState != FlightState.flying && flightState != FlightState.hovering) {
+			log.warn("Can not calibrate magnetometer when state is ${flightState}")
 			return
 		}
 		sendCmd(Cmd.makeCalib(deviceNum))
@@ -338,8 +338,8 @@ const class Drone {
 	** 
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
 	Void takeOff(Bool block := true, Duration? timeout := null) {
-		if (state == null || ![FlightState.def, FlightState.init, FlightState.landed].contains(state)) {
-			log.warn("Can not take off - flight state is already ${state}")
+		if (flightState == null || ![FlightState.def, FlightState.init, FlightState.landed].contains(flightState)) {
+			log.warn("Can not take off - flight state is already ${flightState}")
 			return
 		}
 		NavDataLoop.takeOff(this, block, timeout ?: networkConfig.actionTimeout)
@@ -351,8 +351,8 @@ const class Drone {
 	** 
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
 	Void land(Bool block := true, Duration? timeout := null) {
-		if (state == null || [FlightState.def, FlightState.init, FlightState.landed, FlightState.transLanding].contains(state)) {
-			log.warn("Can not land - flight state is already ${state}")
+		if (flightState == null || [FlightState.def, FlightState.init, FlightState.landed, FlightState.transLanding].contains(flightState)) {
+			log.warn("Can not land - flight state is already ${flightState}")
 			return
 		}
 		NavDataLoop.land(this, block, timeout ?: networkConfig.actionTimeout)
@@ -364,8 +364,8 @@ const class Drone {
 	** 
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
 	Void hover(Bool block := true, Duration? timeout := null) {
-		if (state == null || [FlightState.hovering, FlightState.landed, FlightState.transLanding].contains(state)) {
-			log.warn("Can not hover - flight state is already ${state}")
+		if (flightState == null || [FlightState.hovering, FlightState.landed, FlightState.transLanding].contains(flightState)) {
+			log.warn("Can not hover - flight state is already ${flightState}")
 			return
 		}
 		// the best way to prevent this from interfering with an emergency land cmd, is to set the
@@ -731,7 +731,7 @@ const class Drone {
 	}
 	
 	private Void onShutdown() {
-		if (navData?.flags?.flying == true || (state != null && state != FlightState.landed && state != FlightState.def)) {
+		if (navData?.flags?.flying == true || (flightState != null && flightState != FlightState.landed && flightState != FlightState.def)) {
 			switch (exitStrategy) {
 				case ExitStrategy.nothing:
 					log.warn("Enforcing Exit Strategy --> Doing Nothing!")
@@ -842,7 +842,7 @@ enum class LedAnimation {
 
 ** Pre-configured flight paths.
 enum class FlightAnimation {
-	phiM30Deg(1sec), phi30Deg(1sec), thetaM30Deg(1sec), theta30Deg(1sec), theta20degYaw200Deg(1sec), theta20degYawM200Deg(1sec), turnaround(5sec), turnaroundGodown(5sec), yawShake(2sec), yawDance(5sec), phiDance(5sec), thetaDance(5sec), vzDance(5sec), wave(5sec), phiThetaMixed(5sec), doublePhiThetaMixed(5sec), flipAhead(15ms), flipBehind(15ms), flipLeft(15ms), flipRight(15ms);
+	phiM30Deg(1sec), phi30Deg(1sec), thetaM30Deg(1sec), theta30Deg(1sec), theta20degYaw200Deg(1sec), theta20degYawM200Deg(1sec), turnaround(5sec), turnaroundGodown(5sec), yawShake(2sec), yawDance(5sec), phiDance(5sec), thetaDance(5sec), vzDance(5sec), wave(5sec), phiThetaMixed(5sec), doublePhiThetaMixed(5sec), flipForward(15ms), flipBackward(15ms), flipLeft(15ms), flipRight(15ms);
 
 	** How long the manoeuvre should take.
 	const Duration defaultDuration
