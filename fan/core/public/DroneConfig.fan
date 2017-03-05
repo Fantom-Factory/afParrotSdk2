@@ -21,10 +21,11 @@ const class DroneConfig {
 		if (appicationName != null) {
 			id := appicationName.toBuf.crc("CRC-32-Adler").toHex(8).upper
 			if (id != appId.val) {
-				_sendMultiConfig("CUSTOM:application_id", id)
-//				drone.sendConfig("CUSTOM:application_id", id)
+				drone.sendConfig("CUSTOM:application_id", id)
+//				_sendMultiConfig("CUSTOM:application_id", id)
 				appId.val = id
 				_sendMultiConfig("CUSTOM:application_desc", appicationName)
+				concurrent::Actor.sleep(1sec)
 				drone.config(true)
 			}
 		}

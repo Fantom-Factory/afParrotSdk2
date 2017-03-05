@@ -178,6 +178,6 @@ enum class DroneState {
 
 ** Flight state as returned by 'NavData'.
 enum class FlightState {
-	def, init, landed, flying, hovering, test, transGotoFix, transTakeOff, transLooping, transLanding, 		transFlipping;	// unknown appears to be at index 10!?
+	def, init, landed, flying, hovering, test, transGotoFix, transTakeOff, transHovering, transLanding, 		transFlipping;	// unknown appears to be at index 10!?
 }
 
