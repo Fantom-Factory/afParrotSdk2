@@ -1,0 +1,158 @@
+Overview
+********
+The Parrot SDK 2.0 is a pure Fantom implementation of the Parrot Drone SDK 2.0.1 and lets you pilot your [A.R. Drone]`https://www.parrot.com/uk/drones/parrot-ardrone-20-elite-%C3%A9dition` remotely via Fantom programs.
+
+An intuitive and simple API will have you flying your drone in minutes!
+
+![Parrot AR Drone]`arDrone.png`
+
+Fantom SDK features:
+ - Blocking & non-blocking drone move methods
+ - Feedback events with telemetry and flight data
+ - Pre-programmed flight stunts and LED patterns
+ - Read and write drone configuration
+ - Exit strategy to guard against run-away drones when your program crashes!
+
+
+
+Quick Start
+***********
+1. Create a text file called 'Example.fan'
+
+    syntax: fantom
+
+    using afParrotSdk2
+
+    class Example {
+        Void main() {
+            drone := Drone().connect
+            drone.clearEmergencyFlag
+
+            // handle feedback events
+            drone.onEmergency = |->| {
+                echo("!!! EMERGENCY LANDING !!!")
+            }
+
+            // control the drone
+            drone.takeOff
+            drone.spinClockwise(0.5f, 3sec)
+            drone.moveForward  (1.0f, 2sec)
+            drone.animateFlight(FlightAnimation.flipBackward)
+            drone.land
+
+            drone.disconnect
+        }
+    }
+
+2. Turn on your A.R. Drone and connect to its Wifi hotspot.
+
+3. Run 'Example.fan' as a Fantom script from the command line:
+
+    C:\> fan Example.fan
+
+    [info] [afParrotSdk2Demo] State Change: --> landed
+    [info] [afParrotSdk2Demo] Battery now at 57%
+    [info] [afParrotSdk2] Drone ready in 0.574ms
+
+
+
+Connecting
+**********
+When turned on, your AR Drone creates a WiFi hotspot that your computer must connect to. Once done, the Fantom SDK can connect to the drone (via TCP and UDP sockets).
+
+
+
+Taking off and Landing
+**********************
+Taking off and landing is as simple as calling the corresponding method:
+
+ - 'takeOff()'
+ - 'hover()'
+ - 'land()'
+
+All methods block until the drone has performed the task in hand. Note that taking off usually takes some 5 seconds before a stable hover is reached.
+
+If all the red lights are on, it usually indicates that the drone is in an emergency state and it won't take off until it is cleared:
+
+ - 'clearEmergencyFlag()'
+
+Whilst on the ground in a flat horizontal position, it's a good idea to tell the drone to calibrate its sensors for a wobble free flight:
+
+ - 'flatTrim()'
+
+Which makes for a complete and simple flight program of:
+
+pre>
+syntax: fantom
+drone := Drone().connect
+drone.clearEmergencyFlag
+drone.flatTrim
+
+drone.takeOff
+drone.hover(3sec)
+drone.land
+drone.disconnect
+<pre
+
+
+
+Moving
+******
+Basic movement is achieved with the following methods:
+
+  - 'moveUp()'
+  - 'moveDown()'
+  - 'moveLeft()'
+  - 'moveRight()'
+  - 'spinClockwise()'
+  - 'spinAntiClockwise()'
+
+All take a value between 0 and 1 which determine how *fast* the drone moves. The methods also take an optional 'Duration' telling it how long to move for, and the method optionally blocks until finished. See the move methods for details.
+
+There are couple of *fun* commands which perform one of the drone's preprogrammed stunts:
+
+ - 'drone.animateFlight()'
+ - 'drone.animateLeds()'
+
+See `FlightAnimation` and `LedAnimation` for details.
+
+
+
+Exit Strategy
+*************
+During the course of developing your drone programs, your program will crash, hang, exit unexpectedly; as do all programs under development. When this happens you don't want your drone to keep flying away, up and over the tree line or into the sea.
+
+So to guard against this, the Fantom SDK has an exit strategy, which is a JVM shutdown hook that transmits one last command before it exits.
+
+See `ExitStrategy` for details.
+
+
+
+Events
+******
+The drone constantly sends data back to the Fantom SDK, which decodes it and fires events to notify you of changes. The main event is:
+
+ - 'onNavData()'
+
+Which contains all the basic telemetry data such as speeds and orientation. Then there are other events for handling common cases:
+
+ - 'onBatteryDrain()'
+ - 'onBatteryLow()'
+ - 'onDisconnect()'
+ - 'onEmergency()'
+ - 'onStateChange()'
+
+
+
+Configuration
+*************
+Configuration may be read from the drone with:
+
+ - 'config()'
+
+Reading config from the drone takes a number of milliseconds, so the config is cached. Pass in 'true' to force a re-read of fresh config from the drone.
+
+New config may be set by sending configuration commands. Do so with:
+
+ - 'sendConfig()'
+
