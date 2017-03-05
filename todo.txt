@@ -18,5 +18,7 @@ see \ARDrone_SDK_2_0_1\ARDroneLib\Soft\Common\at_msgs.h for ALL undocumented AT 
 
 https://github.com/seannicholls/ARDroneDocs/wiki/Technical-Specifications
 
+http://www.playsheep.de/drone/tut5Config.html
+
 
 http://www.iflscience.com/technology/googles-deepmind-ai-understands-the-benefits-of-betrayal/
