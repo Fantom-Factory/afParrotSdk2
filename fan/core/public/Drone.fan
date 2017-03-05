@@ -74,7 +74,7 @@ const class Drone {
 	** Note 'Drone.navData' is updated with the new contents before the hook is called.
 	** 
 	** Throws 'NotImmutableErr' if the function is not immutable.
-					|NavData, Drone|?		onNavData {
+					|NavData, Drone|?	onNavData {
 						get { onNavDataRef.val }
 						set { onNavDataRef.val = it}
 					}

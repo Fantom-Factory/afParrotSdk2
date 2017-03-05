@@ -1,6 +1,7 @@
 
 ** Drone config in the Common category.
 ** This is the default category, common to all applications.
+@NoDoc
 const class DroneConfigCommon {
 	private const Drone drone
 	

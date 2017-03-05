@@ -1,5 +1,6 @@
 using concurrent::AtomicRef
 
+@NoDoc
 const class DroneConfig {
 	private const	Log		log		:= Drone#.pod.log
 

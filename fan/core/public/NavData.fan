@@ -13,7 +13,9 @@ const class NavData {
 	const NavDataFlags	flags
 	
 	** A map of nav options.
-	// TODO store raw buf here, only convert (AtomicMap cache) when asked for 
+	// TODO un nodoc
+	// TODO store raw buf here, only convert (AtomicMap cache) when asked for
+	@NoDoc
 	const NavOption:Obj	options
 
 	** (Advanced)
@@ -162,7 +164,9 @@ const class NavOptionDemo {
 	new make(|This| f) { f(this) }
 }
 
-** Data options returned from the drone.  
+//** Data options returned from the drone.
+// TODO un NoDoc
+@NoDoc
 enum class NavOption {
 	demo, time, rawMeasures, physMeasures, gyrosOffsets, eulerAngles, references, trims, rcReferences, pwm, altitude, visionRaw, visionOf, vision, visionPerf, trackersSend, visionDetect, watchdog, adcDataFrame, videoStream, games, pressureRaw, magneto, windSpeed, kalmanPressure, hdvideoStream, wifi, gps;
 }
