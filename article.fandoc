@@ -15,6 +15,8 @@ You
 
 `http://developer.parrot.com/docs/SDK2/ARDrone_SDK_2_0_1.zip` (61.1 MB)
 
+This article does not serve to re-hash the Developer Guide, but rather fill out the gaps and address the inconsistencies. So for that, it assumes the reader already has an basic understanding of the SDK.
+
 
 Commands
 ********
@@ -24,6 +26,10 @@ Don't separate with '\n', just concatonate them together!
 
 
 Config Acks
+
+Config keys must be lower case!
+
+Config ids (app, session, user) MUST be an 8 digit hex number
 
 
 

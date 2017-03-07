@@ -22,15 +22,28 @@ const class DroneConfig {
 			id := appicationName.toBuf.crc("CRC-32-Adler").toHex(8).upper
 			if (id != appId.val) {
 				drone.sendConfig("CUSTOM:application_id", id)
-//				_sendMultiConfig("CUSTOM:application_id", id)
 				appId.val = id
 				_sendMultiConfig("CUSTOM:application_desc", appicationName)
-				concurrent::Actor.sleep(1sec)
 				drone.config(true)
 			}
 		}
 		return appConfig
 	}
+
+//	** Gets or makes application config.
+//	DroneConfigApplication applicationConfig(Str? appicationName := null) {
+//		appConfig := DroneConfigApplication(this, false)
+//		if (appicationName != null) {
+//			id := appicationName.toBuf.crc("CRC-32-Adler").toHex(8).upper
+//			if (id != appId.val) {
+//				drone.sendConfig("CUSTOM:application_id", id)
+//				appId.val = id
+//				_sendMultiConfig("CUSTOM:application_desc", appicationName)
+//				drone.config(true)
+//			}
+//		}
+//		return appConfig
+//	}
 
 	// FIXME delete?
 	** Sets or clears config and profiles relating to indoor / outdoor flight.
@@ -43,9 +56,6 @@ const class DroneConfig {
 	}
 
 	internal Void _sendMultiConfig(Str key, Str val) {
-//		drone.sendConfig(key, val, sessId.val, userId.val, appId.val)
-
-		drone.sendCmd(Cmd.makeConfigIds(sessId.val, userId.val, appId.val))
-		drone.sendConfig(key, val)
+		drone.sendConfig(key, val, sessId.val, userId.val, appId.val)
 	}
 }
