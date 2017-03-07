@@ -41,7 +41,7 @@ const class DroneConfigApplication {
 
 	** Deletes **ALL** application data from the drone.
 	** Use with caution.
-	Void deleteAll(Str appicationName) {
+	Void deleteAll() {
 		log.warn("Deleting ALL application data!")
 		setConfig("CUSTOM:application_id", "-all")
 	}

@@ -23,7 +23,7 @@ const class Cmd {
 	
 	** Makes a 'CONFIG' cmd with the given name / value pair. 
 	static Cmd makeConfig(Str name, Str value) {
-		Cmd("CONFIG", [name, value])
+		Cmd("CONFIG", [name.lower, value])
 	}
 	
 	** Makes a 'CONFIG_IDS' cmd with the given IDs. 
