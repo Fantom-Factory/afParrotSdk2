@@ -1,6 +1,6 @@
 Overview
 ********
-The Parrot SDK 2.0 is a pure Fantom implementation of the Parrot Drone SDK 2.0.1 and lets you pilot your [A.R. Drone]`https://www.parrot.com/uk/drones/parrot-ardrone-20-elite-%C3%A9dition` remotely via Fantom programs.
+The Parrot SDK 2.0 is a pure Fantom implementation of the Parrot Drone SDK 2.0.1 and lets you pilot your [AR Drone]`https://www.parrot.com/uk/drones/parrot-ardrone-20-elite-%C3%A9dition` remotely via Fantom programs.
 
 An intuitive and simple API will have you flying your drone in minutes!
 
@@ -12,6 +12,8 @@ Fantom SDK features:
  - Pre-programmed flight stunts and LED patterns
  - Read and write drone configuration
  - Exit strategy to guard against run-away drones when your program crashes!
+
+For more information on the AR Drone, see the AR Drone Developer Guide in the official [Parrot SDK 2.0]`http://developer.parrot.com/docs/SDK2/ARDrone_SDK_2_0_1.zip` (for C).
 
 
 
@@ -62,7 +64,7 @@ When turned on, your AR Drone creates a WiFi hotspot that your computer must con
 
 
 
-Taking off and Landing
+Taking Off and Landing
 **********************
 Taking off and landing is as simple as calling the corresponding method:
 

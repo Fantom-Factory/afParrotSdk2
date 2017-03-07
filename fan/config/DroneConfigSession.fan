@@ -10,71 +10,98 @@ const class DroneConfigSession {
 		this.drone = drone
 	}
 
-//CONTROL:flying_mode
-//CAT_SESSION | Read/Write
-//Description :
-//Since 1.5.1 firmware, the AR.Drone has two different flight modes. The first is the legacy FreeFlight mode, where the
-//user controls the drone, an a new semi-autonomous mode, called "HOVER_ON_TOP_OF_ROUNDEL", where the
-//drones will hover on top of a ground tag. This new flying mode was developped for 2011 CES autonomous demon-
-//stration. Since 2.0 and 1.10 firmwares, a third mode, called "HOVER_ON_TOP_OF_ORIENTED_ROUDNEL", was
-//added. This mode is the same as the previous one, except that the AR.Drone will always face the same direction.
-//For all modes, progressive commands are possible.
-//
-//Note : Oriented Black&White Roundel detection must be activated with the DETECT:detect_type setting if you want
-//to use the "HOVER_ON_TOP_OF_(ORIENTED_)ROUNDEL" mode.
-//Note : Enum with modes can be found in the ardrone_api.h file.
-//	
-//CONTROL:hovering_range
-//CAT_SESSION | Read/Write
-//Description :
-//This setting is used when CONTROL:flying_mode is set to "HOVER_ON_TOP_OF_(ORIENTED_)ROUNDEL". It
-//givestheAR.Dronethemaximumdistance(inmillimeters)allowedbetweentheAR.Droneandtheorientedroundel.
-//	
-//VIDEO:codec_fps
-//CAT_SESSION | Read/Write
-//Description :
-//Current FPS of the live video codec. Maximum value is 30. Note : Only effective on AR.Drone 2.0 .
-//
-//VIDEO:video_codec
-//CAT_SESSION | Default : Read only | Multiconfig : Read/Write
-//Description :
-//Current video codec of the AR.Drone . Values differs for AR.Drone 1.0 and AR.Drone 2.0 .
-//Note : On AR.Drone 2.0 , this key controls the start/stop of the record stream.
-//Possible codec values for AR.Drone 2.0 are :
-//• MP4_360P_CODEC : Live stream with MPEG4.2 soft encoder. No record stream.
-//• H264_360P_CODEC : Live stream with H264 hardware encoder configured in 360p mode. No record stream.
-//• MP4_360P_H264_720P_CODEC : Live stream with MPEG4.2 soft encoder. Record stream with H264 hard-
-//ware encoder in 720p mode.
-//• H264_720P_CODEC : Live stream with H264 hardware encoder configured in 720p mode. No record stream.
-//• MP4_360P_H264_360P_CODEC : Live stream with MPEG4.2 soft encoder. Record stream with H264 hard-
-//ware encoder in 360p mode.
-//Possible codec values for AR.Drone 1.0 are :
-//• UVLC_CODEC : MJPEG-like codec.
-//• P264_CODEC : H264-like codec.
-//Note : Other codec values can lead to unexpected behaviour. Note : Enum with codec values can be found in the
-//VLIB/video_codec.h file of the ARDroneLIB .
-//	
-//VIDEO:max_bitrate
-//CAT_SESSION | Default : Read only | Multiconfig : Read/Write
-//Description :
-//AR.Drone 2.0 only.
-//Maximum bitrate that the device can decode. This is set as the upper bound for drone bitrate values.
-//Typical values for Apple iOS Device are :
-//• iPhone 4S : 4000 kbps
-//• iPhone 4 : 1500 kbps
-//• iPhone 3GS : 500 kbps
-//Note : When using the bitrate control mode in "VBC_MANUAL", this maximum bitrate is ignored. Note : When
-//using the bitrate control mode in "VBC_MODE_DISABLED", the bitrate is fixed to this maximum bitrate.
-//	
-//VIDEO:videol_channel
-//CAT_SESSION | Read/Write
-//Description :
-//The video channel that will be sent to the controller.
-//Current implementation supports 4 different channels :
-//- ZAP_CHANNEL_HORI
-//- ZAP_CHANNEL_VERT
-//- ZAP_CHANNEL_LARGE_HORI_SMALL_VERT (AR.Drone 1.0 only)
-//- ZAP_CHANNEL_LARGE_VERT_SMALL_HORI (AR.Drone 1.0 only)
+	** Enables free flight or a semi-autonomous hover on top of a roundel picture. 
+	** If orientated then the drone will always face the same direction.
+	** 
+	**   0 = FREE_FLIGHT                // Normal mode, commands are enabled
+	**   1 = HOVER_ON_ROUNDEL           // Commands are disabled, drone hovers on a roundel
+	**   2 = HOVER_ON_ORIENTED_ROUNDEL  // Commands are disabled, drone hovers on an oriented roundel
+	** 
+	** Hover modes **MUST** be activated by the 'detect_type' configuration.
+	** 
+	** For all modes, progressive commands are possible.
+	** 
+	** Note 'HOVER_ON_ROUNDEL' was developed for 2011 CES autonomous demonstration.
+	** 
+	** Corresponds to the 'CONTROL:flying_mode' configuration command.
+	Int flyingMode {
+		get { getConfig("CONTROL:flying_mode").toInt }
+		set { setConfig("CONTROL:flying_mode", it.toStr) }		
+	}
+
+	** The maximum distance (in millimetres) the drone should hover. 
+	** Used when 'flyingMode' is set to 'HOVER_ON_(ORIENTED_)ROUNDEL'
+	** 
+	** Corresponds to the 'CONTROL:hovering_range' configuration command.
+	Int hoveringRange {
+		get { getConfig("CONTROL:hovering_range").toInt }
+		set { setConfig("CONTROL:hovering_range", it.toStr) }		
+	}
+
+	** Current FPS of the live video codec. Maximum value is 30. 
+	** 
+	** Corresponds to the 'VIDEO:codec_fps' configuration command.
+	Int videoCodecFps {
+		get { getConfig("VIDEO:codec_fps").toInt }
+		set { setConfig("VIDEO:codec_fps", it.toStr) }		
+	}
+
+	** Current video codec of the AR.Drone.
+	** Also controls the start/stop of the record stream.
+	** 
+	** Main values:
+	** 
+	**   MP4_360P_CODEC           = 0x80  // Live stream with MPEG4.2 soft encoder. No record stream.
+	**   H264_360P_CODEC          = 0x81  // Live stream with H264 hardware encoder configured in 360p mode. No record stream.
+	**   MP4_360P_H264_720P_CODEC = 0x82  // Live stream with MPEG4.2 soft encoder. Record stream with H264 hardware encoder in 720p mode.
+	**   H264_720P_CODEC          = 0x83  // Live stream with H264 hardware encoder configured in 720p mode. No record stream.
+	**   MP4_360P_H264_360P_CODEC = 0x88  // Live stream with MPEG4.2 soft encoder. Record stream with H264 hardware encoder in 360p mode.
+	** 
+	** Other values:
+	** 
+	**   NULL_CODEC               = 0,
+	**   UVLC_CODEC               = 0x20  // codec_type value is used for START_CODE
+	**   P264_CODEC               = 0x40
+	**   MP4_360P_SLRS_CODEC      = 0x84
+	**   H264_360P_SLRS_CODEC     = 0x85
+	**   H264_720P_SLRS_CODEC     = 0x86
+	**   H264_AUTO_RESIZE_CODEC   = 0x87  // resolution is automatically adjusted according to bitrate
+	** 
+	** Corresponds to the 'VIDEO:codec' configuration command.
+	Int videoCodec {
+		get { getConfig("VIDEO:codec").toInt }
+		set { setConfig("VIDEO:codec", it.toStr) }		
+	}
+
+
+	** Maximum bitrate that the device can decode. This is set as the upper bound for drone bitrate values.
+	** 
+	** Typical values for Apple iOS Device are:
+	**  - iPhone 4S : 4000 kbps
+	**  - iPhone 4 : 1500 kbps
+	**  - iPhone 3GS : 500 kbps
+	** 
+	** When using the bitrate control mode in 'VBC_MANUAL', this maximum bitrate is ignored.
+	** 
+	** When using the bitrate control mode in 'VBC_MODE_DISABLED', the bitrate is fixed to this maximum bitrate.
+	**  
+	** Corresponds to the 'VIDEO:max_bitrate' configuration command.
+	Int videoMaxBitrate {
+		get { getConfig("VIDEO:max_bitrate").toInt }
+		set { setConfig("VIDEO:max_bitrate", it.toStr) }		
+	}
+
+	** The video channel that will be sent to the controller.
+	** 
+	**   0 = ZAP_CHANNEL_HORI
+	**   1 = ZAP_CHANNEL_VERT
+	** 
+	** Corresponds to the 'VIDEO:videol_channel' configuration command.
+	Int videoChannel {
+		get { getConfig("VIDEO:videol_channel").toInt }
+		set { setConfig("VIDEO:videol_channel", it.toStr) }		
+	}
+
 //
 //DETECT:detect_type
 //CAT_SESSION | Read/Write
