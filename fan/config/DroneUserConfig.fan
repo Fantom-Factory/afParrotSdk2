@@ -113,12 +113,16 @@ const class DroneUserConfig {
 
 	
 	** Dumps all fields to debug string.
-	Str dump() {
+	Str dump(Bool dumpToStdOut := true) {
 		fields := typeof.fields.findAll { it.isPublic && it.parent == this.typeof }
 		names  := (Str[]) fields.map { it.name.toDisplayName }
 		width  := names.max |p1, p2| { p1.size <=> p2.size }.size
 		values := fields.map |field, i| { names[i].padr(width, '.') + "..." + field.get(this).toStr }
-		return values.join("\n")
+		dump   := values.join("\n")
+		if (dumpToStdOut)
+			echo(dump)
+		return dump
+
 	}
 	
 	private Str getConfig(Str key) {

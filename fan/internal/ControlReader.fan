@@ -26,8 +26,6 @@ internal const class ControlReader {
 			NavDataLoop.waitForAck		(drone, drone.networkConfig.configCmdAckTimeout, true)
 			NavDataLoop.waitForAckClear	(drone, drone.networkConfig.configCmdAckClearTimeout, true)
 
-			echo(configStr)
-
 			return Str:Str[:] { caseInsensitive=true }.addAll(configStr.in.readProps)
 		} finally			
 			socket.close
