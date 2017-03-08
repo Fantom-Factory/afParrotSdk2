@@ -1,13 +1,12 @@
 
 ** Drone config in the Application category.
 ** These settings are be saved for the current application.
-@NoDoc
-const class DroneConfigApplication {
-	private const Log			log		:= Drone#.pod.log
-	private const DroneConfig	config
+const class DroneAppConfig {
+	private const Log					log		:= Drone#.pod.log
+	private const DroneSessionConfig	config
 	
 	** Creates a wrapper around the given drone.
-	new make(DroneConfig config, Bool reReadConfig := true) {
+	new make(DroneSessionConfig config, Bool reReadConfig := true) {
 		this.config = config
 		if (reReadConfig)
 			config.drone.config(true)
@@ -17,7 +16,7 @@ const class DroneConfigApplication {
 	
 	** The current application ID.
 	**  
-	** Corresponds to the 'CUSTOM:application_id' configuration command.
+	** Corresponds to the 'CUSTOM:application_id' configuration key.
 	Str id {
 		get { getConfig("CUSTOM:application_id") }
 		private set { }
@@ -25,7 +24,7 @@ const class DroneConfigApplication {
 	
 	** The current application's name.
 	** 
-	** Corresponds to the 'CUSTOM:application_desc' configuration command.
+	** Corresponds to the 'CUSTOM:application_desc' configuration key.
 	Str name {
 		get { getConfig("CUSTOM:application_desc") }
 		private set { }
@@ -38,16 +37,14 @@ const class DroneConfigApplication {
 			log.warn("Will not delete default data!")	// don't know what might happen if we try this!?
 			return
 		}
-		config.setApp("-${id}")
-		config.drone.config(true)
+		config._config._delApp("-${id}")
 	}
 
 	** Deletes **ALL** application data from the drone.
 	** Use with caution.
 	Void deleteAll() {
 		log.warn("Deleting ALL application data!")
-		config.setApp("-all")
-		config.drone.config(true)
+		config._config._delApp("-all")
 	}
 
 	// ---- Other Cmds ----
@@ -56,7 +53,7 @@ const class DroneConfigApplication {
 	** Most common example is the 'default_navdata_options' macro defined in the 'config_key.h' file.
 	** The full list of the possible navData packets can be found in the 'navdata_common.h' file.
 	** 
-	** Corresponds to the 'GENERAL:navdata_options' configuration command.
+	** Corresponds to the 'GENERAL:navdata_options' configuration key.
 	// TODO map to navdata_options enum / flags
 	Int navDataOptions {
 		get { getConfig("GENERAL:navdata_options").toInt }
@@ -71,7 +68,7 @@ const class DroneConfigApplication {
 	** 
 	** Note : This configuration does not need to be changed to use the new Absolute Control mode. 
 	** 
-	** Corresponds to the 'CONTROL:control_level' configuration command.
+	** Corresponds to the 'CONTROL:control_level' configuration key.
 	// TODO try this out!
 	Bool combinedYawMode {
 		get { getConfig("CONTROL:control_level").toInt.and(0x02) > 0 }
@@ -81,7 +78,7 @@ const class DroneConfigApplication {
 	** Sets the bitrate of the video transmission (kilobits per second) when 'videoBitrateControlMode'
 	** is set to 'MANUAL'. Typical values range from 500 to 4000 kbps.
 	** 
-	** Corresponds to the 'VIDEO:bitrate' configuration command.
+	** Corresponds to the 'VIDEO:bitrate' configuration key.
 	Int videoBitrate {
 		get { getConfig("VIDEO:bitrate").toInt }
 		set { setConfig("VIDEO:bitrate", it.toStr) }		
@@ -94,7 +91,7 @@ const class DroneConfigApplication {
 	**   1 = DYNAMIC  - Video bitrate varies between [250 - videoMaxBitrate] kbps
 	**   2 = MANUAL   - Video stream bitrate is fixed to videoBitrate
 	** 
-	** Corresponds to the 'VIDEO:bitrate_control_mode' configuration command.
+	** Corresponds to the 'VIDEO:bitrate_control_mode' configuration key.
 	Int videoBitrateControlMode {
 		get { getConfig("VIDEO:bitrate_control_mode", false)?.toInt ?: 0}
 		set { setConfig("VIDEO:bitrate_control_mode", it.toStr) }		
@@ -102,7 +99,7 @@ const class DroneConfigApplication {
 
 	** The bitrate (kbps) of the recording stream, both for USB and WiFi record.
 	** 
-	** Corresponds to the 'VIDEO:bitrate_storage' configuration command.
+	** Corresponds to the 'VIDEO:bitrate_storage' configuration key.
 	Int videoBitrateStorage {
 		get { getConfig("VIDEO:bitrate_storage").toInt }
 		private set { }		
@@ -122,7 +119,7 @@ const class DroneConfigApplication {
 	}
 	
 	private Void setConfig(Str key, Str val) {
-		config._sendMultiConfig(key, val)
+		config._config._sendMultiConfig(key, val)
 		config.drone._updateConfig(key, val)
 	}
 }

@@ -1,23 +1,28 @@
+using concurrent::AtomicRef
 
 ** Drone config in the Session category.
 ** These setting are be saved for the current flight session, regardless of application / user.
-@NoDoc
-const class DroneConfigSession {
+const class DroneSessionConfig {
 	private const Log			log		:= Drone#.pod.log
-	private const DroneConfig	config
+	internal const DroneConfig	_config
 	
 	** Creates a wrapper around the given drone.
 	new make(DroneConfig config, Bool reReadConfig := true) {
-		this.config = config
+		this._config = config
 		if (reReadConfig)
 			config.drone.config(true)
+	}
+	
+	** The wrapped drone instance
+	Drone drone() {
+		_config.drone
 	}
 	
 	// ---- Identity ----
 	
 	** The current session ID.
 	**  
-	** Corresponds to the 'CUSTOM:profile_id' configuration command.
+	** Corresponds to the 'CUSTOM:profile_id' configuration key.
 	Str id {
 		get { getConfig("CUSTOM:session_id") }
 		private set { }
@@ -25,7 +30,7 @@ const class DroneConfigSession {
 	
 	** The current session name.
 	** 
-	** Corresponds to the 'CUSTOM:profile_desc' configuration command.
+	** Corresponds to the 'CUSTOM:profile_desc' configuration key.
 	Str name {
 		get { getConfig("CUSTOM:session_desc") }
 		private set { }
@@ -38,18 +43,33 @@ const class DroneConfigSession {
 			log.warn("Will not delete default data!")	// don't know what might happen if we try this!?
 			return
 		}
-		config.setSess("-${id}")
-		config.drone.config(true)
+		_config._delSess("-${id}")
 	}
 
 	** Deletes **ALL** session data from the drone.
 	** Use with caution.
 	Void deleteAll() {
 		log.warn("Deleting ALL session data!")
-		config.setSess("-all")
-		config.drone.config(true)
+		_config._delSess("-all")
 	}
 
+	
+	
+	// ---- Config ----
+
+	** Gets or makes user config.
+	DroneUserConfig user(Str? userName := null) {
+		_config._userConfig(userName)
+	}
+
+	** Gets or makes application config.
+	** If 'null' is passed, this just returns the current config.
+	DroneAppConfig app(Str? appicationName := null) {
+		_config._appConfig(appicationName)
+	}	
+
+
+	
 	// ---- Other Cmds ----
 
 	** Enables free flight or a semi-autonomous hover on top of a roundel picture. 
@@ -65,7 +85,7 @@ const class DroneConfigSession {
 	** 
 	** Note 'HOVER_ON_ROUNDEL' was developed for 2011 CES autonomous demonstration.
 	** 
-	** Corresponds to the 'CONTROL:flying_mode' configuration command.
+	** Corresponds to the 'CONTROL:flying_mode' configuration key.
 	Int flyingMode {
 		get { getConfig("CONTROL:flying_mode").toInt }
 		set { setConfig("CONTROL:flying_mode", it.toStr) }		
@@ -74,7 +94,7 @@ const class DroneConfigSession {
 	** The maximum distance (in millimetres) the drone should hover. 
 	** Used when 'flyingMode' is set to 'HOVER_ON_(ORIENTED_)ROUNDEL'
 	** 
-	** Corresponds to the 'CONTROL:hovering_range' configuration command.
+	** Corresponds to the 'CONTROL:hovering_range' configuration key.
 	Int hoveringRange {
 		get { getConfig("CONTROL:hovering_range").toInt }
 		set { setConfig("CONTROL:hovering_range", it.toStr) }		
@@ -82,7 +102,7 @@ const class DroneConfigSession {
 
 	** Current FPS of the live video codec. Maximum value is 30. 
 	** 
-	** Corresponds to the 'VIDEO:codec_fps' configuration command.
+	** Corresponds to the 'VIDEO:codec_fps' configuration key.
 	Int videoCodecFps {
 		get { getConfig("VIDEO:codec_fps").toInt }
 		set { setConfig("VIDEO:codec_fps", it.toStr) }		
@@ -109,7 +129,7 @@ const class DroneConfigSession {
 	**   H264_720P_SLRS_CODEC     = 0x86
 	**   H264_AUTO_RESIZE_CODEC   = 0x87  // resolution is automatically adjusted according to bitrate
 	** 
-	** Corresponds to the 'VIDEO:codec' configuration command.
+	** Corresponds to the 'VIDEO:codec' configuration key.
 	Int videoCodec {
 		get { getConfig("VIDEO:codec").toInt }
 		set { setConfig("VIDEO:codec", it.toStr) }		
@@ -127,7 +147,7 @@ const class DroneConfigSession {
 	** 
 	** When using the bitrate control mode in 'VBC_MODE_DISABLED', the bitrate is fixed to this maximum bitrate.
 	**  
-	** Corresponds to the 'VIDEO:max_bitrate' configuration command.
+	** Corresponds to the 'VIDEO:max_bitrate' configuration key.
 	Int videoMaxBitrate {
 		get { getConfig("VIDEO:max_bitrate").toInt }
 		set { setConfig("VIDEO:max_bitrate", it.toStr) }		
@@ -138,7 +158,7 @@ const class DroneConfigSession {
 	**   0 = ZAP_CHANNEL_HORI
 	**   1 = ZAP_CHANNEL_VERT
 	** 
-	** Corresponds to the 'VIDEO:videol_channel' configuration command.
+	** Corresponds to the 'VIDEO:videol_channel' configuration key.
 	Int videoChannel {
 		get { getConfig("VIDEO:videol_channel").toInt }
 		set { setConfig("VIDEO:videol_channel", it.toStr) }		
@@ -155,7 +175,7 @@ const class DroneConfigSession {
 	** 
 	** Note you should **NEVER** enable detection on both cameras, as this will cause failures in the algorithms.
 	** 
-	** Corresponds to the 'DETECT:detect_type' configuration command.
+	** Corresponds to the 'DETECT:detect_type' configuration key.
 	@Deprecated
 	Int detectType {
 		get { getConfig("DETECT:detect_type").toInt }
@@ -171,7 +191,7 @@ const class DroneConfigSession {
 	** 
 	** Note you should **NEVER** enable detection on both cameras, as this will cause failures in the algorithms.
 	** 
-	** Corresponds to the 'DETECT:detections_select_h' configuration command.
+	** Corresponds to the 'DETECT:detections_select_h' configuration key.
 	Int detectTypeHori {
 		get { getConfig("DETECT:detections_select_h").toInt }
 		set { setConfig("DETECT:detections_select_h", it.toStr) }		
@@ -186,7 +206,7 @@ const class DroneConfigSession {
 	** 
 	** Note you should **NEVER** enable detection on both cameras, as this will cause failures in the algorithms.
 	** 
-	** Corresponds to the 'DETECT:detections_select_v' configuration command.
+	** Corresponds to the 'DETECT:detections_select_v' configuration key.
 	Int detectTypeVert {
 		get { getConfig("DETECT:detections_select_v").toInt }
 		set { setConfig("DETECT:detections_select_v", it.toStr) }		
@@ -194,7 +214,7 @@ const class DroneConfigSession {
 
 	** Detection defaults to 60 fps, but may be reduced to 30 fps to reduce the CPU load when you don’t need a 60Hz detection.
 	** 
-	** Corresponds to the 'DETECT:detections_select_v_hsync' configuration command.
+	** Corresponds to the 'DETECT:detections_select_v_hsync' configuration key.
 	Int detectTypeVertFps {
 		get { getConfig("DETECT:detections_select_v_hsync").toInt }
 		set { setConfig("DETECT:detections_select_v_hsync", it.toStr) }		
@@ -278,11 +298,11 @@ const class DroneConfigSession {
 	}
 	
 	private Str getConfig(Str key) {
-		config.drone.config[key] ?: throw UnknownKeyErr(key)
+		_config.drone.config[key] ?: throw UnknownKeyErr(key)
 	}
 	
 	private Void setConfig(Str key, Str val) {
-		config.drone.sendConfig(key, val)
-		config.drone._updateConfig(key, val)
+		_config._sendMultiConfig(key, val)
+		_config.drone._updateConfig(key, val)
 	}
 }

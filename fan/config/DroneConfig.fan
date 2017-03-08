@@ -1,6 +1,5 @@
 using concurrent::AtomicRef
 
-@NoDoc
 const class DroneConfig {
 	private const	Log		log		:= Drone#.pod.log
 	private const	Str		defId	:= "00000000"
@@ -8,44 +7,48 @@ const class DroneConfig {
 	** The wrapped drone.
 	const Drone 	drone
 
-	private const AtomicRef	appId	:= AtomicRef(defId)
-	private const AtomicRef	userId	:= AtomicRef(defId)
 	private const AtomicRef	sessId	:= AtomicRef(defId)
+	private const AtomicRef	userId	:= AtomicRef(defId)
+	private const AtomicRef	appId	:= AtomicRef(defId)
 	
 	new make(Drone drone) {
 		this.drone = drone
 	}
 
-	Void setSess(Str id) {
+	internal Void _delSess(Str id) {
 		drone.sendConfig("CUSTOM:session_id", id)
-//		if (id.startsWith("-"))
-//			drone.sendConfig("CUSTOM:session_id", defId)
+		drone.sendConfig("CUSTOM:session_id", defId)
 		sessId.val = defId
-	}
-	
-	Void setUser(Str id) {
-		drone.sendConfig("CUSTOM:profile_id", id)
-//		if (id.startsWith("-"))
-//			drone.sendConfig("CUSTOM:profile_id", defId)
-		userId.val = defId		
-	}
-	
-	Void setApp(Str id) {
-		drone.sendConfig("CUSTOM:application_id", id)
-//		if (id.startsWith("-"))
-//			drone.sendConfig("CUSTOM:application_id", defId)
-		appId.val = defId		
-	}
-	
-	Void reset() {
-		setSess(defId)
-		setUser(defId)
-		setApp(defId)
+		drone.config(true)
 	}
 
+	internal Void _delUser(Str id) {
+		drone.sendConfig("CUSTOM:profile_id", id)
+		drone.sendConfig("CUSTOM:profile_id", defId)
+		userId.val = defId		
+		drone.config(true)
+	}
+	
+	internal Void _delApp(Str id) {
+		drone.sendConfig("CUSTOM:application_id", id)
+		drone.sendConfig("CUSTOM:application_id", defId)
+		appId.val = defId
+		drone.config(true)
+	}
+
+	Void reset() {
+		drone.sendConfig("CUSTOM:application_id", defId)
+		appId.val = defId
+		drone.sendConfig("CUSTOM:profile_id", defId)
+		userId.val = defId		
+		drone.sendConfig("CUSTOM:session_id", defId)
+		sessId.val = defId
+		drone.config(true)
+	}
+	
 	** Gets or makes session config.
-	DroneConfigSession sessionConfig(Str? sessionName := null) {
-		sessConfig := DroneConfigSession(this, false)
+	DroneSessionConfig session(Str? sessionName := null) {
+		sessConfig := DroneSessionConfig(this, false)
 		if (sessionName != null) {
 			id := Int.random.and(0xFFFFFFFF).toHex(8).upper
 			if (id != sessId.val) {
@@ -61,8 +64,8 @@ const class DroneConfig {
 	}
 
 	** Gets or makes user config.
-	DroneConfigUser userConfig(Str? userName := null) {
-		userConfig := DroneConfigUser(this, false)
+	internal DroneUserConfig _userConfig(Str? userName := null) {
+		userConfig := DroneUserConfig(session, false)
 		if (userName != null) {
 			id := userName.toBuf.crc("CRC-32-Adler").toHex(8).upper
 			if (id != userId.val) {
@@ -77,8 +80,8 @@ const class DroneConfig {
 
 	** Gets or makes application config.
 	** If 'null' is passed, this just returns the current config.
-	DroneConfigApplication applicationConfig(Str? appicationName := null) {
-		appConfig := DroneConfigApplication(this, false)
+	internal DroneAppConfig _appConfig(Str? appicationName := null) {
+		appConfig := DroneAppConfig(session, false)
 		if (appicationName != null) {
 			id := appicationName.toBuf.crc("CRC-32-Adler").toHex(8).upper
 			if (id != appId.val) {
@@ -89,16 +92,6 @@ const class DroneConfig {
 			}
 		}
 		return appConfig
-	}
-
-	// FIXME delete?
-	** Sets or clears config and profiles relating to indoor / outdoor flight.
-	** See:
-	**  - 'control:outdoor'
-	**  - 'control:flight_without_shell'
-	Void setOutdoorFlight(Bool outdoors := true) {
-		drone.sendConfig("control:outdoor", outdoors)
-		drone.sendConfig("control:flight_without_shell", outdoors)
 	}
 
 	internal Void _sendMultiConfig(Str key, Str val) {
