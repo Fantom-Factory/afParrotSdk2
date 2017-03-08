@@ -318,7 +318,7 @@ const class DroneConfig {
 	}
 
 	** Dumps all fields to debug string.
-	Str dump() {
+	Str dump(Bool dumpToStdOut := true) {
 		fields := typeof.fields.findAll { it.isPublic && it.parent == this.typeof }
 		names  := (Str[]) fields.map { it.name.toDisplayName }.add("motorVersions(x)")
 		width  := names.max |p1, p2| { p1.size <=> p2.size }.size
@@ -330,9 +330,12 @@ const class DroneConfig {
 			.add("motorVersions(3)",	motorVersions(3).toStr)
 			.add("motorVersions(4)",	motorVersions(4).toStr)
 			.add("videoInfo", 			videoInfo.toStr)
-		dump   := meths.map |val, key| { key.padr(width, '.') + "..." + val }.vals
-		
-		return dump.addAll(values).join("\n")
+		methVal := meths.map |val, key| { key.padr(width, '.') + "..." + val }.vals
+		dump    := methVal.addAll(values).join("\n")
+		if (dumpToStdOut)
+			echo(dump)
+		return dump
+
 	}
 	
 	
