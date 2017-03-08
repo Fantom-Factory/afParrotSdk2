@@ -86,8 +86,13 @@ const class Cmd {
 	}
 	
 	** Makes a 'PCMD' cmd.
-	static Cmd makeMove(Float leftRightTilt, Float frontBackTilt, Float verticalSpeed, Float angularSpeed) {
-		makePcmd(1, leftRightTilt, frontBackTilt, verticalSpeed, angularSpeed)
+	static Cmd makeMove(Float leftRightTilt, Float frontBackTilt, Float verticalSpeed, Float angularSpeed, Bool combinedYawMode, Bool absoluteMode) {
+		mode := 1
+		if (combinedYawMode)
+			mode = mode.or(0x2)
+		if (absoluteMode)
+			mode = mode.or(0x4)
+		return makePcmd(mode, leftRightTilt, frontBackTilt, verticalSpeed, angularSpeed)
 	}
 
 	** Makes a 'REF' cmd.

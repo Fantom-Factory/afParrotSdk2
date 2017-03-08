@@ -70,10 +70,9 @@ const class DroneAppConfig {
 	** Note : This configuration does not need to be changed to use the new Absolute Control mode. 
 	** 
 	** Corresponds to the 'CONTROL:control_level' configuration key.
-	// TODO try this out!
 	Bool combinedYawMode {
 		get { getConfig("CONTROL:control_level").toInt.and(0x02) > 0 }
-		set { setConfig("CONTROL:control_level", (it ? 2 : 0).or(0x01).toStr) }
+		set { setConfig("CONTROL:control_level", (it ? 0x02 : 0).or(0x01).toStr) }
 	}	
 	
 	** Sets the bitrate of the video transmission (kilobits per second) when 'videoBitrateControlMode'

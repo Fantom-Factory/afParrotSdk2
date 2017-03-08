@@ -30,7 +30,7 @@ Config Acks
 Config keys must be lower case!
 
 Config ids (app, session, user) MUST be an 8 digit hex number
-
+You, the user, has to create and set these IDs, I use an Adler 32 CRC for each
 
 
 Emergency Landing
