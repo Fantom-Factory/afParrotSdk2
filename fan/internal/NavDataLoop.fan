@@ -129,4 +129,3 @@ internal const class NavDataLoop {
 		thread.asyncLater(drone.networkConfig.cmdInterval, sendCmdFunc)
 	}
 }
-
