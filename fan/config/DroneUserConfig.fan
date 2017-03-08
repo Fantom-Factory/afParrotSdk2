@@ -9,7 +9,7 @@ const class DroneUserConfig {
 	new make(DroneSessionConfig config, Bool reReadConfig := true) {
 		this.config = config
 		if (reReadConfig)
-			config.drone.config(true)
+			config.drone.configMap(true)
 	}
 
 	// ---- Identity ----
@@ -121,7 +121,7 @@ const class DroneUserConfig {
 	}
 	
 	private Str getConfig(Str key) {
-		config.drone.config[key] ?: throw UnknownKeyErr(key)
+		config.drone.configMap[key] ?: throw UnknownKeyErr(key)
 	}
 	
 	private Void setConfig(Str key, Str val) {

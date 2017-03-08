@@ -20,7 +20,8 @@ const class Drone {
 	private	const	AtomicRef		onBatteryLowRef		:= AtomicRef()
 	private	const	AtomicRef		onDisconnectRef		:= AtomicRef()
 	private	const	AtomicRef		droneVersionRef		:= AtomicRef()
-	private	const	AtomicMap		configMap			:= AtomicMap { it.keyType = Str#; it.valType = Str#; it.caseInsensitive = true }
+	private	const	AtomicMap		configMapRef		:= AtomicMap { it.keyType = Str#; it.valType = Str#; it.caseInsensitive = true }
+	private	const	DroneConfig		configRef			:= DroneConfig(this)
 	private	const	Synchronized	eventThread
 	private const	CmdSender		cmdSender
 	private const	NavDataReader	navDataReader
@@ -176,7 +177,7 @@ const class Drone {
 			log.warn("Could not FTP version.txt from drone", err)
 
 		// grab some config
-		config(true)
+		configMap(true)
 
 		Env.cur.addShutdownHook(shutdownHook)
 
@@ -197,19 +198,24 @@ const class Drone {
 		!actorPool.isStopped
 	}
 	
-	** Returns a read only map of all the drones configuration data, as read from the drone's 
-	** control (TCP 5559) port.
+	** Returns a read only map of the drone's raw configuration data, as read from the control 
+	** (TCP 5559) port.
 	** 
 	** All config data is cached, pass a 'reRead' value of 'true' to obtain fresh data from the 
 	** drone.
-	Str:Str config(Bool reRead := false) {
-		if (reRead || configMap.isEmpty)
-			configMap.map = ControlReader(this).read
-		return configMap.map
+	Str:Str configMap(Bool reRead := false) {
+		if (reRead || configMapRef.isEmpty)
+			configMapRef.map = ControlReader(this).read
+		return configMapRef.map
+	}
+
+	** Returns config for the drone. Note all data is backed by the raw 'configMap'.
+	DroneConfig config() {
+		configRef
 	}
 
 
-	
+
 	// ---- Misc Commands ----
 	
 	** (Advanced) Sends the given Cmd to the drone.
@@ -681,7 +687,7 @@ const class Drone {
 	
 	internal Void _updateConfig(Str key, Str val) {
 		// selectively update config (i.e. MY code!) 'cos we don't trust the user not to add random shite! 
-		configMap[key] = val
+		configMapRef[key] = val
 	}
 	
 	private Void processNavData(NavData navData) {
