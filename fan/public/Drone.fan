@@ -384,6 +384,21 @@ const class Drone {
 	// ---- Movement Commands ----
 
 	// TODO set absolute compass position
+	private const AtomicBool absoluteModeRef := AtomicBool()
+	** TODO only need to set absoluteMode when turning to a compass position  
+	Bool absoluteMode {
+		get { absoluteModeRef.val }
+		set { absoluteModeRef.val = it }
+	}
+	
+//	private const AtomicBool combinedModeRef := AtomicBool()
+//	Bool combinedMode {
+//		get { combinedModeRef.val }
+//		set { combinedModeRef.val = it }
+//	}
+	private Bool combinedYawMode() {
+		configMap["CONTROL:control_level"].toInt.and(0x02) > 0
+	}
 	
 	** A combined move method encapsulating:
 	**  - 'moveRight()'
@@ -399,7 +414,7 @@ const class Drone {
 			throw ArgErr("verticalSpeed must be between -1 and 1 : ${verticalSpeed}")
 		if (clockwiseSpin < -1f || clockwiseSpin > 1f)
 			throw ArgErr("clockwiseSpin must be between -1 and 1 : ${clockwiseSpin}")
-		return doMove(Cmd.makeMove(tiltRight, tiltBackward, verticalSpeed, clockwiseSpin), tiltRight, duration, block)
+		return doMove(Cmd.makeMove(tiltRight, tiltBackward, verticalSpeed, clockwiseSpin, combinedYawMode, absoluteMode), tiltRight, duration, block)
 	}
 	
 	** Moves the drone vertically upwards.
@@ -430,7 +445,7 @@ const class Drone {
 	** 
 	** See config commands 'control:altitude_max', 'control:control_vz_max'.
 	|->|? moveUp(Float verticalSpeed, Duration? duration := null, Bool? block := true) {
-		doMove(Cmd.makeMove(0f, 0f, verticalSpeed, 0f), verticalSpeed, duration, block)
+		doMove(Cmd.makeMove(0f, 0f, verticalSpeed, 0f, combinedYawMode, absoluteMode), verticalSpeed, duration, block)
 	}
 	
 	** Moves the drone vertically downwards.
@@ -461,7 +476,7 @@ const class Drone {
 	** 
 	** See config commands 'control:altitude_min', 'control:control_vz_max'.
 	|->|? moveDown(Float verticalSpeed, Duration? duration := null, Bool? block := true) {
-		doMove(Cmd.makeMove(0f, 0f, -verticalSpeed, 0f), verticalSpeed, duration, block)
+		doMove(Cmd.makeMove(0f, 0f, -verticalSpeed, 0f, combinedYawMode, absoluteMode), verticalSpeed, duration, block)
 	}
 	
 	** Moves the drone to the left.
@@ -492,7 +507,7 @@ const class Drone {
 	** 
 	** See config command 'control:euler_angle_max'.
 	|->|? moveLeft(Float tilt, Duration? duration := null, Bool? block := true) {
-		doMove(Cmd.makeMove(-tilt, 0f, 0f, 0f), tilt, duration, block)
+		doMove(Cmd.makeMove(-tilt, 0f, 0f, 0f, combinedYawMode, absoluteMode), tilt, duration, block)
 	}
 
 	** Moves the drone to the right.
@@ -523,7 +538,7 @@ const class Drone {
 	** 
 	** See config command 'control:euler_angle_max'.
 	|->|? moveRight(Float tilt, Duration? duration := null, Bool? block := true) {
-		doMove(Cmd.makeMove(tilt, 0f, 0f, 0f), tilt, duration, block)		
+		doMove(Cmd.makeMove(tilt, 0f, 0f, 0f, combinedYawMode, absoluteMode), tilt, duration, block)		
 	}
 	
 	** Moves the drone forward.
@@ -554,7 +569,7 @@ const class Drone {
 	** 
 	** See config command 'control:euler_angle_max'.
 	|->|? moveForward(Float tilt, Duration? duration := null, Bool? block := true) {
-		doMove(Cmd.makeMove(0f, -tilt, 0f, 0f), tilt, duration, block)
+		doMove(Cmd.makeMove(0f, -tilt, 0f, 0f, combinedYawMode, absoluteMode), tilt, duration, block)
 	}
 
 	** Moves the drone backward.
@@ -585,7 +600,7 @@ const class Drone {
 	** 
 	** See config command 'control:euler_angle_max'.
 	|->|? moveBackward(Float tilt, Duration? duration := null, Bool? block := true) {
-		doMove(Cmd.makeMove(0f, tilt, 0f, 0f), tilt, duration, block)
+		doMove(Cmd.makeMove(0f, tilt, 0f, 0f, combinedYawMode, absoluteMode), tilt, duration, block)
 	}
 	
 	** Spins the drone clockwise.
@@ -616,7 +631,7 @@ const class Drone {
 	** 
 	** See config command 'control:control_yaw'.
 	|->|? spinClockwise(Float angularSpeed, Duration? duration := null, Bool? block := true) {
-		doMove(Cmd.makeMove(0f, 0f, 0f, angularSpeed), angularSpeed, duration, block)
+		doMove(Cmd.makeMove(0f, 0f, 0f, angularSpeed, combinedYawMode, absoluteMode), angularSpeed, duration, block)
 	}
 	
 	** Spins the drone anti-clockwise.
@@ -647,7 +662,7 @@ const class Drone {
 	** 
 	** See config command 'control:control_yaw'.
 	Void spinAntiClockwise(Float angularSpeed, Duration? duration := null, Bool? block := true) {
-		doMove(Cmd.makeMove(0f, 0f, 0f, -angularSpeed), angularSpeed, duration, block)
+		doMove(Cmd.makeMove(0f, 0f, 0f, -angularSpeed, combinedYawMode, absoluteMode), angularSpeed, duration, block)
 	}
 		
 	

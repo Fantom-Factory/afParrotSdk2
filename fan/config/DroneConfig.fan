@@ -32,7 +32,8 @@ const class DroneConfig {
 	DroneSessionConfig session(Str? sessionName := null) {
 		sessConfig := DroneSessionConfig(this, false)
 		if (sessionName != null) {
-			id := Int.random.and(0xFFFFFFFF).toHex(8).upper
+			//id := Int.random.and(0xFFFFFFFF).toHex(8).upper	// I got too many sessions!
+			id := sessionName.toBuf.crc("CRC-32-Adler").toHex(8).upper
 			if (id != sessId.val) {
 				drone.sendConfig("CUSTOM:session_id", id)
 				sessId.val = id
