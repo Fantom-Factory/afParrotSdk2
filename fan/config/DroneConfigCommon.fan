@@ -267,7 +267,7 @@ const class DroneConfigCommon {
 	}
 	
 	private Str getConfig(Str key) {
-		drone.config[key] ?: throw UnknownKeyErr(key)
+		drone.configMap[key] ?: throw UnknownKeyErr(key)
 	}
 	
 	private Void setConfig(Str key, Str val) {

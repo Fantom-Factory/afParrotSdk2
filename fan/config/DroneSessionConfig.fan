@@ -10,7 +10,7 @@ const class DroneSessionConfig {
 	new make(DroneConfig config, Bool reReadConfig := true) {
 		this._config = config
 		if (reReadConfig)
-			config.drone.config(true)
+			config.drone.configMap(true)
 	}
 	
 	** The wrapped drone instance
@@ -298,7 +298,7 @@ const class DroneSessionConfig {
 	}
 	
 	private Str getConfig(Str key) {
-		_config.drone.config[key] ?: throw UnknownKeyErr(key)
+		_config.drone.configMap[key] ?: throw UnknownKeyErr(key)
 	}
 	
 	private Void setConfig(Str key, Str val) {
