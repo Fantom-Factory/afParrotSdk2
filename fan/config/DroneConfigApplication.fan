@@ -13,6 +13,8 @@ const class DroneConfigApplication {
 			config.drone.config(true)
 	}
 
+	// ---- Identity ----
+	
 	** The current application ID.
 	**  
 	** Corresponds to the 'CUSTOM:application_id' configuration command.
@@ -36,16 +38,20 @@ const class DroneConfigApplication {
 			log.warn("Will not delete default data!")	// don't know what might happen if we try this!?
 			return
 		}
-		setConfig("CUSTOM:application_id", "-${id}")
+		config.setApp("-${id}")
+		config.drone.config(true)
 	}
 
 	** Deletes **ALL** application data from the drone.
 	** Use with caution.
 	Void deleteAll() {
 		log.warn("Deleting ALL application data!")
-		setConfig("CUSTOM:application_id", "-all")
+		config.setApp("-all")
+		config.drone.config(true)
 	}
-	
+
+	// ---- Other Cmds ----
+
 	** When using 'navDataDemo', this configuration allows the application to ask for other navData packets.
 	** Most common example is the 'default_navdata_options' macro defined in the 'config_key.h' file.
 	** The full list of the possible navData packets can be found in the 'navdata_common.h' file.

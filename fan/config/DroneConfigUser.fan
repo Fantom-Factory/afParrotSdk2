@@ -3,12 +3,54 @@
 ** These settings are be saved for the current user / profile, regardless of the application.
 @NoDoc
 const class DroneConfigUser {
-	private const Drone drone
+	private const Log			log		:= Drone#.pod.log
+	private const DroneConfig	config
 	
 	** Creates a wrapper around the given drone.
-	new make(Drone drone) {
-		this.drone = drone
+	new make(DroneConfig config, Bool reReadConfig := true) {
+		this.config = config
+		if (reReadConfig)
+			config.drone.config(true)
 	}
+
+	// ---- Identity ----
+	
+	** The current user ID.
+	**  
+	** Corresponds to the 'CUSTOM:user_id' configuration command.
+	Str id {
+		get { getConfig("CUSTOM:profile_id") }
+		private set { }
+	}
+	
+	** The current user name.
+	** 
+	** Corresponds to the 'CUSTOM:user_desc' configuration command.
+	Str name {
+		get { getConfig("CUSTOM:profile_desc") }
+		private set { }
+	}
+	
+	** Deletes this user data from the drone.
+	Void deleteMe() {
+		id := id
+		if (id == "00000000") {
+			log.warn("Will not delete default data!")	// don't know what might happen if we try this!?
+			return
+		}
+		config.setUser("-${id}")
+		config.drone.config(true)
+	}
+
+	** Deletes **ALL** user data from the drone.
+	** Use with caution.
+	Void deleteAll() {
+		log.warn("Deleting ALL user data!")
+		config.setUser("-all")
+		config.drone.config(true)
+	}
+
+	// ---- Other Cmds ----
 
 //CONTROL:euler_angle_max
 //CAT_USER | Read/Write
@@ -34,12 +76,6 @@ const class DroneConfigUser {
 //Recommanded values goes from 40/s to 350/s (approx 0.7rad/s to 6.11rad/s). Others values may cause instability.
 //This value will be saved to indoor/outdoor_control_yaw, according to the CONFIG:outdoor setting.
 //	
-//CONTROL:manual_trim
-//CAT_USER | Read only
-//Description :
-//This setting will be active if the drone is using manual trims. Manual trims should not be used on commercial
-//AR.Drone , and this field should always be FALSE.
-//
 //CONTROL:indoor_euler_angle_max
 //CAT_USER | Read/Write
 //Description :
@@ -88,11 +124,11 @@ const class DroneConfigUser {
 	}
 	
 	private Str getConfig(Str key) {
-		drone.config[key] ?: throw UnknownKeyErr(key)
+		config.drone.config[key] ?: throw UnknownKeyErr(key)
 	}
 	
 	private Void setConfig(Str key, Str val) {
-		drone.sendConfig(key, val)
-		drone._updateConfig(key, val)
+		config.drone.sendConfig(key, val)
+		config.drone._updateConfig(key, val)
 	}
 }

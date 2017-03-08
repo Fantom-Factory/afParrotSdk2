@@ -4,6 +4,9 @@ For fandoc - see the SDK PDF available at 5 mb download - put on aflien-factory
 
 https://github.com/bramp/ffmpeg-cli-wrapper
 
+https://github.com/Ruslan-B/FFmpeg.AutoGen
+
+
 https://github.com/bklang/ARbDrone/wiki/UndocumentedCommands
 
 http://www.slideserve.com/delora/the-parrot-ar-drone-2-0
@@ -19,6 +22,8 @@ see \ARDrone_SDK_2_0_1\ARDroneLib\Soft\Common\at_msgs.h for ALL undocumented AT 
 https://github.com/seannicholls/ARDroneDocs/wiki/Technical-Specifications
 
 http://www.playsheep.de/drone/tut5Config.html
+
+
 
 
 http://www.iflscience.com/technology/googles-deepmind-ai-understands-the-benefits-of-betrayal/

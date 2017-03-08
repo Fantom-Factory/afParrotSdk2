@@ -3,12 +3,54 @@
 ** These setting are be saved for the current flight session, regardless of application / user.
 @NoDoc
 const class DroneConfigSession {
-	private const Drone drone
+	private const Log			log		:= Drone#.pod.log
+	private const DroneConfig	config
 	
 	** Creates a wrapper around the given drone.
-	new make(Drone drone) {
-		this.drone = drone
+	new make(DroneConfig config, Bool reReadConfig := true) {
+		this.config = config
+		if (reReadConfig)
+			config.drone.config(true)
 	}
+	
+	// ---- Identity ----
+	
+	** The current session ID.
+	**  
+	** Corresponds to the 'CUSTOM:profile_id' configuration command.
+	Str id {
+		get { getConfig("CUSTOM:session_id") }
+		private set { }
+	}
+	
+	** The current session name.
+	** 
+	** Corresponds to the 'CUSTOM:profile_desc' configuration command.
+	Str name {
+		get { getConfig("CUSTOM:session_desc") }
+		private set { }
+	}
+	
+	** Deletes this session data from the drone.
+	Void deleteMe() {
+		id := id
+		if (id == "00000000") {
+			log.warn("Will not delete default data!")	// don't know what might happen if we try this!?
+			return
+		}
+		config.setSess("-${id}")
+		config.drone.config(true)
+	}
+
+	** Deletes **ALL** session data from the drone.
+	** Use with caution.
+	Void deleteAll() {
+		log.warn("Deleting ALL session data!")
+		config.setSess("-all")
+		config.drone.config(true)
+	}
+
+	// ---- Other Cmds ----
 
 	** Enables free flight or a semi-autonomous hover on top of a roundel picture. 
 	** If orientated then the drone will always face the same direction.
@@ -102,55 +144,63 @@ const class DroneConfigSession {
 		set { setConfig("VIDEO:videol_channel", it.toStr) }		
 	}
 
-//
-//DETECT:detect_type
-//CAT_SESSION | Read/Write
-//Description :
-//Select the active tag detection.
-//Possible values are (see ardrone_api.h) :
-//• CAD_TYPE_NONE : No detections.
-//• CAD_TYPE_MULTIPLE_DETECTION_MODE : See following note.
-//• CAD_TYPE_ORIENTED_COCARDE_BW : Black&White oriented roundel detected on bottom facing cam-
-//era.
-//• CAD_TYPE_VISION_V2 : Standard tag detection (for both AR.Drone 2.0 and AR.Drone 1.0 ).
-//
-//Any other values are either deprecated or in development.
-//Note : It is advised to enable the multiple detection mode, and then configure the detection needed using the
-//following keys.
-//Note : The multiple detection mode allow the selection of different detections on each camera. Note that you should
-//NEVER enable two similar detection on both cameras, as this will cause failures in the algorithms.
-//Note : The Black&White oriented roundel can be downloaded on Parrot website
-//
-//DETECT:detections_select_h
-//CAT_SESSION | Read/Write
-//Description :
-//Bitfields to select detections that should be enabled on horizontal camera.
-//Possible tags values are (see ardrone_api.h) :
-//• TAG_TYPE_NONE : No tag to detect.
-//• TAG_TYPE_SHELL_TAG_V2 : Standard hulls (both indoor and outdoor) tags, for both AR.Drone 2.0 and
-//AR.Drone 1.0 .
-//• TAG_TYPE_BLACK_ROUNDEL : Black&While oriented roundel.
-//All other value are either deprecated or in development.
-//Note : You should NEVER enable one detection on two different cameras.
-//	
-//DETECT:detections_select_v_hsync
-//CAT_SESSION | Read/Write
-//Description :
-//Bitfileds to select the detections that should be enabled on vertical camera.
-//Detection enables in the hsync mode will run synchronously with the horizontal camera pipeline, a 30fps instead
-//of 60. This can be useful to reduce the CPU load when you don’t need a 60Hz detection.
-//Note : You should use either v_hsync or v detections, but not both at the same time. This can cause unexpected
-//behaviours.
-//Note : Notes from DETECT:detections_select_h also applies.
-//
-//DETECT:detections_select_v
-//CAT_SESSION | Read/Write
-//Description :
-//Bitfileds to select the detections that should be active on vertical camera.
-//These detections will be run at 60Hz. If you don’t need that speed, using detections_select_v_hsync instead will
-//reduce the CPU load.
-//Note : See the DETECT:detections_select_h and DETECT:detections_select_v_hsync for further details.
-//
+	** Active tag detection.
+	** 
+	**    3 = CAD_TYPE_NONE : No detections
+	**   10 = CAD_TYPE_MULTIPLE_DETECTION_MODE : See following note
+	**   12 = CAD_TYPE_ORIENTED_COCARDE_BW : Black & White oriented roundel detected on bottom facing camera
+	**   13 = CAD_TYPE_VISION_V2 : Standard tag detection
+	** 
+	** It is preferred to enable multiple detection mode and configure each camera.
+	** 
+	** Note you should **NEVER** enable detection on both cameras, as this will cause failures in the algorithms.
+	** 
+	** Corresponds to the 'DETECT:detect_type' configuration command.
+	@Deprecated
+	Int detectType {
+		get { getConfig("DETECT:detect_type").toInt }
+		set { setConfig("DETECT:detect_type", it.toStr) }		
+	}
+
+	** Horizontal camera detection.
+	** 
+	**   0 = TAG_TYPE_NONE : No tag to detect
+	**   3 = TAG_TYPE_ORIENTED_ROUNDEL (???)
+	**   6 = TAG_TYPE_SHELL_TAG_V2 : Standard hulls (both indoor and outdoor) tags
+	**   8 = TAG_TYPE_BLACK_ROUNDEL : Black&While oriented roundel
+	** 
+	** Note you should **NEVER** enable detection on both cameras, as this will cause failures in the algorithms.
+	** 
+	** Corresponds to the 'DETECT:detections_select_h' configuration command.
+	Int detectTypeHori {
+		get { getConfig("DETECT:detections_select_h").toInt }
+		set { setConfig("DETECT:detections_select_h", it.toStr) }		
+	}
+
+	** Verical camera detection.
+	** 
+	**   0 = TAG_TYPE_NONE : No tag to detect
+	**   3 = TAG_TYPE_ORIENTED_ROUNDEL (???)
+	**   6 = TAG_TYPE_SHELL_TAG_V2 : Standard hulls (both indoor and outdoor) tags
+	**   8 = TAG_TYPE_BLACK_ROUNDEL : Black&While oriented roundel
+	** 
+	** Note you should **NEVER** enable detection on both cameras, as this will cause failures in the algorithms.
+	** 
+	** Corresponds to the 'DETECT:detections_select_v' configuration command.
+	Int detectTypeVert {
+		get { getConfig("DETECT:detections_select_v").toInt }
+		set { setConfig("DETECT:detections_select_v", it.toStr) }		
+	}
+
+	** Detection defaults to 60 fps, but may be reduced to 30 fps to reduce the CPU load when you don’t need a 60Hz detection.
+	** 
+	** Corresponds to the 'DETECT:detections_select_v_hsync' configuration command.
+	Int detectTypeVertFps {
+		get { getConfig("DETECT:detections_select_v_hsync").toInt }
+		set { setConfig("DETECT:detections_select_v_hsync", it.toStr) }		
+	}
+
+
 //USERBOX:userbox_cmd
 //CAT_SESSION | Read/Write
 //Description :
@@ -228,11 +278,11 @@ const class DroneConfigSession {
 	}
 	
 	private Str getConfig(Str key) {
-		drone.config[key] ?: throw UnknownKeyErr(key)
+		config.drone.config[key] ?: throw UnknownKeyErr(key)
 	}
 	
 	private Void setConfig(Str key, Str val) {
-		drone.sendConfig(key, val)
-		drone._updateConfig(key, val)
+		config.drone.sendConfig(key, val)
+		config.drone._updateConfig(key, val)
 	}
 }
