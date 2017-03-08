@@ -6,8 +6,9 @@ const class DroneSessionConfig {
 	private const Log			log		:= Drone#.pod.log
 	internal const DroneConfig	_config
 	
+	** Internal because we need to keep track of the multi-config IDs 
 	** Creates a wrapper around the given drone.
-	new make(DroneConfig config, Bool reReadConfig := true) {
+	internal new make(DroneConfig config, Bool reReadConfig := true) {
 		this._config = config
 		if (reReadConfig)
 			config.drone.configMap(true)
