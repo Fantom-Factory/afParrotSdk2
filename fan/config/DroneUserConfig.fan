@@ -1,13 +1,12 @@
 
 ** Drone config in the User category.
 ** These settings are be saved for the current user / profile, regardless of the application.
-@NoDoc
-const class DroneConfigUser {
-	private const Log			log		:= Drone#.pod.log
-	private const DroneConfig	config
+const class DroneUserConfig {
+	private const Log					log		:= Drone#.pod.log
+	private const DroneSessionConfig	config
 	
 	** Creates a wrapper around the given drone.
-	new make(DroneConfig config, Bool reReadConfig := true) {
+	new make(DroneSessionConfig config, Bool reReadConfig := true) {
 		this.config = config
 		if (reReadConfig)
 			config.drone.config(true)
@@ -17,7 +16,7 @@ const class DroneConfigUser {
 	
 	** The current user ID.
 	**  
-	** Corresponds to the 'CUSTOM:user_id' configuration command.
+	** Corresponds to the 'CUSTOM:user_id' configuration key.
 	Str id {
 		get { getConfig("CUSTOM:profile_id") }
 		private set { }
@@ -25,7 +24,7 @@ const class DroneConfigUser {
 	
 	** The current user name.
 	** 
-	** Corresponds to the 'CUSTOM:user_desc' configuration command.
+	** Corresponds to the 'CUSTOM:user_desc' configuration key.
 	Str name {
 		get { getConfig("CUSTOM:profile_desc") }
 		private set { }
@@ -38,16 +37,14 @@ const class DroneConfigUser {
 			log.warn("Will not delete default data!")	// don't know what might happen if we try this!?
 			return
 		}
-		config.setUser("-${id}")
-		config.drone.config(true)
+		config._config._delUser("-${id}")
 	}
 
 	** Deletes **ALL** user data from the drone.
 	** Use with caution.
 	Void deleteAll() {
 		log.warn("Deleting ALL user data!")
-		config.setUser("-all")
-		config.drone.config(true)
+		config._config._delUser("-all")
 	}
 
 	// ---- Other Cmds ----
@@ -128,7 +125,7 @@ const class DroneConfigUser {
 	}
 	
 	private Void setConfig(Str key, Str val) {
-		config.drone.sendConfig(key, val)
+		config._config._sendMultiConfig(key, val)
 		config.drone._updateConfig(key, val)
 	}
 }
