@@ -6,7 +6,8 @@ const class DroneAppConfig {
 	private const DroneSessionConfig	config
 	
 	** Creates a wrapper around the given drone.
-	new make(DroneSessionConfig config, Bool reReadConfig := true) {
+	** Internal because we need to keep track of the multi-config IDs 
+	internal new make(DroneSessionConfig config, Bool reReadConfig := true) {
 		this.config = config
 		if (reReadConfig)
 			config.drone.configMap(true)
