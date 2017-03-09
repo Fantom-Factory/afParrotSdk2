@@ -96,7 +96,7 @@ const class DroneAppConfig {
 	}
 	
 	** Enables the automatic bitrate control of the video stream. Enabling this configuration reduces 
-	** bandwith used by the video stream under bad Wi-Fi conditions, reducing the commands latency.
+	** bandwidth used by the video stream under bad Wi-Fi conditions, reducing the commands latency.
 	** 
 	**   0 = DISABLED - Bitrate set to videoMaxBitrate session config
 	**   1 = DYNAMIC  - Video bitrate varies between [250 - videoMaxBitrate] kbps
@@ -129,6 +129,9 @@ const class DroneAppConfig {
 		return dump
 	}
 	
+	@NoDoc
+	override Str toStr() { dump	}
+
 	private Str? getConfig(Str key, Bool checked := true) {
 		config.drone.configMap[key] ?: (checked ? throw UnknownKeyErr(key) : null)
 	}

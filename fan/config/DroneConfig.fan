@@ -359,7 +359,8 @@ const class DroneConfig {
 
 	}
 	
-	
+	@NoDoc
+	override Str toStr() { dump	}
 	
 	// ---- Internal Methods ----
 

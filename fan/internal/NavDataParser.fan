@@ -1,3 +1,4 @@
+using concurrent::AtomicRef
 
 ** Creates a 'NavData' instance from the contents of a UDP payload. 
 internal class NavDataParser {
@@ -19,7 +20,7 @@ internal class NavDataParser {
 		flags		:= NavDataFlags(in.readU4)
 		seqNum		:= in.readU4
 		visionFlag	:= in.readU4
-		options		:= NavOption:Obj[:]
+		options		:= NavOption:LazyNavOptData[:]
 		
 		while (in.avail > 0) {
 			optionId  := in.readU2
@@ -38,23 +39,55 @@ internal class NavDataParser {
 				continue
 			}
 			
-			navOption	:= NavOption.vals[optionId]
-			parseMethod	:= typeof.method("parse${navOption.name.capitalize}", false)
+			navOption	:= (NavOption) NavOption.vals[optionId]
+			parseMethod	:= navOption.parseMethod 	//typeof.method("parse${navOption.name.capitalize}", false)
 			if (parseMethod == null) {
 				log.warn("No parse method for NavOption ${navOption}")
 				in.skip(optionLen - 4)
-			} else
-				options[navOption] = parseMethod.call(in, optionLen)
+			} else {
+				rawOpt := in.readBufFully(null, optionLen - 4) { it.endian = Endian.little }
+				options[navOption] = LazyNavOptData(rawOpt, parseMethod)
+			}
 		}
 		
 		return NavData {
 			it.flags		= flags
 			it.seqNum		= seqNum
 			it.visionFlag	= visionFlag
-			it.options		= options
+			it._lazyOpts	= options
 		}
 	}
+}
+
+internal const class LazyNavOptData {
+	private const Buf		optRaw
+	private const Method	parseMethod
+	private const AtomicRef	optRef	:= AtomicRef(null)
+
+	new make(Buf optRaw, Method parseMethod) {
+		this.optRaw = optRaw.toImmutable
+		this.parseMethod = parseMethod
+	}
 	
+	Obj get() {
+		if (optRef.val == null)
+			optRef.val  = parseMethod.call(optRaw.in { endian = Endian.little })
+		return optRef.val
+	}
+}
+
+//** Data options returned from the drone.
+enum class NavOption {
+	demo(#parseDemo),
+	time, rawMeasures, physMeasures, gyrosOffsets, eulerAngles, references, trims, rcReferences, pwm, altitude, visionRaw, visionOf, vision, visionPerf, trackersSend,
+	visionDetect(#parseVisionDetect),
+	watchdog, adcDataFrame, videoStream, games, pressureRaw, magneto, windSpeed, kalmanPressure, hdvideoStream, wifi, gps;
+	
+	internal const Method? parseMethod
+	
+	private new make(Method? parseMethod := null) {
+		this.parseMethod = parseMethod
+	}
 	
 	static internal NavOptionDemo parseDemo(InStream in) {
 		NavOptionDemo {
@@ -87,8 +120,7 @@ internal class NavDataParser {
 		}
 	}
 	
-	static internal Obj parseVisionDetect(InStream in, Int optLen) {
-		in.skip(optLen - 4)
+	static internal Obj parseVisionDetect(InStream in) {
 		return 3
 	}
 }
