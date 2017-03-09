@@ -349,6 +349,10 @@ const class DroneConfig {
 			.add("videoInfo", 			videoInfo.toStr)
 		methVal := meths.map |val, key| { key.padr(width, '.') + "..." + val }.vals
 		dump    := methVal.addAll(values).join("\n")
+		
+		dump = "COMMON CONFIG\n=============\n" + dump + "\n\n"
+		dump += session.dump(false)
+		
 		if (dumpToStdOut)
 			echo(dump)
 		return dump

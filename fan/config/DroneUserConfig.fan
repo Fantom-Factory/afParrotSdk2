@@ -8,7 +8,7 @@
 **   syntax: fantom
 **   drone.config.session.user("My User Name")
 **
-** Future code may then access the same session by not passing a session name:
+** Future code may then access the same user by **not** passing a user name:
 **    
 **   syntax: fantom
 **   prof := drone.config.session.user.currentProfile
@@ -170,6 +170,9 @@ const class DroneUserConfig {
 		width  := names.max |p1, p2| { p1.size <=> p2.size }.size
 		values := fields.map |field, i| { names[i].padr(width, '.') + "..." + field.get(this).toStr }
 		dump   := values.join("\n")
+
+		dump	= "USER CONFIG\n===========\n" + dump + "\n\n"
+
 		if (dumpToStdOut)
 			echo(dump)
 		return dump

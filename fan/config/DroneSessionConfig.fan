@@ -1,5 +1,6 @@
 using concurrent::AtomicRef
 
+** Drone config in the Session category.
 ** Session config relates to the current flight and encapsulates user and application data. 
 ** That is, should the session be changed / reset, the user and application config changes also.
 ** 
@@ -8,7 +9,7 @@ using concurrent::AtomicRef
 **   syntax: fantom
 **   drone.config.session("My Session Name")
 **
-** Future code may then access the same session by not passing a session name:
+** Future code may then access the same session by **not** passing a session name:
 **    
 **   syntax: fantom
 **   drone.config.session.hoveringRange = 1000
@@ -162,7 +163,7 @@ const class DroneSessionConfig {
 	** Corresponds to the 'VIDEO:max_bitrate' configuration key.
 	Int videoMaxBitrate {
 		get { getConfig("VIDEO:max_bitrate").toInt }
-		set { setConfig("VIDEO:max_bitrate", it.toStr) }		
+		set { setConfig("VIDEO:max_bitrate", it.toStr) }
 	}
 
 	** The video channel that will be sent to the controller.
@@ -178,7 +179,7 @@ const class DroneSessionConfig {
 
 	// TODO bool -> hover on roundel (what does the detect hori do for us? play with vision tags)
 	// TODO roundel detect - none / hori / vert, set fps 30 / 60
-	// TODO gps get / set
+	// TODO userbox
 	
 	** Active tag detection.
 	** 
@@ -236,6 +237,29 @@ const class DroneSessionConfig {
 		set { setConfig("DETECT:detections_select_v_hsync", it.toStr) }		
 	}
 
+	** The GPS position used for media tagging and userbox recording.
+	** 
+	** When setting values, all unknown values are ignored. 
+	** To change, pass in a map with just the values you wish to update.
+	** 
+	** Corresponds to the configuration keys:
+	**   - 'GPS:longitude'
+	**   - 'GPS:latitude'
+	**   - 'GPS:altitude'
+	Str:Float gpsPosition {
+		get {
+			[
+				"longitude"	: getConfig("GPS:longitude").toFloat,
+				"latitude"	: getConfig("GPS:latitude").toFloat,
+				"altitude"	: getConfig("GPS:altitude").toFloat
+			]
+		}
+		set {
+			setConfig("GPS:longitude"	, it["longitude"]?.toStr)
+			setConfig("GPS:latitude"	, it["latitude"	]?.toStr)
+			setConfig("GPS:altitude"	, it["altitude"	]?.toStr)
+		}
+	}
 
 //USERBOX:userbox_cmd
 //CAT_SESSION | Read/Write
@@ -271,38 +295,6 @@ const class DroneSessionConfig {
 //Note : The file /data/video/boxes/tmp_flight_YYYYMMDD_hhmmss/userbox_<timestamp> will be used for future
 //feature. (AR.Drone Academy ).
 //	
-//GPS:latitude
-//CAT_SESSION | Read/Write
-//Description :
-//GPS Latitude sent by the controlling device.
-//This data is used for media tagging and userbox recording.
-//Note : value is a double precision floating point number, sent as a the binary equivalent 64bit integer on AT com-
-//mand
-//AT command example : AT*CONFIG=605,"gps:latitude","4631107791820423168"
-//API use example :
-//double gpsLatitude = 42.0;
-//ARDRONE_TOOL_CONFIGURATION_ADDEVENT (latitude, &gpsLatitude, myCallback);
-//
-//GPS:longitude
-//CAT_SESSION | Read/Write
-//Description :
-//GPS Longitude sent by the controlling device.
-//This data is used for media tagging and userbox recording.
-//Note : value is a double precision floating point number, sent as a the binary equivalent 64bit integer on AT com-
-//mand
-//AT command example : AT*CONFIG=605,"gps:longitude","4631107791820423168"
-//API use example :
-//double gpsLongitude = 42.0;
-//ARDRONE_TOOL_CONFIGURATION_ADDEVENT (longitude, &gpsLongitude, myCallback);
-//
-//GPS:altitude
-//CAT_SESSION | Read/Write
-//Description :
-//GPS Altitude sent by the controlling device.
-//This data is used for media tagging and userbox recording.
-//Note : value is a double precision floating point number, sent as a the binary equivalent 64bit integer on AT com-
-//mand
-
 
 	** Dumps all fields to debug string.
 	Str dump(Bool dumpToStdOut := true) {
@@ -311,6 +303,11 @@ const class DroneSessionConfig {
 		width  := names.max |p1, p2| { p1.size <=> p2.size }.size
 		values := fields.map |field, i| { names[i].padr(width, '.') + "..." + field.get(this).toStr }
 		dump   := values.join("\n")
+		
+		dump = "SESSION CONFIG\n==============\n" + dump + "\n\n"
+		dump += user.dump(false)
+		dump += app.dump(false)
+
 		if (dumpToStdOut)
 			echo(dump)
 		return dump
@@ -320,8 +317,10 @@ const class DroneSessionConfig {
 		_config.drone.configMap[key] ?: (checked ? throw UnknownKeyErr(key) : null)
 	}
 	
-	private Void setConfig(Str key, Str val) {
-		_config._sendMultiConfig(key, val)
-		_config.drone._updateConfig(key, val)
+	private Void setConfig(Str key, Str? val) {
+		if (val != null) {	// for GPS position
+			_config._sendMultiConfig(key, val)
+			_config.drone._updateConfig(key, val)
+		}
 	}
 }

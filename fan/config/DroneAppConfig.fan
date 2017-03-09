@@ -1,6 +1,17 @@
 
 ** Drone config in the Application category.
-** These settings are be saved for the current application.
+** App config encapsulates config an application may require. 
+** 
+** Create a new application by means of:
+** 
+**   syntax: fantom
+**   drone.config.app("My App Name")
+**
+** Future code may then access the same app by **not** passing an app name:
+**    
+**   syntax: fantom
+**   drone.config.app.combinedYawMode = true
+** 
 const class DroneAppConfig {
 	private const Log					log		:= Drone#.pod.log
 	private const DroneSessionConfig	config
@@ -58,7 +69,7 @@ const class DroneAppConfig {
 	// TODO map to navdata_options enum / flags
 	Int navDataOptions {
 		get { getConfig("GENERAL:navdata_options").toInt }
-		set { setConfig("GENERAL:navdata_options", it.toStr) }		
+		set { setConfig("GENERAL:navdata_options", it.toStr) }
 	}	
 
 	** If 'true' then roll commands ('moveLeft()' & 'moveRight()') generate roll + yaw based turns 
@@ -112,6 +123,7 @@ const class DroneAppConfig {
 		width  := names.max |p1, p2| { p1.size <=> p2.size }.size
 		values := fields.map |field, i| { names[i].padr(width, '.') + "..." + field.get(this).toStr }
 		dump   := values.join("\n")
+		dump	= "APP CONFIG\n==========\n" + dump + "\n\n"
 		if (dumpToStdOut)
 			echo(dump)
 		return dump
