@@ -1,6 +1,18 @@
 
 ** Drone config in the User category.
-** These settings are be saved for the current user / profile, regardless of the application.
+** This config contains preferences for individual human users, so is largely based on controller 
+** sensitivity profiles.
+**  
+** Create a new user by means of:
+** 
+**   syntax: fantom
+**   drone.config.session.user("My User Name")
+**
+** Future code may then access the same session by not passing a session name:
+**    
+**   syntax: fantom
+**   prof := drone.config.session.user.currentProfile
+** 
 const class DroneUserConfig {
 	private const Log					log		:= Drone#.pod.log
 	private const DroneSessionConfig	config
@@ -31,7 +43,7 @@ const class DroneUserConfig {
 		private set { }
 	}
 	
-	** Deletes this user data from the drone.
+	** Deletes this user profile from the drone.
 	Void deleteMe() {
 		id := id
 		if (id == "00000000") {
@@ -50,67 +62,106 @@ const class DroneUserConfig {
 
 	// ---- Other Cmds ----
 
-//CONTROL:euler_angle_max
-//CAT_USER | Read/Write
-//Description :
-//Maximum bending angle for the drone in radians, for both pitch and roll angles.
-//The progressive command function and its associated AT command refer to a percentage of this value. Note : For
-//AR.Drone 2.0 , the new progressive command function is preferred (with the corresponding AT command).
-//This parameter is a positive floating-point value between 0 and 0.52 (ie. 30deg). Higher values might be available
-//on a specific drone but are not reliable and might not allow the drone to stay at the same altitude.
-//This value will be saved to indoor/outdoor_euler_angle_max, according to the CONFIG:outdoor setting.	
-//	
-//CONTROL:control_vz_max
-//CAT_USER | Read/Write
-//Description :
-//Maximum vertical speed of the AR.Drone, in milimeters per second.
-//Recommanded values goes from 200 to 2000. Others values may cause instability.
-//This value will be saved to indoor/outdoor_control_vz_max, according to the CONFIG:outdoor setting.
-//	
-//CONTROL:control_yaw
-//CAT_USER | Read/Write
-//Description :
-//Maximum yaw speed of the AR.Drone, in radians per second.
-//Recommanded values goes from 40/s to 350/s (approx 0.7rad/s to 6.11rad/s). Others values may cause instability.
-//This value will be saved to indoor/outdoor_control_yaw, according to the CONFIG:outdoor setting.
-//	
-//CONTROL:indoor_euler_angle_max
-//CAT_USER | Read/Write
-//Description :
-//This setting is used when CONTROL:outdoor is false. See the CONTROL:euler_angle_max description for further
-//informations.
-//
-//CONTROL:indoor_control_vz_max
-//CAT_USER | Read/Write
-//Description :
-//This setting is used when CONTROL:outdoor is false. See the CONTROL:control_vz_max description for further
-//informations.
-//
-//CONTROL:indoor_control_yaw
-//CAT_USER | Read/Write
-//Description :
-//This setting is used when CONTROL:outdoor is false. See the CONTROL:control_yaw description for further infor-
-//mations.
-//
-//CONTROL:outdoor_euler_angle_max
-//CAT_USER | Read/Write
-//Description :
-//This setting is used when CONTROL:outdoor is true. See the CONTROL:euler_angle_max description for further
-//informations.
-//
-//CONTROL:outdoor_control_vz_max
-//CAT_USER | Read/Write
-//Description :
-//This setting is used when CONTROL:outdoor is true. See the CONTROL:control_vz_max description for further in-
-//formations.
-//
-//CONTROL:outdoor_control_yaw
-//CAT_USER | Read/Write
-//Description :
-//This setting is used when CONTROL:outdoor is true. See the CONTROL:control_yaw description for further informa-
-//tions.
-	
+	** Returns the current sensitivity profile. 
+	** These are the absolute values allowed by the drone.
+	** All drone move commands pertain to a percentage of the max values detailed here. 
+	** 
+	**   syntax: fantom
+	**   drone.config.session.user.currentProfile()
+	**     // --> [maxEulerAngle:20, maxVerticalSpeed:1000, maxYawSpeed:200]
+	** 
+	** This method will return either the indoor or outdoor profile dependent on the 
+	** 'drone.config.useOutdoorProfile' setting.
+	** 
+	**  - 'maxEulerAngle' is the maximum bending angle for the drone in degrees, for both pitch and roll angles.
+	**    Recommended values are 0 - 30 degrees.
+	**  - 'maxVerticalSpeed' is the maximum vertical speed of the drone in milimeters per second.
+	**    Recommended values are 200 - 2000.
+	**  - 'maxYawSpeed' is the maximum yaw (spin) speed of the drone in degrees per second.
+	**    Recommanded values are 40 - 350.
+	** 
+	** Corresponds to the configuration keys:
+	**   - 'CONTROL:euler_angle_max'
+	**   - 'CONTROL:control_vz_max'
+	**   - 'CONTROL:control_yaw'
+	Str:Int currentProfile {
+		get {
+			[
+				"maxEulerAngle"		: getConfig("CONTROL:euler_angle_max").toFloat.toDegrees.round.toInt,
+				"maxVerticalSpeed"	: getConfig("CONTROL:control_vz_max").toFloat.toInt,
+				"maxYawSpeed"		: getConfig("CONTROL:control_yaw").toFloat.toDegrees.round.toInt
+			]
+		}
+		private set { }
+	}
 
+	** Sensitivity profile for indoor use.
+	** To use this profile, set the following:
+	** 
+	**   syntax: fantom
+	**   drone.config.useOutdoorProfile = false
+	** 
+	** See `currentProfile` for value details.
+	** 
+	**   syntax: fantom
+	**   drone.config.session.user.indoorProfile()
+	**     // --> [maxEulerAngle:12, maxVerticalSpeed:700, maxYawSpeed:100]
+	** 
+	** When setting values, all unknown values are ignored. 
+	** To change, pass in a map with just the values you wish to update.
+	** 
+	** Corresponds to the configuration keys:
+	**   - 'CONTROL:indoor_euler_angle_max'
+	**   - 'CONTROL:indoor_control_vz_max'
+	**   - 'CONTROL:indoor_control_yaw'
+	Str:Int indoorProfile {
+		get {
+			[
+				"maxEulerAngle"		: getConfig("CONTROL:indoor_euler_angle_max").toFloat.toDegrees.round.toInt,
+				"maxVerticalSpeed"	: getConfig("CONTROL:indoor_control_vz_max").toFloat.toInt,
+				"maxYawSpeed"		: getConfig("CONTROL:indoor_control_yaw").toFloat.toDegrees.round.toInt
+			]
+		}
+		set {
+			setConfig("CONTROL:indoor_euler_angle_max"	, it["maxEulerAngle"	]?.toFloat?.toRadians)
+			setConfig("CONTROL:indoor_control_vz_max"	, it["maxVerticalSpeed"	]?.toFloat)
+			setConfig("CONTROL:indoor_control_yaw"		, it["maxYawSpeed"	 	]?.toFloat?.toRadians)
+		}
+	}
+
+	** Sensitivity profile for outdoor use.
+	** To use this profile, set the following:
+	** 
+	**   syntax: fantom
+	**   drone.config.useOutdoorProfile = true
+	** 
+	** See `currentProfile` for value details.
+	** 
+	**   syntax: fantom
+	**   drone.config.session.user.outdoorProfile()
+	**     // --> [maxEulerAngle:20, maxVerticalSpeed:1000, maxYawSpeed:200]
+	** 
+	** When setting values, all unknown values are ignored. 
+	** To change, pass in a map with just the values you wish to update.
+	** 
+	** Corresponds to the configuration keys:
+	**   - 'CONTROL:outdoor_euler_angle_max'
+	**   - 'CONTROL:outdoor_control_vz_max'
+	**   - 'CONTROL:outdoor_control_yaw'
+	Str:Int outdoorProfile {
+		get {
+			[
+				"maxEulerAngle"		: getConfig("CONTROL:outdoor_euler_angle_max").toFloat.toDegrees.round.toInt,
+				"maxVerticalSpeed"	: getConfig("CONTROL:outdoor_control_vz_max").toFloat.toInt,
+				"maxYawSpeed"		: getConfig("CONTROL:outdoor_control_yaw").toFloat.toDegrees.round.toInt
+			]
+		}
+		set {
+			setConfig("CONTROL:outdoor_euler_angle_max"	, it["maxEulerAngle"	]?.toFloat?.toRadians)
+			setConfig("CONTROL:outdoor_control_vz_max"	, it["maxVerticalSpeed"	]?.toFloat)
+			setConfig("CONTROL:outdoor_control_yaw"		, it["maxYawSpeed"	 	]?.toFloat?.toRadians)			
+		}
+	}
 	
 	** Dumps all fields to debug string.
 	Str dump(Bool dumpToStdOut := true) {
@@ -129,8 +180,10 @@ const class DroneUserConfig {
 		config.drone.configMap[key] ?: throw UnknownKeyErr(key)
 	}
 	
-	private Void setConfig(Str key, Str val) {
-		config._config._sendMultiConfig(key, val)
-		config.drone._updateConfig(key, val)
+	private Void setConfig(Str key, Float? val) {
+		if (val != null) {
+			config._config._sendMultiConfig(key, val.toStr)
+			config.drone._updateConfig(key, val.toStr)
+		}
 	}
 }

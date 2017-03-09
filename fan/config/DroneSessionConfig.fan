@@ -1,7 +1,18 @@
 using concurrent::AtomicRef
 
-** Drone config in the Session category.
-** These setting are be saved for the current flight session, regardless of application / user.
+** Session config relates to the current flight and encapsulates user and application data. 
+** That is, should the session be changed / reset, the user and application config changes also.
+** 
+** Create a new session by means of:
+** 
+**   syntax: fantom
+**   drone.config.session("My Session Name")
+**
+** Future code may then access the same session by not passing a session name:
+**    
+**   syntax: fantom
+**   drone.config.session.hoveringRange = 1000
+** 
 const class DroneSessionConfig {
 	private const Log			log		:= Drone#.pod.log
 	internal const DroneConfig	_config
@@ -132,7 +143,7 @@ const class DroneSessionConfig {
 	** 
 	** Corresponds to the 'VIDEO:codec' configuration key.
 	Int videoCodec {
-		get { getConfig("VIDEO:codec").toInt }
+		get { getConfig("VIDEO:codec", false)?.toInt ?: 0 }
 		set { setConfig("VIDEO:codec", it.toStr) }		
 	}
 
@@ -161,10 +172,14 @@ const class DroneSessionConfig {
 	** 
 	** Corresponds to the 'VIDEO:videol_channel' configuration key.
 	Int videoChannel {
-		get { getConfig("VIDEO:videol_channel").toInt }
+		get { getConfig("VIDEO:videol_channel", false)?.toInt ?: 0 }
 		set { setConfig("VIDEO:videol_channel", it.toStr) }		
 	}
 
+	// TODO bool -> hover on roundel (what does the detect hori do for us? play with vision tags)
+	// TODO roundel detect - none / hori / vert, set fps 30 / 60
+	// TODO gps get / set
+	
 	** Active tag detection.
 	** 
 	**    3 = CAD_TYPE_NONE : No detections
@@ -198,7 +213,7 @@ const class DroneSessionConfig {
 		set { setConfig("DETECT:detections_select_h", it.toStr) }		
 	}
 
-	** Verical camera detection.
+	** Vertical camera detection.
 	** 
 	**   0 = TAG_TYPE_NONE : No tag to detect
 	**   3 = TAG_TYPE_ORIENTED_ROUNDEL (???)
@@ -301,8 +316,8 @@ const class DroneSessionConfig {
 		return dump
 	}
 	
-	private Str getConfig(Str key) {
-		_config.drone.configMap[key] ?: throw UnknownKeyErr(key)
+	private Str? getConfig(Str key, Bool checked := true) {
+		_config.drone.configMap[key] ?: (checked ? throw UnknownKeyErr(key) : null)
 	}
 	
 	private Void setConfig(Str key, Str val) {

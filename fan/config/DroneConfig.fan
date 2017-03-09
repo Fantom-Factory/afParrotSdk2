@@ -1,7 +1,13 @@
 using concurrent::AtomicRef
 
 ** Drone config in the Common category.
-** This is the default category, common to all applications.
+** This contains config in the *Common* category. See `session` for other config.
+** 
+** 'DroneConfig' instances may be obtained from the Drone class:
+** 
+**   syntax: fantom
+**   config := drone.config() 
+** 
 const class DroneConfig {
 	private const	Log		log		:= Drone#.pod.log
 	private const	Str		defId	:= "00000000"
@@ -18,6 +24,7 @@ const class DroneConfig {
 		this.drone = drone
 	}
 
+	** Resets the session, user, and application profiles back to the default id of '00000000'.
 	Void reset() {
 		drone.sendConfig("CUSTOM:application_id", defId)
 		appId.val = defId
@@ -28,7 +35,12 @@ const class DroneConfig {
 		drone.configMap(true)
 	}
 	
-	** Gets or makes session config.
+	** If the done contains data for the given 'sessionName' then it is loaded. 
+	** If not, then default data for the new session is created.  
+	** 
+	** If session name is 'null', or matches the current session, then the current session config is returned.
+	** 
+	** See `DroneSessionConfig` for details.
 	DroneSessionConfig session(Str? sessionName := null) {
 		sessConfig := DroneSessionConfig(this, false)
 		if (sessionName != null) {
@@ -190,14 +202,15 @@ const class DroneConfig {
 		set { setConfig("CONTROL:altitude_min", (it * 1000).toInt.toStr) }		
 	}
 
-	// sensitivitySettings / Profile
-	** Sets profiles for indoor / outdoor use. Loads values for:
-	**  - 'indoor/outdoor_control_yaw'
+	** Sets the sensitivity profile for indoor / outdoor use. Loads values for:
 	**  - 'indoor/outdoor_euler_angle_max'
 	**  - 'indoor/outdoor_control_vz_max'
-	** 
-	** Note : This setting also enables the wind estimator of the AR.Drone 2.0, and thus should 
-	** always be enabled when flying outside.
+	**  - 'indoor/outdoor_control_yaw'
+	**
+	** See `DroneUserConfig` for details.
+	**  
+	** Note this also enables the wind estimator of the AR Drone 2.0, and thus should always be 
+	** enabled when flying outside.
 	**  
 	** Corresponds to the 'CONTROL:outdoor' configuration key.
 	Bool useOutdoorProfile {
@@ -205,7 +218,8 @@ const class DroneConfig {
 		set { setConfig("CONTROL:outdoor", it.toStr.upper) }			
 	}
 
-	** Tells the drone it is wearing the outdoor shell. Deactivate it when flying with the indoor shell.
+	** Tells the drone it is wearing the outdoor shell so flight optimisations can be made.
+	** Deactivate this when flying with the indoor shell.
 	** 
 	** This setting is not linked with 'useOutdoorProfile', both have different effects on the drone.
 	**  
@@ -295,28 +309,30 @@ const class DroneConfig {
 		set { setConfig("VIDEO:video_on_usb", it.toStr.upper) }			
 	}
 
-	** The color of the hulls you want to detect. Possible values are:
-	** 
-	**   1 = Green
-	**   2 = Yellow
-	**   3 = Blue
-	** 
-	** Note : This config is only used for standard tag / hull detection. 
-	** Roundel detection doesn't use it.
-	** 
-	** Corresponds to the 'DETECT:enemy_colors' configuration key.
-	Int detectEmemyColours {
-		get { getConfig("DETECT:enemy_colors").toInt }
-		set { setConfig("DETECT:enemy_colors", it.toStr) }		
-	}
-
-	** Activate to detect outdoor hulls. Deactivate to detect indoor hulls.
-	**  
-	** Corresponds to the 'DETECT:enemy_without_shell' configuration key.
-	Bool detectEmemyOutdoorShell {
-		get { getConfig("DETECT:enemy_without_shell").toInt == 0 }
-		set { setConfig("DETECT:enemy_without_shell", it ? "0" : "1") }			
-	}
+	// remove stuff I can't / won't use
+	
+//	** The color of the hulls you want to detect. Possible values are:
+//	** 
+//	**   1 = Green
+//	**   2 = Yellow
+//	**   3 = Blue
+//	** 
+//	** Note : This config is only used for standard tag / hull detection. 
+//	** Roundel detection doesn't use it.
+//	** 
+//	** Corresponds to the 'DETECT:enemy_colors' configuration key.
+//	Int detectEmemyColours {
+//		get { getConfig("DETECT:enemy_colors").toInt }
+//		set { setConfig("DETECT:enemy_colors", it.toStr) }		
+//	}
+//
+//	** Activate to detect outdoor hulls. Deactivate to detect indoor hulls.
+//	**  
+//	** Corresponds to the 'DETECT:enemy_without_shell' configuration key.
+//	Bool detectEmemyOutdoorShell {
+//		get { getConfig("DETECT:enemy_without_shell").toInt == 0 }
+//		set { setConfig("DETECT:enemy_without_shell", it ? "0" : "1") }			
+//	}
 
 	** Dumps all fields to debug string.
 	Str dump(Bool dumpToStdOut := true) {
@@ -364,7 +380,7 @@ const class DroneConfig {
 		drone.configMap(true)
 	}
 
-	internal Void _sendMultiConfig(Str key, Str val) {
+	internal Void _sendMultiConfig(Str key, Obj val) {
 		drone.sendConfig(key, val, sessId.val, userId.val, appId.val)
 	}
 	
