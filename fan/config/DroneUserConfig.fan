@@ -176,8 +176,10 @@ const class DroneUserConfig {
 		if (dumpToStdOut)
 			echo(dump)
 		return dump
-
 	}
+	
+	@NoDoc
+	override Str toStr() { dump	}
 	
 	private Str getConfig(Str key) {
 		config.drone.configMap[key] ?: throw UnknownKeyErr(key)

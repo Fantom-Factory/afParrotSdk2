@@ -313,6 +313,9 @@ const class DroneSessionConfig {
 		return dump
 	}
 	
+	@NoDoc
+	override Str toStr() { dump	}
+
 	private Str? getConfig(Str key, Bool checked := true) {
 		_config.drone.configMap[key] ?: (checked ? throw UnknownKeyErr(key) : null)
 	}

@@ -711,13 +711,13 @@ const class Drone {
 		oldNavData	:= (NavData?) navDataRef.val
 		
 		// we don't need a mutex 'cos we're only ever called from the single-threaded NavDataReader actor
-		newOpts := oldNavData?.options?.rw ?: NavOption:Obj[:]
-		newOpts.setAll(navData.options)
+		newOpts := oldNavData?._lazyOpts?.rw ?: NavOption:LazyNavOptData[:]
+		newOpts.setAll(navData._lazyOpts)
 		newNav := NavData {
 			it.flags		= navData.flags
 			it.seqNum		= navData.seqNum
 			it.visionFlag	= navData.visionFlag
-			it.options		= newOpts
+			it._lazyOpts	= newOpts
 		}
 		navDataRef.val = newNav
 		

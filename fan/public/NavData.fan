@@ -13,10 +13,7 @@ const class NavData {
 	const NavDataFlags	flags
 	
 	** A map of nav options.
-	// TODO un nodoc
-	// TODO store raw buf here, only convert (AtomicMap cache) when asked for
-	@NoDoc
-	const NavOption:Obj	options
+	internal const NavOption:LazyNavOptData	_lazyOpts
 
 	** (Advanced)
 	@NoDoc
@@ -24,16 +21,18 @@ const class NavData {
 	
 	** Convenience method to return the 'NavOptionDemo' data (if any) contained in 'options'. 
 	NavOptionDemo? demoData() {
-		options[NavOption.demo]
+		_lazyOpts[NavOption.demo]?.get
 	}
 	
-	** Convenience method to return 'NavOption' data. Example:
+	** Returns 'NavOption' data. Example:
 	** 
 	**   syntax: fantom
-	**   demoData := navData[NavOption.demo] 
+	**   demoData := navData[NavOption.demo]
+	** 
+	** Returns 'null' if it doesn't exist. 
 	@Operator
 	Obj? get(NavOption navOpt) {
-		options[navOpt]
+		_lazyOpts[navOpt].get
 	}
 }
 
@@ -120,8 +119,7 @@ const class NavDataFlags {
 		if (data.xor(oldFlags.data) == 0)
 			return ""
 		
-//		return flagMethods.exclude { it == #comWatchdogProblem || it == #controlCommandAck }.map |method->Str?| {
-		return flagMethods.map |method->Str?| {
+		return flagMethods.exclude { it == #comWatchdogProblem || it == #controlCommandAck }.map |method->Str?| {
 			oldVal := method.callOn(oldFlags, null)
 			newVal := method.callOn(this, null)
 			return (newVal == oldVal) ? null : logFlagValue(method, oldVal)
@@ -162,13 +160,6 @@ const class NavOptionDemo {
 	const	Str:Obj		drone
 	@NoDoc
 	new make(|This| f) { f(this) }
-}
-
-//** Data options returned from the drone.
-// TODO un NoDoc
-@NoDoc
-enum class NavOption {
-	demo, time, rawMeasures, physMeasures, gyrosOffsets, eulerAngles, references, trims, rcReferences, pwm, altitude, visionRaw, visionOf, vision, visionPerf, trackersSend, visionDetect, watchdog, adcDataFrame, videoStream, games, pressureRaw, magneto, windSpeed, kalmanPressure, hdvideoStream, wifi, gps;
 }
 
 ** Drone state as returned by 'NavData'.
