@@ -39,16 +39,15 @@ internal class NavDataParser {
 				continue
 			}
 			
-			navOption	:= (NavOption) NavOption.vals[optionId]
-			parseMethod	:= navOption.parseMethod 	//typeof.method("parse${navOption.name.capitalize}", false)
-			if (parseMethod == null) {
-				log.warn("No parse method for NavOption ${navOption}")
+			if (optionId > NavOption.unknown2.flag) {
+				log.warn("Unknown NavOption value: ${optionId}")
 				in.skip(optionLen - 4)
-			} else {
-				rawOpt := in.readBufFully(null, optionLen - 4) { it.endian = Endian.little }
-				options[navOption] = LazyNavOptData(rawOpt, parseMethod)
-				options[navOption].get
+				continue
 			}
+
+			navOption	:= (NavOption) NavOption.vals[optionId]
+			rawOpt 		:= in.readBufFully(null, optionLen - 4) { it.endian = Endian.little }
+			options[navOption] = LazyNavOptData(rawOpt, navOption.parseMethod)
 		}
 		
 		return NavData {
@@ -109,11 +108,13 @@ enum class NavOption {
 	kalmanPressure(#parseKalmanPressure), 
 	hdvideoStream(#parseHdVideoStream), 
 	wifi(#parseWifi), 
-	gps(#parseGps);
+	gps(#parseGps),
+	unknown1(#parseUnknown),
+	unknown2(#parseUnknown);
 	
-	internal const Method? parseMethod
+	internal const Method parseMethod
 	
-	private new make(Method? parseMethod := null) {
+	private new make(Method parseMethod) {
 		this.parseMethod = parseMethod
 	}
 	
@@ -569,6 +570,10 @@ enum class NavOption {
 			"vyTraj"			: float32(in), 
 			"firmwareStatus"	: uint32(in) 
 		]
+	}
+
+	static internal Buf parseUnknown(InStream in) {
+		in.readAllBuf
 	}
 
 	private static Bool		bool	(InStream in) { in.readU1 != 0 }

@@ -68,6 +68,11 @@ const class DroneAppConfig {
 	**   syntax: fantom
 	**   drone.config.session.app.navDataOptions = NavOption.demo.flag + NavOption.visionDetect.flag 
 	** 
+	** To receive all option data:
+	** 
+	**   syntax: fantom
+	**   drone.config.session.app.navDataOptions = 0x0FFF_FFFF
+	** 
 	** Corresponds to the 'GENERAL:navdata_options' configuration key.
 	Int navDataOptions {
 		get { getConfig("GENERAL:navdata_options").toInt }
