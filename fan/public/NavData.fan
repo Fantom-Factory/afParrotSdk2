@@ -158,8 +158,24 @@ const class NavOptionDemo {
 	const	Str:Obj		detection
 	** (Deprecated) Camera parameters computed by drone
 	const	Str:Obj		drone
+
 	@NoDoc
 	new make(|This| f) { f(this) }
+
+	** Dumps all fields to debug string.
+	Str dump(Bool dumpToStdOut := true) {
+		fields	:= typeof.fields.findAll { it.isPublic && it.parent == this.typeof }
+		values	:= Str:Obj[:]
+		fields.each { values[it.name] = it.get(this) }
+		dump	:= values.toStr	// so it looks like the rest of the NavOption maps
+
+		if (dumpToStdOut)
+			echo(dump)
+		return dump
+	}
+	
+	@NoDoc
+	override Str toStr() { dump(false) }
 }
 
 ** Drone state as returned by 'NavData'.

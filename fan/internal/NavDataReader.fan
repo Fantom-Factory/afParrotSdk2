@@ -75,6 +75,7 @@ internal class NavDataReaderImpl {
 	Bool			connected
 	Int				lastSeqNum
 	NavDataParser	parser	:= NavDataParser()
+	UdpPacket		packet	:= UdpPacket(null, null, Buf(2560))
 	
 	new make(Drone drone) {
 		this.drone  = drone
@@ -95,8 +96,9 @@ internal class NavDataReaderImpl {
 	}
 	
 	NavData? receive() {
-		packet := null as UdpPacket
-		try	packet	= socket.receive
+		packet.data.flip.flip	// double flip to set size to zero
+		packet.data.capacity = 2560
+		try	socket.receive(packet)
 		catch (IOErr err) {
 			if (err.msg.contains("SocketTimeoutException")) {
 				log.warn("Drone not connected (SocketTimeoutException on NavData read) - check your Wifi settings")
@@ -105,6 +107,8 @@ internal class NavDataReaderImpl {
 			}
 			throw err
 		}
+		echo("'''''''''''''''''''''")
+		echo(packet.data.size)
 
 		try {
 			navData	:= parser.parse(packet.data.flip.with {
