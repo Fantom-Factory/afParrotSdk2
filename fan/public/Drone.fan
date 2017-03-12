@@ -385,17 +385,12 @@ const class Drone {
 
 	// TODO set absolute compass position
 	private const AtomicBool absoluteModeRef := AtomicBool()
-	** TODO only need to set absoluteMode when turning to a compass position  
-	Bool absoluteMode {
+	// TODO only need to set absoluteMode when turning to a compass position  
+	internal Bool absoluteMode {
 		get { absoluteModeRef.val }
 		set { absoluteModeRef.val = it }
 	}
-	
-//	private const AtomicBool combinedModeRef := AtomicBool()
-//	Bool combinedMode {
-//		get { combinedModeRef.val }
-//		set { combinedModeRef.val = it }
-//	}
+
 	private Bool combinedYawMode() {
 		configMap["CONTROL:control_level"].toInt.and(0x02) > 0
 	}
@@ -876,7 +871,7 @@ enum class FlightAnimation {
 ** Governs what the drone should do if the program exists whilst flying.
 ** Default is 'land'.
 enum class ExitStrategy {
-	** Do nothing, let the drone continue doing whatever it was programmed to do.
+	** Do nothing, let the drone continue doing whatever it was last told to do.
 	nothing, 
 	
 	** Sends a 'stop()' command.

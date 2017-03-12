@@ -47,7 +47,7 @@ internal class NavDataParser {
 			} else {
 				rawOpt := in.readBufFully(null, optionLen - 4) { it.endian = Endian.little }
 				options[navOption] = LazyNavOptData(rawOpt, parseMethod)
-				options[navOption].get { echo("$navOption --> $it") }
+				options[navOption].get
 			}
 		}
 		
@@ -77,7 +77,10 @@ internal const class LazyNavOptData {
 	}
 }
 
-//** Data options returned from the drone.
+** Data options returned from the drone, see `NavData`.
+** Unfortunately, NavOption data is not really documented in the Drone SDK so make of it what you may. 
+** 
+** To tell the drone what data to return, see `DroneAppConfig.navDataOptions` and `DroneConfig.navDataDemo`.
 enum class NavOption {
 	demo(#parseDemo),
 	time(#parseTime),

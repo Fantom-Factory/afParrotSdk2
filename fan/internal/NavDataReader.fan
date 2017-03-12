@@ -107,8 +107,6 @@ internal class NavDataReaderImpl {
 			}
 			throw err
 		}
-		echo("'''''''''''''''''''''")
-		echo(packet.data.size)
 
 		try {
 			navData	:= parser.parse(packet.data.flip.with {
