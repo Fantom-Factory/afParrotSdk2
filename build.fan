@@ -4,11 +4,13 @@ class Build : BuildPod {
 
 	new make() {
 		podName = "afParrotSdk2"
-		summary = "A pure Fantom implementation of the Parrot Drone SDK 2.0"
-		version = Version("0.0.1")
+		summary = "An SDK for remotely piloting the Parrot AR Drone 2.0 quadcopter"
+		version = Version("0.0.2")
 
 		meta = [
-			"pod.dis"		: "Parrot Drone SDK 2.0.1",
+			"pod.dis"			: "Parrot Drone SDK 2",
+			"repo.tags"			: "misc",
+			"repo.public"		: "true"
 		]
 
 		depends = [
@@ -19,6 +21,6 @@ class Build : BuildPod {
 		]
 
 		srcDirs = [`fan/`, `fan/advanced/`, `fan/config/`, `fan/internal/`, `fan/public/`]
-		resDirs = [,]
+		resDirs = [`doc/`]
 	}
 }

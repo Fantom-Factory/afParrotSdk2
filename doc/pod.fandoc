@@ -1,19 +1,20 @@
 Overview
 ********
-The Parrot SDK 2.0 is a pure Fantom implementation of the Parrot Drone SDK 2.0.1 and lets you pilot your [AR Drone]`https://www.parrot.com/uk/drones/parrot-ardrone-20-elite-%C3%A9dition` remotely via Fantom programs.
+The Parrot Drone SDK 2 is a pure [Fantom]`http://fantom-lang.org/` implementation of the Parrot SDK 2.0 that lets you pilot your [AR Drone]`https://www.parrot.com/uk/drones/parrot-ardrone-20-elite-%C3%A9dition` quadcopter remotely via Fantom programs.
 
-An intuitive and simple API will have you flying your drone in minutes!
+It's an intuitive and simple API that'll have you flying your drone in minutes!
 
 ![Parrot AR Drone]`arDrone.png`
 
-Fantom SDK features:
+The Fantom SDK features:
  - Blocking & non-blocking drone move methods
- - Feedback events with telemetry and flight data
+ - Feedback events with telemetry, flight, and drone data
  - Pre-programmed flight stunts and LED patterns
  - Read and write drone configuration
+ - Full decoding of all navigation option data
  - Exit strategy to guard against run-away drones when your program crashes!
 
-For more information on the AR Drone, see the AR Drone Developer Guide in the official [Parrot SDK 2.0]`http://developer.parrot.com/docs/SDK2/ARDrone_SDK_2_0_1.zip` (for C).
+For more information on the AR Drone, see the AR Drone Developer Guide in the official [Parrot SDK 2.0]`http://developer.parrot.com/docs/SDK2/` (for C).
 
 
 
@@ -52,35 +53,49 @@ Quick Start
 
     C:\> fan Example.fan
 
-    [info] [afParrotSdk2Demo] State Change: --> landed
-    [info] [afParrotSdk2Demo] Battery now at 57%
+    [info] [afParrotSdk2] Connected to AR Drone 2.4.8
     [info] [afParrotSdk2] Drone ready in 0.574ms
+    [info] [afParrotSdk2] Drone took off in 5.23sec
+    [info] [afParrotSdk2] Drone landed in 0.82sec
+    [info] [afParrotSdk2] Disconnected from Drone
 
 
 
-Connecting
-**********
-When turned on, your AR Drone creates a WiFi hotspot that your computer must connect to. Once done, the Fantom SDK can connect to the drone (via TCP and UDP sockets).
+Drone Communication
+*******************
+The Fantom SDK communications to the AR Drone over standard open wifi.
+
+When you turn your AR Drone on, it creates a wifi hotspot that your computer must connect to. Once connected, the Fantom SDK communicates with the drone via UDP and TCP sockets.
 
 
 
-Taking Off and Landing
-**********************
+Take Off and Land
+*****************
 Taking off and landing is as simple as calling the corresponding methods:
 
- - 'takeOff()'
- - 'hover()'
- - 'land()'
+pre>
+syntax: fantom
+
+drone.takeOff()
+drone.hover()
+drone.land()
+<pre
 
 All methods block until the drone has performed the task in hand. Note that taking off usually takes some 5 seconds before a stable hover is reached.
 
 If all the red lights are on, it usually indicates that the drone is in an emergency state and it won't take off until the emergency is cleared:
 
- - 'clearEmergencyFlag()'
+pre>
+syntax: fantom
+drone.clearEmergencyFlag()
+<pre
 
 Whilst on the ground in a flat horizontal position, it's a good idea to tell the drone to calibrate its sensors for a wobble free flight:
 
- - 'flatTrim()'
+pre>
+syntax: fantom
+drone.flatTrim()
+<pre
 
 Which makes for a complete and simple flight program of:
 
@@ -99,23 +114,27 @@ drone.disconnect
 
 
 
-Moving
-******
+Movement
+********
 Basic movement is achieved with the following methods:
 
-  - 'moveUp()'
-  - 'moveDown()'
-  - 'moveLeft()'
-  - 'moveRight()'
-  - 'spinClockwise()'
-  - 'spinAntiClockwise()'
+pre>
+syntax: fantom
+drone.moveUp()
+drone.moveDown()
+drone.moveLeft()
+drone.moveRight()
+drone.spinClockwise()
+drone.spinAntiClockwise()
+<pre
 
 All take a value between 0 and 1 which determine how *fast* the drone moves. The methods also take an optional 'Duration' telling it how long to move for, and by default they block until finished. See the move methods for details.
 
 There are couple of *fun* commands which perform one of the drone's preprogrammed stunts:
 
- - 'drone.animateFlight()'
- - 'drone.animateLeds()'
+  syntax: fantom
+  drone.animateFlight()
+  drone.animateLeds()
 
 See `FlightAnimation` and `LedAnimation` for details.
 
@@ -135,35 +154,119 @@ Events
 ******
 The drone constantly sends data back to the Fantom SDK, which decodes it and fires events to keep you updated. The main event is:
 
- - 'onNavData()'
+  syntax: fantom
+  drone.onNavData()
 
 `NavData` contains all the basic telemetry data such as speeds and orientation. The Fantom SDK also has other events for handling common cases:
 
- - 'onBatteryDrain()'
- - 'onBatteryLow()'
- - 'onDisconnect()'
- - 'onEmergency()'
- - 'onStateChange()'
+pre>
+syntax: fantom
+
+drone.onBatteryDrain()
+drone.onBatteryLow()
+drone.onDisconnect()
+drone.onEmergency()
+drone.onStateChange()
+<pre
 
 
 
 Configuration
 *************
+Use the `DroneConfig` helper class to read and write common drone config. Example:
 
-TODO update
+  syntax: fantom
+  drone.config.totalFlightTime
 
-Configuration may be read from the drone with:
 
- - 'config()'
+The drone further splits configuration up into session, user, and application categories, each of which may be named.
+
+  syntax: fantom
+  drone.config.session("My Session").hoveringRange = 1000
+
+Once named, you may access the category directly:
+
+  syntax: fantom
+  drone.config.session.hoveringRange = 2000
+
+User and application categories are encapsulated by a session, so when the session changes, the user and application config is reset. Because of this, the Fantom SDK wraps these categories in the session category:
+
+  syntax: fantom
+  drone.config.session.app("My App").navDataOptions = NavOption.demo.flag
+
+All config settings are stored on the drone's internal flash drive and are persisted between reboots, so it is advisable to use named categories whenever possible so the drone may always be reset back to a *known good* profile.
+
+The drone SDK calls the categorised config mechanism 'Multi-Config'.
+
+
+
+Raw Config Data
+===============
+Raw drone configuration may be inspected with:
+
+  syntax: fantom
+  drone.configMap()
 
 Reading config from the drone takes a number of milliseconds, so the config is cached. Pass in 'true' to force a re-read of fresh config from the drone.
 
-New config may be set by sending configuration commands. Do so with:
+New raw config may be set by sending configuration commands. Do so with:
 
- - 'sendConfig()'
+  syntax: fantom
+  drone.sendConfig()
 
 
-NavOptions
-**********
 
-TODO show hoe to get data
+Nav Options
+***********
+The drone is capable of pouring out bucket loads of data for your consumption. General purpose data is known as 'demo' and is available in the `NavOptionDemo` class:
+
+  syntax: fantom
+  demoData := drone.navData.demoData
+
+All other data is made available via *options*. To receive options you must first set which option packets you want the drone to send via application config:
+
+  syntax: fantom
+  drone.config.session.app("My App").navDataOptions = NavOption.demo.flag + NavOption.windSpeed.flag
+
+Once option data is received, the latest is always available via `NavData`:
+
+  syntax: fantom
+  windSpeed := drone.navData.getOption(NavOption.windSpeed)
+
+Note that nav options are lazily decoded and kept in their raw compressed format until requested, thus making the mechanism extremely efficient.
+
+Note that unfortunately, the nav option data is not documented in the Drone SDK so the best this Fantom SDK can do is decode it into maps of data with semi-descriptive string keys. Manually inspect the data returned from 'NavData.getOption()' for details.
+
+
+
+Demo Mode vs Full Mode
+======================
+By default the Fantom SDK puts the drone into *demo* mode whereby the drone sends out packets of option data ~15 times a second. But the drone may also be put into *full* mode where it sends data ~200 times a second.
+
+Switching to full mode resets the drone to sending out *ALL* option data, but this may be further configured with 'navDataOptions':
+
+  syntax: fantom
+  drone.config.navDataDemo = false
+  drone.config.session.app("My App").navDataOptions = NavOption.demo.flag + NavOption.windSpeed.flag
+
+
+
+References & Resources
+**********************
+Websites that have proved valuable in creating the Fantom SDK:
+
+ - [Official Parrot SDK 2.0]`http://developer.parrot.com/docs/SDK2/ARDrone_SDK_2_0_1.zip`
+ - [Official Parrot AR Drone SDK Forum]`http://forum.developer.parrot.com/c/drone-sdk/ardrone`
+ - [Parrot SDK 2.0 for node.js]`https://github.com/felixge/node-ar-drone`
+ - [Parrot SDK 2.0 for C#]`https://github.com/Ruslan-B/AR.Drone`
+ - [Parrot SDK 2.0 for Python]`http://www.playsheep.de/drone/`
+ - [AR Drone on StackOverflow]`http://stackoverflow.com/questions/tagged/ar.drone`
+ - [AR Drone -> Arduino Communication]`https://gist.github.com/maxogden/4152815`
+ - [AR Drone 2.0 Spare Parts Page]`https://www.parrot.com/us/catalog/spareparts?f%5B0%5D=im_field_product_category%3A5`
+
+The developer guide PDF has been uploaded to BitBucket, should the official SDK ever disappear:
+
+ - [AR Drone Developer Guide 2.0.1]`https://bitbucket.org/AlienFactory/afparrotsdk2/downloads/ARDrone_Developer_Guide_2_0_1.pdf` (PDF - 5 MB)
+
+Have fun!
+
