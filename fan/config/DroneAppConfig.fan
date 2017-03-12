@@ -62,11 +62,13 @@ const class DroneAppConfig {
 	// ---- Other Cmds ----
 
 	** When using 'navDataDemo', this configuration allows the application to ask for other navData packets.
-	** Most common example is the 'default_navdata_options' macro defined in the 'config_key.h' file.
-	** The full list of the possible navData packets can be found in the 'navdata_common.h' file.
+	** 
+	** Use the flag values of the `NavOption` enum to add / or flags values together. Example:
+	** 
+	**   syntax: fantom
+	**   drone.config.session.app.navDataOptions = NavOption.demo.flag + NavOption.visionDetect.flag 
 	** 
 	** Corresponds to the 'GENERAL:navdata_options' configuration key.
-	// TODO map to navdata_options enum / flags
 	Int navDataOptions {
 		get { getConfig("GENERAL:navdata_options").toInt }
 		set { setConfig("GENERAL:navdata_options", it.toStr) }
