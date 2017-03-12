@@ -1,6 +1,12 @@
 
 ** Standard navigation data returned by the drone. 
-** Common data can be found with the 'state()' and 'demoData()' methods. 
+** Common data can be found with the 'state()' and 'demoData()' methods, whilst a wealth of debug 
+** data can be found in the NavOptions and the 'getOption()' method.
+** 
+** Unfortunately, the NavOption data is not really documented in the Drone SDK so make of it what 
+** you may. 
+** 
+** To tell the drone what data to return, see `DroneAppConfig.navDataOptions` and `DroneConfig.navDataDemo`.
 const class NavData {
 		
 	** The sequence number of the originating UDP packet.
@@ -19,7 +25,11 @@ const class NavData {
 	@NoDoc
 	new make(|This| f) { f(this) }
 	
-	** Convenience method to return the 'NavOptionDemo' data (if any) contained in 'options'. 
+	** Return the 'NavOptionDemo' data (if any) from the nav options.
+	** Convenience for:
+	** 
+	**   syntax: fantom
+	**   navData.getOption(NavOption.demo)
 	NavOptionDemo? demoData() {
 		_lazyOpts[NavOption.demo]?.get
 	}
@@ -30,9 +40,16 @@ const class NavData {
 	**   demoData := navData[NavOption.demo]
 	** 
 	** Returns 'null' if it doesn't exist. 
+	** 
+	** Option data is usually a map of maps using strings as keys. Inspect the data to find out.
 	@Operator
-	Obj? get(NavOption navOpt) {
-		_lazyOpts[navOpt].get
+	Obj? getOption(NavOption navOpt) {
+		_lazyOpts[navOpt]?.get
+	}
+	
+	** Returns a list of options available via 'getOption()'.
+	NavOption[] optionKeys() {
+		_lazyOpts.keys
 	}
 }
 
