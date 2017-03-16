@@ -7,7 +7,7 @@ It's an intuitive and simple API that'll have you flying your drone in minutes!
 ![Parrot AR Drone]`arDrone.png`
 
 The Fantom SDK features:
- - Blocking & non-blocking drone move methods
+ - Blocking & non-blocking drone movement methods
  - Feedback events with telemetry, flight, and drone data
  - Pre-programmed flight stunts and LED patterns
  - Read and write drone configuration
@@ -258,8 +258,9 @@ Websites that have proved valuable in creating the Fantom SDK:
  - [Official Parrot SDK 2.0]`http://developer.parrot.com/docs/SDK2/ARDrone_SDK_2_0_1.zip`
  - [Official Parrot AR Drone SDK Forum]`http://forum.developer.parrot.com/c/drone-sdk/ardrone`
  - [Parrot SDK 2.0 for node.js]`https://github.com/felixge/node-ar-drone`
- - [Parrot SDK 2.0 for C#]`https://github.com/Ruslan-B/AR.Drone`
  - [Parrot SDK 2.0 for Python]`http://www.playsheep.de/drone/`
+ - [Parrot SDK 2.0 for Java]`https://github.com/codeminders/javadrone`
+ - [Parrot SDK 2.0 for C#]`https://github.com/Ruslan-B/AR.Drone`
  - [AR Drone on StackOverflow]`http://stackoverflow.com/questions/tagged/ar.drone`
  - [AR Drone -> Arduino Communication]`https://gist.github.com/maxogden/4152815`
  - [AR Drone 2.0 Spare Parts Page]`https://www.parrot.com/us/catalog/spareparts?f%5B0%5D=im_field_product_category%3A5`
