@@ -17,7 +17,7 @@ class Build : BuildPod {
 			"sys          1.0.69 - 1.0",
 			"inet         1.0.69 - 1.0",
 			"concurrent   1.0.69 - 1.0",
-			"afConcurrent 1.0.17 - 1.0",
+			"afConcurrent 1.0.18 - 1.0",
 		]
 
 		srcDirs = [`fan/`, `fan/advanced/`, `fan/config/`, `fan/internal/`, `fan/public/`]
