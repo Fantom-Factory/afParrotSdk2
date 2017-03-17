@@ -29,7 +29,6 @@ internal const class VideoReader {
 	}
 	
 	Void connect() {
-		// call synchronized so we know when we've connected
 		mutex.withState |VideoReaderImpl reader| {
 			reader.connect
 			
@@ -39,7 +38,7 @@ internal const class VideoReader {
 	}
 	
 	Bool isConnected() {
-		mutex.getState |VideoReaderImpl reader| {
+		mutex.getState |VideoReaderImpl reader->Bool| {
 			reader.isConnected
 		}
 	}

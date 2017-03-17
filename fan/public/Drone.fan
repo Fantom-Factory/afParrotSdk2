@@ -80,7 +80,7 @@ const class Drone {
 	** Note this hook is called from a different Actor / thread to the one that sets it. 
 					|NavData, Drone|?	onNavData {
 						get { onNavDataRef.val }
-						set { onNavDataRef.val = it }
+						set { onNavDataRef.val = it?.toImmutable }
 					}
 
 	** Event hook that's called when the drone's state is changed.
@@ -89,7 +89,7 @@ const class Drone {
 	** Note this hook is called from a different Actor / thread to the one that sets it. 
 					|FlightState state, Drone|? onStateChange {
 						get { onStateChangeRef.val }
-						set { onStateChangeRef.val = it }
+						set { onStateChangeRef.val = it?.toImmutable }
 					}
 
 	** Event hook that's called when the drone's battery loses a percentage of charge.
@@ -99,7 +99,7 @@ const class Drone {
 	** Note this hook is called from a different Actor / thread to the one that sets it. 
 					|Int newPercentage, Drone|? onBatteryDrain {
 						get { onBatterDrainRef.val }
-						set { onBatterDrainRef.val = it }
+						set { onBatterDrainRef.val = it?.toImmutable }
 					}
 
 	** Event hook that's called when the drone enters emergency mode.
@@ -112,7 +112,7 @@ const class Drone {
 	** Note this hook is called from a different Actor / thread to the one that sets it. 
 					|Drone|?	onEmergency {
 						get { onEmergencyRef.val }
-						set { onEmergencyRef.val = it }
+						set { onEmergencyRef.val = it?.toImmutable }
 					}
 
 	** Event hook that's called when the drone's battery reaches a critical level ~ 20%.
@@ -121,7 +121,7 @@ const class Drone {
 	** Note this hook is called from a different Actor / thread to the one that sets it. 
 					|Drone|?	onBatteryLow {
 						get { onBatteryLowRef.val }
-						set { onBatteryLowRef.val = it }
+						set { onBatteryLowRef.val = it?.toImmutable }
 					}
 
 	** Event hook that's called when the drone is disconnected.
@@ -132,7 +132,7 @@ const class Drone {
 	** Note this hook is called from a different Actor / thread to the one that sets it. 
 					|Bool abnormal, Drone|? onDisconnect {
 						get { onDisconnectRef.val }
-						set { onDisconnectRef.val = it }
+						set { onDisconnectRef.val = it?.toImmutable }
 					}
 
 	** Event hook that's called when video frame is received.
@@ -143,7 +143,7 @@ const class Drone {
 	** Note this hook is called from a different Actor / thread to the one that sets it. 
 					|Buf, PaveHeader, Drone|? onVideoFrame {
 						get { onVideoFrameRef.val }
-						set { onVideoFrameRef.val = it
+						set { onVideoFrameRef.val = it?.toImmutable
 							if (it == null)
 								videoReader.disconnect
 							if (it != null && !videoReader.isConnected)
