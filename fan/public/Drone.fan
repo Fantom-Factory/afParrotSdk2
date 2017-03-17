@@ -19,6 +19,7 @@ const class Drone {
 	private	const	AtomicRef		onEmergencyRef		:= AtomicRef()
 	private	const	AtomicRef		onBatteryLowRef		:= AtomicRef()
 	private	const	AtomicRef		onDisconnectRef		:= AtomicRef()
+	private	const	AtomicRef		onVideoFrameRef		:= AtomicRef()
 	private	const	AtomicRef		droneVersionRef		:= AtomicRef()
 	private	const	AtomicMap		configMapRef		:= AtomicMap { it.keyType = Str#; it.valType = Str#; it.caseInsensitive = true }
 	private	const	DroneConfig		configRef			:= DroneConfig(this)
@@ -26,6 +27,7 @@ const class Drone {
 	private const	CmdSender		cmdSender
 	private const	NavDataReader	navDataReader
 	private const	ControlReader	controlReader
+	private const	VideoReader		videoReader
 	private	const	|->|			shutdownHook
 
 	** The 'ActorPool' responsible for controlling all the threads handled by this drone.
@@ -75,30 +77,29 @@ const class Drone {
 	** Note 'Drone.navData' is updated with the new contents before the hook is called.
 	** 
 	** Throws 'NotImmutableErr' if the function is not immutable.
+	** Note this hook is called from a different Actor / thread to the one that sets it. 
 					|NavData, Drone|?	onNavData {
 						get { onNavDataRef.val }
-						set { onNavDataRef.val = it}
+						set { onNavDataRef.val = it }
 					}
 
 	** Event hook that's called when the drone's state is changed.
 	** 
 	** Throws 'NotImmutableErr' if the function is not immutable.
-	** 
 	** Note this hook is called from a different Actor / thread to the one that sets it. 
 					|FlightState state, Drone|? onStateChange {
 						get { onStateChangeRef.val }
-						set { onStateChangeRef.val = it}
+						set { onStateChangeRef.val = it }
 					}
 
 	** Event hook that's called when the drone's battery loses a percentage of charge.
 	** The function is called with the new battery percentage level (0 - 100).
 	** 
 	** Throws 'NotImmutableErr' if the function is not immutable.
-	** 
 	** Note this hook is called from a different Actor / thread to the one that sets it. 
 					|Int newPercentage, Drone|? onBatteryDrain {
 						get { onBatterDrainRef.val }
-						set { onBatterDrainRef.val = it}
+						set { onBatterDrainRef.val = it }
 					}
 
 	** Event hook that's called when the drone enters emergency mode.
@@ -108,21 +109,19 @@ const class Drone {
 	** Note this hook is only called when the drone is flying.
 	** 
 	** Throws 'NotImmutableErr' if the function is not immutable.
-	** 
 	** Note this hook is called from a different Actor / thread to the one that sets it. 
 					|Drone|?	onEmergency {
 						get { onEmergencyRef.val }
-						set { onEmergencyRef.val = it}
+						set { onEmergencyRef.val = it }
 					}
 
 	** Event hook that's called when the drone's battery reaches a critical level ~ 20%.
 	** 
 	** Throws 'NotImmutableErr' if the function is not immutable.
-	** 
 	** Note this hook is called from a different Actor / thread to the one that sets it. 
 					|Drone|?	onBatteryLow {
 						get { onBatteryLowRef.val }
-						set { onBatteryLowRef.val = it}
+						set { onBatteryLowRef.val = it }
 					}
 
 	** Event hook that's called when the drone is disconnected.
@@ -130,11 +129,26 @@ const class Drone {
 	** / socket error. This may happen if the battery drains too low or the drone is switched off.
 	** 
 	** Throws 'NotImmutableErr' if the function is not immutable.
-	** 
 	** Note this hook is called from a different Actor / thread to the one that sets it. 
 					|Bool abnormal, Drone|? onDisconnect {
 						get { onDisconnectRef.val }
-						set { onDisconnectRef.val = it}
+						set { onDisconnectRef.val = it }
+					}
+
+	** Event hook that's called when video frame is received.
+	** 
+	** The payload is a raw frame from the H.264 codec.
+	** 
+	** Throws 'NotImmutableErr' if the function is not immutable.
+	** Note this hook is called from a different Actor / thread to the one that sets it. 
+					|Buf, PaveHeader, Drone|? onVideoFrame {
+						get { onVideoFrameRef.val }
+						set { onVideoFrameRef.val = it
+							if (it == null)
+								videoReader.disconnect
+							if (it != null && !videoReader.isConnected)
+								videoReader.connect
+						}
 					}
 
 	** Creates a 'Drone' instance, optionally passing in network configuration.
@@ -143,6 +157,7 @@ const class Drone {
 		this.networkConfig	= networkConfig
 		this.navDataReader	= NavDataReader(this, actorPool)
 		this.controlReader	= ControlReader(this)
+		this.videoReader	= VideoReader(this, actorPool)
 		this.cmdSender		= CmdSender(this, actorPool)
 		this.eventThread	= Synchronized(actorPool)
 		this.shutdownHook	= #onShutdown.func.bind([this])
@@ -161,7 +176,8 @@ const class Drone {
 			throw Err("Can not re-use Drone() instances")
 
 		navDataReader.addListener(#processNavData.func.bind([this]))
-		
+		videoReader	 .addListener(#processVidData.func.bind([this]))
+
 		cmdSender.connect
 		navDataReader.connect
 
@@ -743,6 +759,18 @@ const class Drone {
 					// sometimes the percentage jumps up a bit, then drains backdown: 46% -> 47% -> 46% so we get 2 x battery events @ 46%
 					callSafe(onBatteryDrain, [demoData.batteryPercentage, this])
 			}
+		}
+	}
+	
+	private Void processVidData(Buf payload, PaveHeader pave) {
+		if (actorPool.isStopped) return
+
+		// ---- call event handlers ----
+		
+		// call handlers from a different thread so they don't block the VidReader
+		// should I use a different thread for vid data?
+		eventThread.async |->| {
+			callSafe(onVideoFrame, [payload, pave, this])			
 		}
 	}
 	
