@@ -58,7 +58,13 @@ const class NetworkConfig {
 	const Duration	tcpConnectTimeout		:= 2sec
 	
 	** The timeout used when waiting to receive data on a TCP port.
-	const Duration	tcpReceiveTimeout		:= 1sec
+	const Duration	tcpReceiveTimeout		:= 2sec
+	
+	** The timeout used when waiting to receive data on a FTP port.
+	const Duration	ftpConnectTimeout		:= 2sec
+	
+	** The timeout used when waiting to receive data on a TCP port.
+	const Duration	ftpReceiveTimeout		:= 2sec
 	
 	** The timeout used when waiting to receive data on a UDP port.
 	const Duration	udpReceiveTimeout		:= 1sec

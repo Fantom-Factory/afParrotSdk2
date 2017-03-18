@@ -21,6 +21,7 @@ const class Drone {
 	private	const	AtomicRef		onDisconnectRef		:= AtomicRef()
 	private	const	AtomicRef		onVideoFrameRef		:= AtomicRef()
 	private	const	AtomicRef		droneVersionRef		:= AtomicRef()
+	private	const	AtomicBool		connectedRef		:= AtomicBool(false)
 	private	const	AtomicMap		configMapRef		:= AtomicMap { it.keyType = Str#; it.valType = Str#; it.caseInsensitive = true }
 	private	const	DroneConfig		configRef			:= DroneConfig(this)
 	private	const	Synchronized	eventThread
@@ -190,13 +191,14 @@ const class Drone {
 
 		try droneVersion = BareBonesFtp().readVersion(networkConfig)
 		catch (Err err)
-			log.warn("Could not FTP version.txt from drone", err)
+			log.warn("Could not FTP version.txt from drone\n  ${err.msg}")
 
 		// grab some config
-		configMap(true)
+		configMapRef.map = controlReader.read
 
 		Env.cur.addShutdownHook(shutdownHook)
 
+		connectedRef.val = true
 		log.info("Connected to AR Drone ${droneVersion}")
 		return this
 	}
@@ -211,7 +213,7 @@ const class Drone {
 	
 	** Returns 'true' if connected to the drone.
 	Bool isConnected() {
-		!actorPool.isStopped
+		connectedRef.val && !actorPool.isStopped
 	}
 	
 	** Returns a read only map of the drone's raw configuration data, as read from the control 
@@ -220,8 +222,8 @@ const class Drone {
 	** All config data is cached, pass a 'reRead' value of 'true' to obtain fresh data from the 
 	** drone.
 	Str:Str configMap(Bool reRead := false) {
-		if (reRead || configMapRef.isEmpty)
-			configMapRef.map = ControlReader(this).read
+		if ((reRead || configMapRef.isEmpty) && isConnected)
+			configMapRef.map = controlReader.read
 		return configMapRef.map
 	}
 
@@ -240,6 +242,7 @@ const class Drone {
 	** This method does not block.
 	@NoDoc
 	Void sendCmd(Cmd cmd, Cmd? cmd2 := null) {
+//		if (!isConnected) return	// needed to connect
 		cmdSender.send(cmd, cmd2)
 	}
 	
@@ -250,6 +253,8 @@ const class Drone {
 	** 
 	** For multi-config support, pass in the appropirate IDs. 
 	Void sendConfig(Str key, Obj val, Str? sessionId := null, Str? userId := null, Str? appId := null) {
+		if (!isConnected) return
+
 		// see http://stackoverflow.com/questions/3466452/xor-of-three-values
 		diff := (sessionId != null ? 1 : 0) + (userId != null ? 1 : 0) + (appId != null ? 1 : 0)
 		if (diff != 0 && diff != 3)
@@ -274,6 +279,7 @@ const class Drone {
 	** 
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.configCmdAckTimeout'.
 	Void clearEmergencyLanding(Duration? timeout := null) {
+		if (!isConnected) return
 		flags := navData?.flags
 		if (flags?.emergencyLanding == true || flags?.userEmergencyLanding == true) {
 			cmdSender.send(Cmd.makeEmergency)
@@ -285,6 +291,7 @@ const class Drone {
 	** 
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.configCmdAckTimeout'.
 	Void setEmergencyLanding(Duration? timeout := null) {
+		if (!isConnected) return
 		if (navData?.flags?.emergencyLanding == false) {
 			cmdSender.send(Cmd.makeLand, Cmd.makeEmergency)
 			NavDataLoop.setEmergency(this, timeout ?: networkConfig.configCmdAckTimeout)
@@ -298,6 +305,7 @@ const class Drone {
 	** 
 	** This method does not block.
 	Void flatTrim() {
+		if (!isConnected) return
 		if (flightState != FlightState.def && flightState != FlightState.init && flightState != FlightState.landed) {
 			log.warn("Can not flat trim when state is ${flightState}")
 			return
@@ -312,6 +320,7 @@ const class Drone {
 	** 
 	** This method does not block.
 	Void calibrate(Int deviceNum) {
+		if (!isConnected) return
 		if (flightState != FlightState.flying && flightState != FlightState.hovering) {
 			log.warn("Can not calibrate magnetometer when state is ${flightState}")
 			return
@@ -330,6 +339,7 @@ const class Drone {
 	** 
 	** This method does not block.
 	Void animateLeds(LedAnimation anim, Duration duration, Float? freqInHz := null) {
+		if (!isConnected) return
 		params := [anim.ordinal, (freqInHz ?: anim.defaultFrequency), duration.toSec]
 		sendConfig("leds:leds_anim", params)
 	}
@@ -343,6 +353,7 @@ const class Drone {
 	** 
 	** Corresponds to the 'control:flight_anim' config cmd.
 	Void animateFlight(FlightAnimation anim, Duration? duration := null, Bool block := true) {
+		if (!isConnected) return
 		params	:= [anim.ordinal, (duration ?: anim.defaultDuration).toMillis].join(",")	
 		sendConfig("control:flight_anim", params)
 		if (block)
@@ -360,6 +371,7 @@ const class Drone {
 	** 
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
 	Void takeOff(Bool block := true, Duration? timeout := null) {
+		if (!isConnected) return
 		if (flightState == null || ![FlightState.def, FlightState.init, FlightState.landed].contains(flightState)) {
 			log.warn("Can not take off - flight state is already ${flightState}")
 			return
@@ -373,6 +385,7 @@ const class Drone {
 	** 
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
 	Void land(Bool block := true, Duration? timeout := null) {
+		if (!isConnected) return
 		if (flightState == null || [FlightState.def, FlightState.init, FlightState.landed, FlightState.transLanding].contains(flightState)) {
 			log.warn("Can not land - flight state is already ${flightState}")
 			return
@@ -386,6 +399,7 @@ const class Drone {
 	** 
 	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
 	Void hover(Bool block := true, Duration? timeout := null) {
+		if (!isConnected) return
 		if (flightState == null || [FlightState.hovering, FlightState.landed, FlightState.transLanding].contains(flightState)) {
 			log.warn("Can not hover - flight state is already ${flightState}")
 			return
@@ -687,6 +701,9 @@ const class Drone {
 		
 		shutdownHook.call()
 
+		// set connectedRef AFTER we've called the shutdown hook
+		connectedRef.val = false
+
 		navDataReader.disconnect
 		cmdSender.disconnect
 
@@ -799,6 +816,8 @@ const class Drone {
 	}
 
 	private |->|? doMove(Cmd cmd, Float speed, Duration? duration, Bool? block) {
+		if (!isConnected) return null
+
 		if (speed < -1f || speed > 1f)
 			throw ArgErr("Speed must be between -1 and 1 : ${speed}")
 		
