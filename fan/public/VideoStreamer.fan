@@ -71,14 +71,24 @@ const class VideoStreamer {
 	static VideoStreamer toPngImages([Str:Obj]? options := null) {	
 		actorPool	:= options?.get("actorPool")	?: ActorPool()
 		ffmpegPath	:= options?.get("ffmpegPath")	?: (Env.cur.os == "win32" ? `ffmpeg.exe` : `ffmpeg`)
-		ffmpegArgs	:= options?.get("ffmpegArgs")	?: "-f h264 -i - -f image2pipe -codec:v png -r 1 -".split
+		ffmpegArgs	:= options?.get("ffmpegArgs")	?: "-f h264 -i - -f image2pipe -codec:v png -".split
+		frameRate	:= options?.get("frameRate")
 		throttle	:= options?.get("throttle")		?: 200ms	// 5 times a second should be fine for console output
+
+		args := (Str[]) ffmpegArgs
+		if (frameRate != null) {
+			args = args.rw
+			args.pop
+			args.push("-r")
+			args.push(frameRate)
+			args.push("-")
+		}
 
 		return VideoStreamer {
 			vs := it
 			it.pngEventThread = Synchronized(actorPool)
 			it.mutex = SynchronizedState(actorPool) |->Obj| {
-				VideoStreamerToPngEvents(ffmpegPath, ffmpegArgs, actorPool, throttle, #onNewPngImage.func.bind([vs]))
+				VideoStreamerToPngEvents(ffmpegPath, args, actorPool, throttle, #onNewPngImage.func.bind([vs]))
 			}
 		}
 	}
@@ -221,9 +231,6 @@ internal class VideoStreamerToPngEvents : VideoStreamerImpl {
 				pngBuf := readPng(inStream)
 				if (pngBuf != null)
 					onNewPngImage(pngBuf.toImmutable)
-
-//				// lets not hammer the thread waiting for key inputs!
-//				Actor.sleep(throttle)
 			}
 		}
 		return this
@@ -261,43 +268,9 @@ internal class VideoStreamerToPngEvents : VideoStreamerImpl {
 				pngBuf.writeI4(chunkSize)
 				pngBuf.writeChars(chunkType)
 				in.readBufFully(pngBuf, chunkSize + 4).seek(pngBuf.size)	// 4 bytes = CRC
-				pngEnd 		= (chunkType == "IEND")				// 0x "49 45 4e 44"
+				pngEnd 		= (chunkType == "IEND")							// 0x "49 45 4e 44"
 			}
 			return pngBuf.flip
-
-		} catch (IOErr ioe) {
-			// meh - we usually get 'Unexpected end of stream' when then FFMPEG is killed
-		} catch (Err err) {
-			log.err("VideoStreamerToPngEvents - ${err.typeof} - ${err.msg}")
-		}
-		return null
-	}
-
-	** Luckily, the JPEG format is easy to read and easy to find the end of and image.
-	** http://stackoverflow.com/questions/4585527/detect-eof-for-jpg-images#4614629
-	static Buf? readJpg(InStream in) {
-		try {
-			jpgBuf := Buf() { endian = Endian.big }
-			jpgEnd := false
-			while (!jpgEnd) {
-				byte := in.read
-				if (byte != 0xFF) {
-					jpgBuf.write(byte)
-					continue
-				}
-				
-				mark := in.read
-				if (mark == 0x00 || mark == 0x01 || (mark >= 0xD0 && mark <= 0xD8)) {
-					jpgBuf.write(mark)
-					continue					
-				}
-				
-				len := in.readU2
-				
-			}
-			
-
-			return jpgBuf.flip
 
 		} catch (IOErr ioe) {
 			// meh - we usually get 'Unexpected end of stream' when then FFMPEG is killed
