@@ -5,7 +5,7 @@ internal class BareBonesFtp {
 
 	Version readVersion(NetworkConfig config) {
 //		log.debug("FTP --- Opening TCP connection on ${config.droneIpAddr}::${config.ftpPort}")
-		ctrlSock := TcpSocket().connect(config.droneIpAddr, config.ftpPort, config.tcpConnectTimeout) { it.options.receiveTimeout = config.tcpReceiveTimeout }
+		ctrlSock := TcpSocket().connect(config.droneIpAddr, config.ftpPort, config.ftpConnectTimeout) { it.options.receiveTimeout = config.ftpReceiveTimeout }
 		line	 := null as Str
 		readLine := |Int expectedStatus| {
 			line = ctrlSock.in.readLine
