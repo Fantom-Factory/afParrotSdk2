@@ -51,7 +51,7 @@ const class DroneConfig {
 				sessId.val = id
 				userId.val = defId
 				appId.val  = defId
-				_sendMultiConfig("CUSTOM:session_desc", sessionName)
+				sendMultiConfig("CUSTOM:session_desc", sessionName)
 				drone.configMap(true)
 			}
 		}
@@ -59,15 +59,15 @@ const class DroneConfig {
 	}
 	
 	** Gets or makes user config.
-	internal DroneUserConfig _userConfig(Str? userName := null) {
+	internal DroneUserConfig _userConfig(Str? userName, Bool reReadConfig) {
 		userConfig := DroneUserConfig(session, false)
 		if (userName != null) {
 			id := userName.toBuf.crc("CRC-32-Adler").toHex(8).upper
 			if (id != userId.val) {
 				drone.sendConfig("CUSTOM:profile_id", id)
 				userId.val = id
-				_sendMultiConfig("CUSTOM:profile_desc", userName)
-				drone.configMap(true)
+				sendMultiConfig("CUSTOM:profile_desc", userName)
+				drone.configMap(reReadConfig)
 			}
 		}
 		return userConfig
@@ -75,15 +75,15 @@ const class DroneConfig {
 
 	** Gets or makes application config.
 	** If 'null' is passed, this just returns the current config.
-	internal DroneAppConfig _appConfig(Str? appicationName := null) {
+	internal DroneAppConfig _appConfig(Str? appicationName, Bool reReadConfig) {
 		appConfig := DroneAppConfig(session, false)
 		if (appicationName != null) {
 			id := appicationName.toBuf.crc("CRC-32-Adler").toHex(8).upper
 			if (id != appId.val) {
 				drone.sendConfig("CUSTOM:application_id", id)
 				appId.val = id
-				_sendMultiConfig("CUSTOM:application_desc", appicationName)
-				drone.configMap(true)
+				sendMultiConfig("CUSTOM:application_desc", appicationName)
+				drone.configMap(reReadConfig)
 			}
 		}
 		return appConfig
@@ -160,7 +160,7 @@ const class DroneConfig {
 	** 
 	** Corresponds to the 'GENERAL:flying_time' configuration key.
 	Duration totalFlightTime {
-		get { Duration(getConfig("GENERAL:flying_time").toInt * 1_000_000_000) }
+		get { 1sec * getConfig("GENERAL:flying_time").toInt }
 		private set { }		
 	}
 	
@@ -171,7 +171,7 @@ const class DroneConfig {
 	** If this parameter is set to 'false', all the available data is sent.
 	** 
 	** Corresponds to the 'GENERAL:navdata_demo' configuration key.
-	Bool navDataDemo {
+	Bool navDataDemo {	// TODO rename config navDataDemo
 		get { Bool(getConfig("GENERAL:navdata_demo").lower) }
 		set { setConfig("GENERAL:navdata_demo", it.toStr.upper) }		
 	}
@@ -359,9 +359,16 @@ const class DroneConfig {
 
 	}
 	
+	** Sends config to the drone, using the current Session, User, and Application IDs.
+	** This method blocks until the config has been acknowledged. 
+	Void sendMultiConfig(Str key, Obj val) {
+		drone.sendConfig(key, val, sessId.val, userId.val, appId.val)
+		drone._updateConfig(key, val)
+	}
+
 	@NoDoc
 	override Str toStr() { dump	}
-	
+
 	// ---- Internal Methods ----
 
 	internal Void _delSess(Str id) {
@@ -383,10 +390,6 @@ const class DroneConfig {
 		drone.sendConfig("CUSTOM:application_id", defId)
 		appId.val = defId
 		drone.configMap(true)
-	}
-
-	internal Void _sendMultiConfig(Str key, Obj val) {
-		drone.sendConfig(key, val, sessId.val, userId.val, appId.val)
 	}
 	
 	private Str getConfig(Str key) {

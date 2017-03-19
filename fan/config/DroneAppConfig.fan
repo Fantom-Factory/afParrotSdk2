@@ -115,7 +115,7 @@ const class DroneAppConfig {
 		set { setConfig("VIDEO:bitrate_control_mode", it.toStr) }		
 	}
 
-	** The bitrate (kbps) of the recording stream, both for USB and WiFi record.
+	** The bitrate (kilobits per second) of the recording stream, both for USB and WiFi record.
 	** 
 	** Corresponds to the 'VIDEO:bitrate_storage' configuration key.
 	Int videoBitrateStorage {
@@ -144,7 +144,7 @@ const class DroneAppConfig {
 	}
 	
 	private Void setConfig(Str key, Str val) {
-		config._config._sendMultiConfig(key, val)
+		config._config.sendMultiConfig(key, val)
 		config.drone._updateConfig(key, val)
 	}
 }

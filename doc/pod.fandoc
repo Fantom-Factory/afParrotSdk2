@@ -9,6 +9,8 @@ It's an intuitive and simple API that'll have you flying your drone in minutes!
 The Fantom SDK features:
  - Blocking & non-blocking drone movement methods
  - Feedback events with telemetry, flight, and drone data
+ - Video stream processing
+ - FFmpeg integration for video conversion
  - Pre-programmed flight stunts and LED patterns
  - Read and write drone configuration
  - Full decoding of all navigation option data
@@ -66,6 +68,8 @@ Drone Communication
 The Fantom SDK communications to the AR Drone over standard open wifi.
 
 When you turn your AR Drone on, it creates a wifi hotspot that your computer must connect to. Once connected, the Fantom SDK communicates with the drone via UDP and TCP sockets.
+
+Note that while there is no real concept of being *connected* to a drone, the 'drone.connect()' method blocks until nav data is being received and all initiating commands have been acknowledged. That way we're certain the drone is in a known state and ready to receive commands.
 
 
 
@@ -251,19 +255,43 @@ Switching to full mode resets the drone to sending out *ALL* option data, but th
 
 
 
+Video Streaming
+***************
+Setting a listener on 'Drone.onVideoFrame()' will instruct the drone to start streaming data over TCP on port 5555. The frames are decoded and sent to the event hook.
+
+Note the frames are raw H.264 codec frames and may not immediately usable in their current format. Instead it is better to use the `VideoStreamer` utility class to either convert the video to a '.mp4' file, or create a stream of PNG images.
+
+pre>
+syntax: fantom
+vs := VideoStreamer.toPngImages.attachTo(drone)
+vs.onPngImage = |Bug pngBuf| {
+    echo("Got new image of size ${pngBuf.size}")
+}
+<pre
+
+Note that 'VideoStreamer' requires [FFmpeg]`https://ffmpeg.org/` so you should download (or compile) a version for your hardware. Installation isn't required, just place the 'ffmpeg' executable in the current working directory.
+
+Note that PNG images are streamed at the same frame rate as the video, is not juttery, and is fine for piping / drawing to an FWT canvas.
+
+
+
 References & Resources
 **********************
 Websites that have proved valuable in creating the Fantom SDK:
 
- - [Official Parrot SDK 2.0]`http://developer.parrot.com/docs/SDK2/ARDrone_SDK_2_0_1.zip`
- - [Official Parrot AR Drone SDK Forum]`http://forum.developer.parrot.com/c/drone-sdk/ardrone`
+ - [AR Drone SDK Forum (Official)]`http://forum.developer.parrot.com/c/drone-sdk/ardrone`
+ - [AR Drone Community Forum (Official)]`https://community.parrot.com/t5/AR-Drone-2-0/bd-p/ARDrone_EN`
+ - [AR Drone on StackOverflow]`http://stackoverflow.com/questions/tagged/ar.drone`
+ - [AR Drone Arduino Communication]`https://gist.github.com/maxogden/4152815`
+ - [AR Drone Spare Parts Page]`https://www.parrot.com/us/catalog/spareparts?f%5B0%5D=im_field_product_category%3A5`
+
+List of useful SDKs:
+ - [Parrot SDK 2.0 for C (Official)]`http://developer.parrot.com/docs/SDK2/ARDrone_SDK_2_0_1.zip`
+ - [Parrot SDK 2.0 for C#]`https://github.com/Ruslan-B/AR.Drone`
+ - [Parrot SDK 2.0 for Java]`https://github.com/codeminders/javadrone`
  - [Parrot SDK 2.0 for node.js]`https://github.com/felixge/node-ar-drone`
  - [Parrot SDK 2.0 for Python]`http://www.playsheep.de/drone/`
- - [Parrot SDK 2.0 for Java]`https://github.com/codeminders/javadrone`
- - [Parrot SDK 2.0 for C#]`https://github.com/Ruslan-B/AR.Drone`
- - [AR Drone on StackOverflow]`http://stackoverflow.com/questions/tagged/ar.drone`
- - [AR Drone -> Arduino Communication]`https://gist.github.com/maxogden/4152815`
- - [AR Drone 2.0 Spare Parts Page]`https://www.parrot.com/us/catalog/spareparts?f%5B0%5D=im_field_product_category%3A5`
+
 
 The developer guide PDF has been uploaded to BitBucket, should the official SDK ever disappear:
 

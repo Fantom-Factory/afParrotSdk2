@@ -72,13 +72,13 @@ const class DroneSessionConfig {
 
 	** Gets or makes user config.
 	DroneUserConfig user(Str? userName := null) {
-		_config._userConfig(userName)
+		_config._userConfig(userName, true)
 	}
 
 	** Gets or makes application config.
 	** If 'null' is passed, this just returns the current config.
 	DroneAppConfig app(Str? appicationName := null) {
-		_config._appConfig(appicationName)
+		_config._appConfig(appicationName, true)
 	}	
 
 
@@ -99,7 +99,7 @@ const class DroneSessionConfig {
 	** Note 'HOVER_ON_ROUNDEL' was developed for 2011 CES autonomous demonstration.
 	** 
 	** Corresponds to the 'CONTROL:flying_mode' configuration key.
-	Int flyingMode {
+	Int hoverMode {	// TODO rename to hoverOnRoundel
 		get { getConfig("CONTROL:flying_mode").toInt }
 		set { setConfig("CONTROL:flying_mode", it.toStr) }		
 	}
@@ -108,7 +108,7 @@ const class DroneSessionConfig {
 	** Used when 'flyingMode' is set to 'HOVER_ON_(ORIENTED_)ROUNDEL'
 	** 
 	** Corresponds to the 'CONTROL:hovering_range' configuration key.
-	Int hoveringRange {
+	Int hoverMaxHeight {
 		get { getConfig("CONTROL:hovering_range").toInt }
 		set { setConfig("CONTROL:hovering_range", it.toStr) }		
 	}
@@ -126,11 +126,12 @@ const class DroneSessionConfig {
 	** 
 	** Main values:
 	** 
+	**   H264_360P_CODEC          = 0x81  // Live stream with 360p H264 hardware encoder. No record stream.
+	**   H264_720P_CODEC          = 0x83  // Live stream with 720p H264 hardware encoder. No record stream.
+	** 
 	**   MP4_360P_CODEC           = 0x80  // Live stream with MPEG4.2 soft encoder. No record stream.
-	**   H264_360P_CODEC          = 0x81  // Live stream with H264 hardware encoder configured in 360p mode. No record stream.
-	**   MP4_360P_H264_720P_CODEC = 0x82  // Live stream with MPEG4.2 soft encoder. Record stream with H264 hardware encoder in 720p mode.
-	**   H264_720P_CODEC          = 0x83  // Live stream with H264 hardware encoder configured in 720p mode. No record stream.
-	**   MP4_360P_H264_360P_CODEC = 0x88  // Live stream with MPEG4.2 soft encoder. Record stream with H264 hardware encoder in 360p mode.
+	**   MP4_360P_H264_360P_CODEC = 0x88  // Live stream with MPEG4.2 soft encoder. Record stream with 360p H264 hardware encoder.
+	**   MP4_360P_H264_720P_CODEC = 0x82  // Live stream with MPEG4.2 soft encoder. Record stream with 720p H264 hardware encoder.
 	** 
 	** Other values:
 	** 
@@ -149,7 +150,7 @@ const class DroneSessionConfig {
 	}
 
 
-	** Maximum bitrate that the device can decode. This is set as the upper bound for drone bitrate values.
+	** Maximum bitrate (kilobits per second) the device can decode. This is set as the upper bound for drone bitrate values.
 	** 
 	** Typical values for Apple iOS Device are:
 	**  - iPhone 4S : 4000 kbps
@@ -322,7 +323,7 @@ const class DroneSessionConfig {
 	
 	private Void setConfig(Str key, Str? val) {
 		if (val != null) {	// for GPS position
-			_config._sendMultiConfig(key, val)
+			_config.sendMultiConfig(key, val)
 			_config.drone._updateConfig(key, val)
 		}
 	}

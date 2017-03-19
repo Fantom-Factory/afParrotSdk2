@@ -136,9 +136,12 @@ const class Drone {
 						set { onDisconnectRef.val = it?.toImmutable }
 					}
 
-	** Event hook that's called when video frame is received.
+	** Event hook that's called when video frame is received. (On Drone TCP port 5555.)
 	** 
 	** The payload is a raw frame from the H.264 codec.
+	** 
+	** Setting this hook instructs the drone to start streaming video. 
+	** Setting this to 'null' instructs the drone to stop streaming video.
 	** 
 	** Throws 'NotImmutableErr' if the function is not immutable.
 	** Note this hook is called from a different Actor / thread to the one that sets it. 
@@ -158,7 +161,7 @@ const class Drone {
 		this.networkConfig	= networkConfig
 		this.navDataReader	= NavDataReader(this, actorPool)
 		this.controlReader	= ControlReader(this)
-		this.videoReader	= VideoReader(this, actorPool)
+		this.videoReader	= VideoReader(this, networkConfig.videoPort, actorPool)
 		this.cmdSender		= CmdSender(this, actorPool)
 		this.eventThread	= Synchronized(actorPool)
 		this.shutdownHook	= #onShutdown.func.bind([this])
@@ -167,10 +170,11 @@ const class Drone {
 	** Sets up the socket connections to the drone. 
 	** Your device must already be connected to the drone's wifi hot spot.
 	** 
-	** This method blocks until nav data is being received and all initiating commands have been acknowledged.
+	** Whilst there is no real concept of being *connected* to a drone, 
+	** this method blocks until nav data is being received and all initiating commands have been acknowledged.
 	** 
-	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
-	This connect(Duration? timeout := null) {
+	** If 'timeout' is 'null' it defaults to 'DroneConfig.actionTimeout'.
+	This connect() {
 		// we could re-use if we didn't stop the actor pool...?
 		// but nah, we created it, we should destroy it
 		if (actorPool.isStopped)
@@ -187,7 +191,7 @@ const class Drone {
 		if (actorPool.isStopped)
 			throw IOErr("Drone Connection Error")
 		NavDataLoop.waitForAckClear	(this, networkConfig.configCmdAckClearTimeout, true)
-		NavDataLoop.waitUntilReady	(this, timeout ?: networkConfig.actionTimeout)
+		NavDataLoop.waitUntilReady	(this, networkConfig.actionTimeout)
 
 		try droneVersion = BareBonesFtp().readVersion(networkConfig)
 		catch (Err err)
@@ -242,6 +246,7 @@ const class Drone {
 	** This method does not block.
 	@NoDoc
 	Void sendCmd(Cmd cmd, Cmd? cmd2 := null) {
+		// FIXME have internal & public
 //		if (!isConnected) return	// needed to connect
 		cmdSender.send(cmd, cmd2)
 	}
@@ -251,7 +256,7 @@ const class Drone {
 	** 
 	** 'val' may be a Bool, Int, Float, Str, or a List of said types.
 	** 
-	** For multi-config support, pass in the appropirate IDs. 
+	** For multi-config support, pass in the appropriate IDs. 
 	Void sendConfig(Str key, Obj val, Str? sessionId := null, Str? userId := null, Str? appId := null) {
 		if (!isConnected) return
 
@@ -729,8 +734,9 @@ const class Drone {
 	}
 	
 	internal Void _updateConfig(Str key, Str val) {
-		// selectively update config (i.e. MY code!) 'cos we don't trust the user not to add random shite! 
-		configMapRef[key] = val
+		// selectively update config (i.e. MY code!) 'cos we don't trust the user not to add random shite!
+		if (configMapRef.containsKey(key))
+			configMapRef[key] = val
 	}
 	
 	private Void processNavData(NavData navData) {
@@ -847,6 +853,11 @@ const class Drone {
 		try f?.callList(args)
 		catch (Err err)
 			err.trace
+	}
+	
+	@NoDoc
+	override Str toStr() {
+		(configMapRef["GENERAL:ardrone_name"] ?: "AR Drone").toStr + " v${droneVersion}"
 	}
 }
 
