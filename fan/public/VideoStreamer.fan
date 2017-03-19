@@ -4,27 +4,44 @@ using concurrent::AtomicRef
 using afConcurrent::Synchronized
 using afConcurrent::SynchronizedState
 
-** Utility class that attaches to a drone's 'onVideoFrame()' event.
+** Utility class that attaches to the drone's 'onVideoFrame()' event.
+** Example usage:
 ** 
-** Raw H.264 files can be converted (wrapped up in) to .mp4 files with the following ffmeg command:  
+**   syntax: fantom
+**   VideoStreamer.toMp4File(`droneStunts.mp4`).attachTo(drone)
+** 
+** Note some methods start and call out to an external [FFmpeg]`https://ffmpeg.org/` process for 
+** video processing. Whilst this works for the limited functionality of these methods, this class 
+** is not meant to an all-encompassing FFmpeg wrapper.
+** 
+** For ease of use, just put 'ffmpeg' in the same directory as your program. 
 const class VideoStreamer {
 	private const SynchronizedState			mutex
 	private const |Buf, PaveHeader, Drone|	onVideoFrameListener := #onVideoFrame.func.bind([this])
 	private const |Bool, Drone|				onDisconnectListener := #onDisconnect.func.bind([this])
 	private const AtomicRef					pngImageRef			 := AtomicRef(null)
 	private const AtomicRef					onPngImageRef		 := AtomicRef(null)
+	private const AtomicRef					droneRef		 	 := AtomicRef(null)
+	private const AtomicRef					oldVideoFrameHookRef := AtomicRef(null)
+	private const AtomicRef					oldDisconnectHookRef := AtomicRef(null)
 	private const Synchronized?				pngEventThread
 
-	** The file that the video is saved to.
+	** The output file that the video is saved to.
+	** 
+	** Only available if this 'VideoSteamer' instance was initialised via [toRawFile()]`toRawFile` or 
+	** [toMp4File()]`toMp4File`. 
 	const File? file
 	
 	** Returns the latest PNG image from the video stream.
-	** Only available if FFMPEG is used for image encoding. See [toPngImages()]`toPngImages`. 
+	** 
+	** Only available if this 'VideoSteamer' instance was initialised via [toPngImages()]`toPngImages`. 
 	Buf? pngImage() {
 		pngImageRef.val
 	}
 
 	** Event hook that's called when a new PNG image becomes available.
+	** 
+	** Only available if this 'VideoSteamer' instance was initialised via [toPngImages()]`toPngImages`. 
 	** 
 	** Throws 'NotImmutableErr' if the function is not immutable.
 	** Note this hook is called from a different Actor / thread to the one that sets it. 
@@ -35,21 +52,70 @@ const class VideoStreamer {
 	
 	private new make(|This| f) { f(this) }
 
-	static VideoStreamer toRawFile(Uri outputFile, Bool append := false, [Str:Obj]? options := null) {	
+	** Saves raw video frames to the given file. Example:
+	** 
+	**   syntax: fantom
+	**   VideoStreamer.toRawFile(`droneStunts.h264`).attachTo(drone)
+	** 
+	** Note the video consists of raw H.264 codec frames and is not readily readable by anything 
+	** (with the exception of VLC, try saving the file with a '.h264' extension.)
+	** 
+	** To wrap the file in a more usable '.mp4' container, try the following:
+	** 
+	**   C:\> ffmpeg -f h264 -i droneStunts.h264 -codec:v copy droneStunts.mp4
+	** 
+	** The input URI is given a unique numerical suffix to prevent file from being overwritten.
+	** Example, 'drone.h264' may become 'drone-001F.h264'. See the `file` field to acquire the
+	** actual file created.
+	** 
+	** Available options:
+	** pre>
+	** actorPool : (ActorPool) the ActorPool to use for thread processing
+	**             Defaults to a new instance.
+	** <pre
+	static VideoStreamer toRawFile(Uri outputFile, [Str:Obj]? options := null) {	
 		if (outputFile.isDir)
 			throw ArgErr("Output file is a directory: ${outputFile}")
 
 		actorPool := options?.get("actorPool") ?: ActorPool()
-		
+
 		return VideoStreamer {
-			it.file = append ? outputFile.toFile : addFileSuffix(outputFile)
+			it.file = addFileSuffix(outputFile)
 			itFile := it.file
 			it.mutex = SynchronizedState(actorPool) |->Obj| {
-				VideoStreamerToH264File(itFile, append)
+				VideoStreamerToH264File(itFile, false)
 			}
 		}
 	}
 
+	** Saves the video stream as the given MP4 file. Example:
+	** 
+	**   syntax: fantom
+	**   VideoStreamer.toMp4File(`droneStunts.mp4`).attachTo(drone)
+	** 
+	** Note this method starts an external FFmpeg process and pipes the raw video frames to it.
+	** FFmpeg then wraps the video in an MP4 container and writes the file.
+	**  
+	** The input URI is given a unique numerical suffix to prevent file from being overwritten.
+	** Example, 'drone.mp4' may become 'drone-001F.mp4'. See the `file` field to acquire the
+	** actual file created.
+	** 
+	** Available options:
+	** pre>
+	** ffmpegPath : (Uri) the location of the FFmpeg executable.
+	**              Defaults to `ffmpeg.exe` on Windows, 'ffmpeg' otherwise.
+	** 
+	** ffmpegArgs : (Str[]) an array of arguments for FFmpeg.
+	**              Defaults to "-f h264 -i - -codec:v copy".split
+	** 
+	** throttle   : (Duration) Time to sleep while waiting for FFmpeg console output. 
+	**              Defaults to 200ms.
+	** 
+	** actorPool  : (ActorPool) the ActorPool to use for thread processing
+	**              Defaults to a new instance.
+	** <pre
+	** 
+	** If no 'ffmpegPath' is given then FFmpeg is assumed to be in the current directory. 
 	static VideoStreamer toMp4File(Uri outputFile, [Str:Obj]? options := null) {	
 		if (outputFile.isDir)
 			throw ArgErr("Output file is a directory: ${outputFile}")
@@ -57,7 +123,7 @@ const class VideoStreamer {
 		actorPool	:= options?.get("actorPool")	?: ActorPool()
 		ffmpegPath	:= options?.get("ffmpegPath")	?: (Env.cur.os == "win32" ? `ffmpeg.exe` : `ffmpeg`)
 		ffmpegArgs	:= options?.get("ffmpegArgs")	?: "-f h264 -i - -codec:v copy".split
-		throttle	:= options?.get("throttle")		?: 50ms
+		throttle	:= options?.get("throttle")		?: 200ms	// 5 times a second should be fine for console output
 
 		return VideoStreamer {
 			itFile := addFileSuffix(outputFile)
@@ -68,6 +134,37 @@ const class VideoStreamer {
 		}
 	}
 
+	** Converts the video stream into a stream of PNG images. Example:
+	** 
+	**   syntax: fantom
+	**   vs := VideoStreamer.toPngImages.attachTo(drone)
+	**   vs.onPngImage = |Bug pngBuf| {
+	**       echo("Got new image of size ${pngBuf.size}")
+	**   }
+	** 
+	** The `pngImage` field always contains the latest PNG image data.
+	** 
+	** Use the [onPngImage()]`onPngImage` hook to be notified of new images.
+	** 
+	** Note this method starts an external FFmpeg process and pipes the raw video frames to it.
+	** FFmpeg converts the video to PNG images and pipes it back to the 'VideoStreamer' instance.
+	**  
+	** Available options:
+	** pre>
+	** ffmpegPath : (Uri) the location of the FFmpeg executable.
+	**              Defaults to `ffmpeg.exe` on Windows, 'ffmpeg' otherwise.
+	** 
+	** ffmpegArgs : (Str[]) an array of arguments for FFmpeg.
+	**              Defaults to "-f h264 -i - -f image2pipe -codec:v png -".split
+	** 
+	** throttle   : (Duration) Time to sleep while waiting for FFmpeg console output. 
+	**              Defaults to 200ms.
+	** 
+	** actorPool  : (ActorPool) the ActorPool to use for thread processing
+	**              Defaults to a new instance.
+	** <pre
+	** 
+	** If no 'ffmpegPath' is given then FFmpeg is assumed to be in the current directory. 
 	static VideoStreamer toPngImages([Str:Obj]? options := null) {	
 		actorPool	:= options?.get("actorPool")	?: ActorPool()
 		ffmpegPath	:= options?.get("ffmpegPath")	?: (Env.cur.os == "win32" ? `ffmpeg.exe` : `ffmpeg`)
@@ -83,36 +180,54 @@ const class VideoStreamer {
 			args.push(frameRate)
 			args.push("-")
 		}
+		iArgs := args.toImmutable
 
 		return VideoStreamer {
 			vs := it
 			it.pngEventThread = Synchronized(actorPool)
 			it.mutex = SynchronizedState(actorPool) |->Obj| {
-				VideoStreamerToPngEvents(ffmpegPath, args, actorPool, throttle, #onNewPngImage.func.bind([vs]))
+				VideoStreamerToPngEvents(ffmpegPath, iArgs, actorPool, throttle, #onNewPngImage.func.bind([vs]))
 			}
 		}
 	}
 
+	** Attaches this instance to the given drone and starts stream processing.
+	** 
+	** This methods sets new 'onVideoFrame' and 'onDisconnect' hooks on the drone, but wraps any 
+	** existing hooks. Meaning any hooks that were set previously, still get called.
 	This attachTo(Drone drone) {
-		oldVideoFrameHook := drone.onVideoFrame
+		if (droneRef.val != null)
+			throw Err("Already attached to ${droneRef.val}")
+		droneRef.val = drone
+
+		oldVideoFrameHookRef.val = drone.onVideoFrame
 		drone.onVideoFrame = |Buf payload, PaveHeader pave, Drone dron| {
 			onVideoFrameListener(payload, pave, dron)
-			oldVideoFrameHook?.call(payload, pave, dron)
+			((Func?) oldVideoFrameHookRef.val)?.call(payload, pave, dron)
 		}
 		
-		oldDisconnectHook := drone.onDisconnect
+		oldDisconnectHookRef.val = drone.onDisconnect
 		drone.onDisconnect = |Bool abnormal, Drone dron| {
 			onDisconnectListener(abnormal, dron)
-			oldDisconnectHook?.call(abnormal, dron)
+			((Func?) oldDisconnectHookRef.val)?.call(abnormal, dron)
 		}
 
-		// fire it up!
+		// fire it up! Sync so we can receive any ctor errors
 		mutex.sync |->| { }
 
 		return this
 	}
 	
-	Void close() {
+	** Reverts the 'onVideoFrame' and 'onDisconnect' hooks to what they were before 'attachTo()' 
+	** was called.
+	** Closes files and halts stream processing.
+	Void detach() {
+		// revert the drone hooks
+		drone := (Drone) droneRef.val
+		drone.onVideoFrame = oldVideoFrameHookRef.val
+		drone.onDisconnect = oldDisconnectHookRef.val
+		
+		// kill any stream processing
 		onDisconnect(false)
 	}
 	
@@ -180,9 +295,13 @@ internal class VideoStreamerToMp4File : VideoStreamerImpl {
 	Process2 ffmpegProcess
 
 	new make(Uri ffmpegPath, Str[] ffmpegArgs, File output, ActorPool actorPool, Duration throttle) {
+		ffmpegFile := ffmpegPath.toFile.normalize
+		if (!ffmpegFile.exists)
+			throw IOErr("${ffmpegFile.osPath} does not exist")
+
 		// kick off an ffmpeg process
 		ffmpegArgs = ffmpegArgs.rw
-		ffmpegArgs.insert(0, ffmpegPath.toFile.normalize.osPath)
+		ffmpegArgs.insert(0, ffmpegFile.osPath)
 		ffmpegArgs.add(output.normalize.osPath)
 		ffmpegProcess = Process2(ffmpegArgs) {
 			it.actorPool = actorPool
@@ -209,10 +328,14 @@ internal class VideoStreamerToPngEvents : VideoStreamerImpl {
 
 	new make(Uri ffmpegPath, Str[] ffmpegArgs, ActorPool actorPool, Duration throttle, |Buf| onNewPngImage) {
 		this.onNewPngImage = onNewPngImage
+		
+		ffmpegFile := ffmpegPath.toFile.normalize
+		if (!ffmpegFile.exists)
+			throw IOErr("${ffmpegFile.osPath} does not exist")
 
 		// kick off an ffmpeg process
 		ffmpegArgs = ffmpegArgs.rw
-		ffmpegArgs.insert(0, ffmpegPath.toFile.normalize.osPath)
+		ffmpegArgs.insert(0, ffmpegFile.osPath)
 		ffmpegProcess = Process2(ffmpegArgs) {
 			it.actorPool = actorPool
 			it.mergeErr = false
@@ -229,8 +352,11 @@ internal class VideoStreamerToPngEvents : VideoStreamerImpl {
 			
 			while (process.isAlive) {
 				pngBuf := readPng(inStream)
-				if (pngBuf != null)
+				if (pngBuf != null) {
 					onNewPngImage(pngBuf.toImmutable)
+					pngBuf.clear.trim
+					pngBuf = null
+				}
 			}
 		}
 		return this

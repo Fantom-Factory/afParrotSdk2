@@ -1,6 +1,12 @@
 Release Notes
 *************
 
+v0.0.4
+======
+ - New: Video camera support via 'Drone.onVideoFrame()' hook.
+ - New: 'VideoStreamer' class that saves video files, integrates with [FFMPEG]`https://ffmpeg.org/`, and streams PNG images.
+ - Chg: disconnect?
+
 v0.0.2
 ======
  - New: Preview release.

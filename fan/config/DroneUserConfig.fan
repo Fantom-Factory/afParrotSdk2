@@ -187,7 +187,7 @@ const class DroneUserConfig {
 	
 	private Void setConfig(Str key, Float? val) {
 		if (val != null) {
-			config._config._sendMultiConfig(key, val.toStr)
+			config._config.sendMultiConfig(key, val.toStr)
 			config.drone._updateConfig(key, val.toStr)
 		}
 	}

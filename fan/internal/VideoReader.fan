@@ -11,11 +11,11 @@ internal const class VideoReader {
 	private const SynchronizedList	listeners
 	private const SynchronizedState	mutex
 	
-	new make(Drone drone, ActorPool actorPool) {
+	new make(Drone drone, Int port, ActorPool actorPool) {
 		this.actorPool	= actorPool
 		this.listeners	= SynchronizedList(actorPool) { it.valType = |Buf, PaveHeader|# }
 		this.mutex		= SynchronizedState(actorPool) |->Obj?| {
-			VideoReaderImpl(drone)
+			VideoReaderImpl(drone, port)
 		}
 	}
 	
@@ -57,7 +57,7 @@ internal const class VideoReader {
 		}
 	}
 
-	private PaveHeader? doReadVidData(VideoReaderImpl reader) {
+	private Void doReadVidData(VideoReaderImpl reader) {
 		pave := reader.receive
 		if (pave != null) {
 			// call internal listeners
@@ -66,19 +66,21 @@ internal const class VideoReader {
 				catch (Err err)	err.trace
 			}
 		}
-		return pave
+		pave = null
 	}
 }
 
 	
 internal class VideoReaderImpl {
 	const Log			log		:= Drone#.pod.log
+	const Int			port
 	const Drone			drone
 	const NetworkConfig	config
 		  TcpSocket?	socket
 	
-	new make(Drone drone) {
+	new make(Drone drone, Int port) {
 		this.drone	= drone
+		this.port	= port
 		this.config = drone.networkConfig
 	}
 
@@ -88,7 +90,7 @@ internal class VideoReaderImpl {
 		
 		this.socket	= TcpSocket {
 			it.options.receiveTimeout = config.tcpReceiveTimeout
-		}.connect(config.droneIpAddr, config.videoPort, config.actionTimeout)
+		}.connect(config.droneIpAddr, port, config.actionTimeout)
 	}
 
 	Bool isConnected() {
@@ -104,7 +106,7 @@ internal class VideoReaderImpl {
 		in := socket.in { endian = Endian.little }
 		
 		try
-			// TODO may need to wait until we have all the header data -> readBufFully()
+			// may need to wait until we have all the header data -> readBufFully() ??
 			return PaveHeader {
 				signature			= in.readChars(4)
 				version				= uint8(in)
