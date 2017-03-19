@@ -106,11 +106,9 @@ class Process2 {
 
 	** Wait for this process to exit and return the exit code.
 	** This method may only be called once after 'run'.
-	Int join(Duration? timeout := null) {
+	Int join() {
 		if (_jProc == null) throw Err("Process not running")
-		try return timeout == null
-			? _jProc.waitFor
-			: _jProc.waitFor(timeout.toMillis, JTimeUnit.MILLISECONDS)
+		try return _jProc.waitFor	// the timeout was only introduced in JDK 1.8
 		finally {
 			actorPool.stop
 			_stdIn	= null
