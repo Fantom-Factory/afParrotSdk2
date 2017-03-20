@@ -36,7 +36,7 @@ const class Drone {
 	
 	** The version of the drone, as reported by an FTP of 'version.txt'.
 					Version?		droneVersion {
-						get { droneVersionRef.val }
+						get { droneVersionRef.val ?: Version.defVal }
 						private set { droneVersionRef.val = it }
 					}
 	
@@ -161,7 +161,7 @@ const class Drone {
 		this.networkConfig	= networkConfig
 		this.navDataReader	= NavDataReader(this, actorPool)
 		this.controlReader	= ControlReader(this)
-		this.videoReader	= VideoReader(this, networkConfig.videoPort, actorPool)
+		this.videoReader	= VideoReader(this, actorPool, networkConfig.videoPort)
 		this.cmdSender		= CmdSender(this, actorPool)
 		this.eventThread	= Synchronized(actorPool)
 		this.shutdownHook	= #onShutdown.func.bind([this])
