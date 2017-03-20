@@ -7,15 +7,17 @@ using inet::TcpSocket
 internal const class VideoReader {
 	private const Log				log		:= Drone#.pod.log
 	
+	private const Drone				drone
 	private const ActorPool			actorPool
 	private const SynchronizedList	listeners
 	private const SynchronizedState	mutex
 	
-	new make(Drone drone, Int port, ActorPool actorPool) {
+	new make(Drone drone, ActorPool actorPool, Int port) {
+		this.drone		= drone
 		this.actorPool	= actorPool
 		this.listeners	= SynchronizedList(actorPool) { it.valType = |Buf, PaveHeader|# }
 		this.mutex		= SynchronizedState(actorPool) |->Obj?| {
-			VideoReaderImpl(drone, port)
+			VideoReaderImpl(drone.networkConfig, port)
 		}
 	}
 	
@@ -58,7 +60,22 @@ internal const class VideoReader {
 	}
 
 	private Void doReadVidData(VideoReaderImpl reader) {
-		pave := reader.receive
+		pave := null as PaveHeader
+		
+		try
+			pave = reader.receive
+
+		catch (IOErr err) {
+			// drone.isConnected is set *before* we stop the ActorPool
+			if (drone.isConnected)
+				log.err("Could not decode Video data - $err.msg")
+
+		} catch (Err err) {
+			// log err as this could mess up our position in the stream
+			// TODO maybe auto-disconnect / re-connect to re-establish stream position?
+			log.err("Could not decode Video data - $err.msg")
+		}
+		
 		if (pave != null) {
 			// call internal listeners
 			listeners.each {
@@ -74,14 +91,12 @@ internal const class VideoReader {
 internal class VideoReaderImpl {
 	const Log			log		:= Drone#.pod.log
 	const Int			port
-	const Drone			drone
 	const NetworkConfig	config
 		  TcpSocket?	socket
 	
-	new make(Drone drone, Int port) {
-		this.drone	= drone
+	new make(NetworkConfig config, Int port) {
+		this.config = config
 		this.port	= port
-		this.config = drone.networkConfig
 	}
 
 	Void connect() {
@@ -105,49 +120,41 @@ internal class VideoReaderImpl {
 	PaveHeader? receive() {
 		in := socket.in { endian = Endian.little }
 		
-		try
-			// may need to wait until we have all the header data -> readBufFully() ??
-			return PaveHeader {
-				signature			= in.readChars(4)
-				version				= uint8(in)
-				videoCodec			= uint8(in)
-				headerSize			= uint16(in)
-				payloadSize			= uint32(in)
-				encodedStreamWidth	= uint16(in)
-				encodedStreamHeight	= uint16(in)
-				displayWidth 		= uint16(in)
-				displayHeight		= uint16(in)
-				frameNumber			= uint32(in)
-				timestamp			= 1ms * uint32(in)
-				totalChunks			= uint8(in)
-				chunkIndex			= uint8(in)
-				frameType			= uint8(in)
-				control				= uint8(in)
-				streamBytePosition	= uint32(in) + (uint32(in).shiftl(32))
-				streamId			= uint16(in)
-				totalSlices			= uint8(in)
-				sliceIndex			= uint8(in)
-				header1Size			= uint8(in)
-				header2Size			= uint8(in)
-				in.skip(2)
-				advertisedSize		= uint32(in)
-				in.skip(12)
+		// may need to wait until we have all the header data -> readBufFully() ??
+		return PaveHeader {
+			signature			= in.readChars(4)
+			version				= uint8(in)
+			videoCodec			= uint8(in)
+			headerSize			= uint16(in)
+			payloadSize			= uint32(in)
+			encodedStreamWidth	= uint16(in)
+			encodedStreamHeight	= uint16(in)
+			displayWidth 		= uint16(in)
+			displayHeight		= uint16(in)
+			frameNumber			= uint32(in)
+			timestamp			= 1ms * uint32(in)
+			totalChunks			= uint8(in)
+			chunkIndex			= uint8(in)
+			frameType			= uint8(in)
+			control				= uint8(in)
+			streamBytePosition	= uint32(in) + (uint32(in).shiftl(32))
+			streamId			= uint16(in)
+			totalSlices			= uint8(in)
+			sliceIndex			= uint8(in)
+			header1Size			= uint8(in)
+			header2Size			= uint8(in)
+			in.skip(2)
+			advertisedSize		= uint32(in)
+			in.skip(12)
+		
+			if (signature != "PaVE")
+				// meh - lets carry on regardless
+				log.warn("Invalid PaVE signature: ${signature}")
 			
-				if (signature != "PaVE")
-					// meh - lets carry on regardless
-					log.warn("Invalid PaVE signature: ${signature}")
-				
-				// stupid kludge for https://projects.ardrone.org/issues/show/159
-				in.skip(headerSize - 64)
-				
-				payload = in.readBufFully(null, payloadSize)
-			}
-
-		catch (Err err) {
-			// log err as this could mess up our position in the stream
-			// TODO maybe auto-disconnect / re-connect to re-establish stream position?
-			log.err("Could not decode Video data - $err.msg")
-			return null
+			// stupid kludge for https://projects.ardrone.org/issues/show/159
+			in.skip(headerSize - 64)
+			
+			payload = in.readBufFully(null, payloadSize)
 		}
 	}
 
