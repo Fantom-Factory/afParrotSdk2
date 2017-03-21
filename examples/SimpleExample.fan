@@ -1,6 +1,6 @@
-using afParrotSdk2
+//using afParrotSdk2
 
-class Simple {
+class SimpleExample {
 	Void main() {
 		drone := Drone().connect
 		drone.clearEmergency

@@ -1,4 +1,4 @@
-using afParrotSdk2
+//using afParrotSdk2
 using fwt::Desktop
 using fwt::Label
 using fwt::Window
@@ -9,23 +9,32 @@ using concurrent::Actor
 using concurrent::ActorPool
 
 ** Uses the Drone's onNavData event to display basic telemetry data.
-class NavDataViewer {
-	Drone	drone	:= Drone()
+class NavDataExample {
+	Drone?	drone
 	Label?	screen
 	
 	Void main() {
 		thisRef	:= Unsafe(this)
+
+		drone = Drone()
+		drone.onNavData = |NavData navData| {
+			// ensure that UI stuff (e.g. printing window text) is done in the UI thread
+			Desktop.callAsync |->| {
+				thisRef.val->printNavData(navData)
+			}
+		}
+		drone.onDisconnect = |Bool abnormal| {
+			Desktop.callAsync |->| {
+				thisRef.val->screen->text = "*** Disconnected ***"
+			}
+		}
+		
 		Window {
-			it.title	= "Parrot SDK 2.0 - NavData Demo"
-			it.size		= Size(440, 300)
+			it.title = "Parrot SDK 2.0 - NavData Demo"
+			it.size	 = Size(440, 300)
 			it.onOpen.add |->| {
-				drone.onNavData = |NavData navData| {
-					// always UI stuff (i.e. print data) in the UI thread
-					Desktop.callAsync |->| { thisRef.val->printNavData(navData) }
-				}
-				
 				// fly drone in it's own thread
-				Actor(ActorPool(), |->| { thisRef.val->fly }).send(null)
+				Actor(ActorPool()) |->| { thisRef.val->fly }.send(null)
 			}
 			it.onClose.add |->| {
 				drone.disconnect
@@ -35,7 +44,7 @@ class NavDataViewer {
 					it.font = Font { name = "Consolas"; size = 10}
 					it.bg	= Color(0x202020)
 					it.fg	= Color(0x31E722)
-					it.text = "Connecting to drone..."
+					it.text = "Connecting to Drone..."
 				}
 			)
 		}.open
@@ -44,11 +53,12 @@ class NavDataViewer {
 	Void fly() {
 		drone.connect
 
-		drone.takeOff
-		drone.spinClockwise(0.5f, 3sec)
-		drone.moveForward  (1.0f, 2sec)
-		drone.animateFlight(FlightAnimation.flipBackward)
-		drone.land
+//		drone.takeOff
+//		drone.spinClockwise(0.5f, 3sec)
+//		drone.moveForward  (1.0f, 2sec)
+//		drone.animateFlight(FlightAnimation.flipBackward)
+//		drone.land
+		Actor.sleep(20sec)
 		
 		drone.disconnect
 	}
@@ -56,17 +66,21 @@ class NavDataViewer {
 	Void printNavData(NavData navData) {
 		if (navData.demoData == null) return
 
-		logo	:= showLogo("Connected to Drone v${drone.droneVersion}")
-		buf		:= StrBuf(1024 * 2).add(logo)
-		flags	:= navData.flags
-		data	:= navData.demoData
-		line	:= ""
-		pad		:= ""
-		
+		buf		 := StrBuf(1024 * 2).addChar('\n')
+		flags	 := navData.flags
+		data	 := navData.demoData
+		title	 := "Fantom Drone SDK Demo".justr(maxWidth - 10)
+		credit	 := "by Alien-Factory".justr(maxWidth - 10)
+		text	 := "Connected to Drone v${drone.droneVersion}".justr(maxWidth - 10)
+		buf.add("   X ‖ X  ${title}
+		             \\#/   ${credit}
+		             /#\\    
+		            X   X  ${text}\n")
+
 		buf.addChar('\n')
 		status	:= "Flight Status: ${drone.flightState.name.toDisplayName}"
 		battery	:= "Battery Level: ${data.batteryPercentage}%"
-		pad		= "".justl(maxWidth - status.size - battery.size)
+		pad		:= "".justr(maxWidth - status.size - battery.size)
 		buf.add(status).add(pad).add(battery).addChar('\n')
 		buf.addChar('\n')
 		buf.add("Altitude   : " + data.altitude.toLocale("0.00") + " m").addChar('\n')
@@ -101,30 +115,16 @@ class NavDataViewer {
 
 		screen.text = buf.toStr
 	}
-	
-	Str showLogo(Str text) {
-		title	 := "Fantom Drone SDK Demo"
-		titlePad := "".justl(maxWidth - 9 - title.size)
-		textPad  := "".justl(maxWidth - 9 - text.size)
-		logo	 := 
-			"         \n" +
-			"  X ‖ X  " + titlePad + title + "\n" + 
-			"   \\#/   " + "by Alien-Factory".justr(maxWidth - 9) + "\n" + 
-			"   /#\\   " + "\n" + 
-			"  X   X  " + textPad + text + "\n"
-		
-		return logo
-	}
-	
+
 	Void printNum(StrBuf buf, Str str, Float num) {
 		buf.add("[").add(str).add("]")
 		buf.add(num.toLocale("0.00").justr(7))
 		buf.add("   ")
 	}
 
-	Str centre(Str txt, Int width := maxWidth) {
-		("".justl((width - txt.size) / 2) + txt).justl(width)
+	Str centre(Str txt) {
+		("".justr((maxWidth - txt.size) / 2) + txt).justl(maxWidth)
 	}
 
-	Int	maxWidth() { (screen.bounds.w / screen.font.width("W") - 1).max(48) }
+	Int	maxWidth() { (screen.bounds.w / screen.font.width("W") - 2).max(48) }
 }

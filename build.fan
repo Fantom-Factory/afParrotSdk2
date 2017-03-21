@@ -18,9 +18,16 @@ class Build : BuildPod {
 			"inet         1.0.69 - 1.0",
 			"concurrent   1.0.69 - 1.0",
 			"afConcurrent 1.0.18 - 1.0",
+			
+			// ---- libs for examples ----
+			"gfx          1.0.69 - 1.0",
+			"fwt          1.0.69 - 1.0",
 		]
 
-		srcDirs = [`fan/`, `fan/advanced/`, `fan/config/`, `fan/internal/`, `fan/public/`]
+		srcDirs = [`examples/`, `fan/`, `fan/advanced/`, `fan/config/`, `fan/internal/`, `fan/public/`]
 		resDirs = [`doc/`]
+		
+		meta["afBuild.testPods"]	= "gfx fwt"
+		meta["afBuild.testDirs"]	= "examples/"
 	}
 }

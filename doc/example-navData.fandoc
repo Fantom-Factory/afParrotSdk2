@@ -1,0 +1,143 @@
+
+Example - NavData
+*****************
+
+The following example shows how to use the drone's event hooks to display nav data in a GUI window.
+
+![Screenshot of NavData example]`example-navData.png`
+
+'Unsafe' and references to the 'NavDataExample' instance are used because Drone event functions need to be immutable. Note because all manipulation of the screen label is done in the UI thread, *it is safe* (in this instance) to use 'Unsafe'.
+
+pre>
+syntax: fantom
+
+using afParrotSdk2
+using fwt::Desktop
+using fwt::Label
+using fwt::Window
+using gfx::Color
+using gfx::Font
+using gfx::Size
+using concurrent::Actor
+using concurrent::ActorPool
+
+** Uses the Drone's onNavData event to display basic telemetry data.
+class NavDataExample {
+    Drone?  drone
+    Label?  screen
+
+    Void main() {
+        thisRef := Unsafe(this)
+
+        drone = Drone()
+        drone.onNavData = |NavData navData| {
+            // ensure that UI stuff (e.g. printing window text) is done in the UI thread
+            Desktop.callAsync |->| {
+                thisRef.val->printNavData(navData)
+            }
+        }
+        drone.onDisconnect = |Bool abnormal| {
+            Desktop.callAsync |->| {
+                thisRef.val->screen->text = "*** Disconnected ***"
+            }
+        }
+
+        Window {
+            it.title = "Parrot SDK 2.0 - NavData Demo"
+            it.size  = Size(440, 300)
+            it.onOpen.add |->| {
+                // fly drone in it's own thread
+                Actor(ActorPool()) |->| { thisRef.val->fly }.send(null)
+            }
+            it.onClose.add |->| {
+                drone.disconnect
+            }
+            it.add(
+                screen = Label {
+                    it.font = Font { name = "Consolas"; size = 10}
+                    it.bg   = Color(0x202020)
+                    it.fg   = Color(0x31E722)
+                    it.text = "Connecting to Drone..."
+                }
+            )
+        }.open
+    }
+
+    Void fly() {
+        drone.connect
+
+        drone.takeOff
+        drone.spinClockwise(0.5f, 3sec)
+        drone.moveForward  (1.0f, 2sec)
+        drone.animateFlight(FlightAnimation.flipBackward)
+        drone.land
+
+        drone.disconnect
+    }
+
+    Void printNavData(NavData navData) {
+        if (navData.demoData == null) return
+
+        buf      := StrBuf(1024 * 2).addChar('\n')
+        flags    := navData.flags
+        data     := navData.demoData
+        title    := "Fantom Drone SDK Demo".justr(maxWidth - 10)
+        credit   := "by Alien-Factory".justr(maxWidth - 10)
+        text     := "Connected to Drone v${drone.droneVersion}".justr(maxWidth - 10)
+        buf.add("   X â€– X  ${title}
+                     \\#/   ${credit}
+                     /#\\
+                    X   X  ${text}\n")
+
+        buf.addChar('\n')
+        status  := "Flight Status: ${drone.flightState.name.toDisplayName}"
+        battery := "Battery Level: ${data.batteryPercentage}%"
+        pad     := "".justr(maxWidth - status.size - battery.size)
+        buf.add(status).add(pad).add(battery).addChar('\n')
+        buf.addChar('\n')
+        buf.add("Altitude   : " + data.altitude.toLocale("0.00") + " m").addChar('\n')
+        buf.add("Orientation: ")
+        printNum(buf, "X", data.phi)
+        printNum(buf, "Y", data.theta)
+        printNum(buf, "Z", data.psi)
+        buf.addChar('\n')
+        buf.add("Velocity   : ")
+        printNum(buf, "X", data.velocityX)
+        printNum(buf, "Y", data.velocityY)
+        printNum(buf, "Z", data.velocityZ)
+        buf.addChar('\n')
+        buf.addChar('\n')
+
+        buf.add(centre(flags.flying ? "--- Flying ---" : "")).addChar('\n')
+        emer := flags.emergencyLanding ? "*** EMERGENCY ***" : ""
+        emer  = flags.userEmergencyLanding ? "*** USER EMERGENCY ***" : emer
+        buf.add(centre(emer)).addChar('\n')
+        buf.add(centre(flags.batteryTooLow ? "*** BATTERY LOW ***" : "")).addChar('\n')
+
+        [NavDataFlags#motorProblem,
+        NavDataFlags#gyrometersDown,
+        NavDataFlags#magnometerNeedsCalibration,
+        NavDataFlags#anglesOutOufRange,
+        NavDataFlags#tooMuchWind,
+        NavDataFlags#ultrasonicSensorDeaf,
+        NavDataFlags#cutOutDetected].each {
+            if (it.call(flags) == true)
+                buf.add(centre("!!! ${it.name.toDisplayName} !!!")).addChar('\n')
+        }
+
+        screen.text = buf.toStr
+    }
+
+    Void printNum(StrBuf buf, Str str, Float num) {
+        buf.add("[").add(str).add("]")
+        buf.add(num.toLocale("0.00").justr(7))
+        buf.add("   ")
+    }
+
+    Str centre(Str txt) {
+        ("".justr((maxWidth - txt.size) / 2) + txt).justl(maxWidth)
+    }
+
+    Int maxWidth() { (screen.bounds.w / screen.font.width("W") - 2).max(48) }
+}
+<pre
