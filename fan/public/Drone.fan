@@ -172,8 +172,6 @@ const class Drone {
 	** 
 	** Whilst there is no real concept of being *connected* to a drone, 
 	** this method blocks until nav data is being received and all initiating commands have been acknowledged.
-	** 
-	** If 'timeout' is 'null' it defaults to 'DroneConfig.actionTimeout'.
 	This connect() {
 		// we could re-use if we didn't stop the actor pool...?
 		// but nah, we created it, we should destroy it
@@ -280,10 +278,11 @@ const class Drone {
 		NavDataLoop.waitForAckClear	(this, networkConfig.configCmdAckClearTimeout, block)
 	}
 
-	** Blocks until the emergency landing flag has been cleared.
+	** Clears the emergency landing and the user emergency flags on the drone.
 	** 
-	** If 'timeout' is 'null' it defaults to 'DroneConfig.configCmdAckTimeout'.
-	Void clearEmergencyLanding(Duration? timeout := null) {
+	** 'timeout' is how long it should wait for an acknowledgement from the drone before throwing 
+	** a 'TimeoutErr'. If 'null' then it defaults to 'NetworkConfig.configCmdAckTimeout'.
+	Void clearEmergency(Duration? timeout := null) {
 		if (!isConnected) return
 		flags := navData?.flags
 		if (flags?.emergencyLanding == true || flags?.userEmergencyLanding == true) {
@@ -292,10 +291,12 @@ const class Drone {
 		}
 	}
 	
-	** Sends a emergency signal which cuts off the drone's motors, causing a crash landing.
+
+	** Sets the drone's emergency landing flag which cuts off the motors, causing a crash landing.
 	** 
-	** If 'timeout' is 'null' it defaults to 'DroneConfig.configCmdAckTimeout'.
-	Void setEmergencyLanding(Duration? timeout := null) {
+	** 'timeout' is how long it should wait for an acknowledgement from the drone before throwing 
+	** a 'TimeoutErr'. If 'null' then it defaults to 'NetworkConfig.configCmdAckTimeout'.
+	Void setUserEmergency(Duration? timeout := null) {
 		if (!isConnected) return
 		if (navData?.flags?.emergencyLanding == false) {
 			cmdSender.send(Cmd.makeLand, Cmd.makeEmergency)
@@ -374,7 +375,8 @@ const class Drone {
 	** If 'block' is 'true' then this method blocks until a stable hover has been achieved; 
 	** which usually takes ~ 6 seconds.
 	** 
-	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
+	** 'timeout' is how long it should wait for the drone to reach the desired state before 
+	** throwing a 'TimeoutErr'. If 'null' then it defaults to 'NetworkConfig.actionTimeout'.
 	Void takeOff(Bool block := true, Duration? timeout := null) {
 		if (!isConnected) return
 		if (flightState == null || ![FlightState.def, FlightState.init, FlightState.landed].contains(flightState)) {
@@ -388,7 +390,8 @@ const class Drone {
 	**  
 	** If 'block' is 'true' then this method blocks until the drone has landed.
 	** 
-	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
+	** 'timeout' is how long it should wait for the drone to reach the desired state before 
+	** throwing a 'TimeoutErr'. If 'null' then it defaults to 'NetworkConfig.actionTimeout'.
 	Void land(Bool block := true, Duration? timeout := null) {
 		if (!isConnected) return
 		if (flightState == null || [FlightState.def, FlightState.init, FlightState.landed, FlightState.transLanding].contains(flightState)) {
@@ -402,7 +405,8 @@ const class Drone {
 	**  
 	** If 'block' is 'true' then this method blocks until the drone hovers.
 	** 
-	** If 'timeout' is 'null' it defaults to 'DroneConfig.defaultTimeout'.
+	** 'timeout' is how long it should wait for the drone to reach the desired state before 
+	** throwing a 'TimeoutErr'. If 'null' then it defaults to 'NetworkConfig.actionTimeout'.
 	Void hover(Bool block := true, Duration? timeout := null) {
 		if (!isConnected) return
 		if (flightState == null || [FlightState.hovering, FlightState.landed, FlightState.transLanding].contains(flightState)) {
@@ -813,7 +817,7 @@ const class Drone {
 
 				case ExitStrategy.crashLand:
 					log.warn("Enforcing Exit Strategy --> Crash Landing Drone")
-					setEmergencyLanding
+					setUserEmergency
 			
 				default:
 					throw Err("WTF is a '${exitStrategy}' exit strategy ???")
