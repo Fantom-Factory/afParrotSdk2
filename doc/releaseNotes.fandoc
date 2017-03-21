@@ -1,11 +1,17 @@
 Release Notes
 *************
 
+v0.0.6
+======
+ - New: Added 'VideoCamera' and 'VideoResolution' enums.
+ - Chg: Renamed session config for selecting camera and changing resolution.
+ - Bug: Can now select bottom camera and change the video codec resolution.
+
 v0.0.4
 ======
  - New: Video camera support via 'Drone.onVideoFrame()' hook.
  - New: 'VideoStreamer' class that saves video files, integrates with [FFMPEG]`https://ffmpeg.org/`, and streams PNG images.
- - Chg: disconnect?
+ - Chg: Better disconnect handling.
 
 v0.0.2
 ======
