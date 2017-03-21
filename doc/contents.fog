@@ -1,0 +1,5 @@
+[sys::Uri:sys::Str][
+	`/doc/pod.fandoc`           : "User Guide",
+	`/doc/navDataExample.fandoc`: "NavData Example",
+	`/doc/videoExample.fandoc`	: "Video Example"
+]

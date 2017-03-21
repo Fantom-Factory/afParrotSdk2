@@ -1,4 +1,4 @@
-using afParrotSdk2
+//using afParrotSdk2
 using fwt::Canvas
 using fwt::Desktop
 using fwt::Window
@@ -7,7 +7,7 @@ using gfx::Image
 using gfx::Size
 
 ** Use the Drone like a web cam.
-class DroneCam {
+class VideoExample {
 	CamCanvas canvas := CamCanvas()
 
 	Void main() {
@@ -34,9 +34,11 @@ class CamCanvas : Canvas {
 	Image? pngImage
 	
 	Void onPngImage(Buf pngBuf) {
-		pngImage?.dispose	// you get a MASSIVE memory leak if you don't call this!
-		pngFile := pngBuf.toFile(`droneCam.png`)		
-		pngImage = Image.makeFile(pngFile)
+		// you get a MASSIVE memory leak if you don't call this!
+		pngImage?.dispose
+		
+		// note this creates is an in-memory file, not a real file
+		pngImage = Image(pngBuf.toFile(`droneCam.png`))
 		this.repaint
 	}
 
