@@ -99,7 +99,7 @@ const class DroneSessionConfig {
 	** Note 'HOVER_ON_ROUNDEL' was developed for 2011 CES autonomous demonstration.
 	** 
 	** Corresponds to the 'CONTROL:flying_mode' configuration key.
-	Int hoverMode {	// TODO rename to hoverOnRoundel
+	Int hoverMode {	// TODO rename to Bool hoverOnRoundel
 		get { getConfig("CONTROL:flying_mode").toInt }
 		set { setConfig("CONTROL:flying_mode", it.toStr) }		
 	}
@@ -113,42 +113,54 @@ const class DroneSessionConfig {
 		set { setConfig("CONTROL:hovering_range", it.toStr) }		
 	}
 
-	** Current FPS of the live video codec. Maximum value is 30. 
+	** Sets the frames per second (fps) of the live video codec.
+	** Values should be between 15 and 30. 
 	** 
 	** Corresponds to the 'VIDEO:codec_fps' configuration key.
-	Int videoCodecFps {
+	Int videoFps {
 		get { getConfig("VIDEO:codec_fps").toInt }
 		set { setConfig("VIDEO:codec_fps", it.toStr) }		
 	}
 
-	** Current video codec of the AR.Drone.
-	** Also controls the start/stop of the record stream.
+
+	** Selects which video camera on the drone to stream data back from.
 	** 
-	** Main values:
-	** 
-	**   H264_360P_CODEC          = 0x81  // Live stream with 360p H264 hardware encoder. No record stream.
-	**   H264_720P_CODEC          = 0x83  // Live stream with 720p H264 hardware encoder. No record stream.
-	** 
-	**   MP4_360P_CODEC           = 0x80  // Live stream with MPEG4.2 soft encoder. No record stream.
-	**   MP4_360P_H264_360P_CODEC = 0x88  // Live stream with MPEG4.2 soft encoder. Record stream with 360p H264 hardware encoder.
-	**   MP4_360P_H264_720P_CODEC = 0x82  // Live stream with MPEG4.2 soft encoder. Record stream with 720p H264 hardware encoder.
-	** 
-	** Other values:
-	** 
-	**   NULL_CODEC               = 0,
-	**   UVLC_CODEC               = 0x20  // codec_type value is used for START_CODE
-	**   P264_CODEC               = 0x40
-	**   MP4_360P_SLRS_CODEC      = 0x84
-	**   H264_360P_SLRS_CODEC     = 0x85
-	**   H264_720P_SLRS_CODEC     = 0x86
-	**   H264_AUTO_RESIZE_CODEC   = 0x87  // resolution is automatically adjusted according to bitrate
-	** 
-	** Corresponds to the 'VIDEO:codec' configuration key.
-	Int videoCodec {
-		get { getConfig("VIDEO:codec", false)?.toInt ?: 0 }
-		set { setConfig("VIDEO:codec", it.toStr) }		
+	** Corresponds to the 'VIDEO:video_channel' configuration key.
+	VideoCamera videoCamera {
+		get { VideoCamera.vals[getConfig("VIDEO:video_channel", false)?.toInt ?: 0] }
+		set { setConfig("VIDEO:video_channel", it.ordinal.toStr) }		
 	}
 
+	** Selects the resolution of the video that's streamed back.
+	** 
+	** Corresponds to the 'VIDEO:video_codec' configuration key.
+	VideoResolution videoResolution {
+//		TODO add recordStart(videoResolution) and recordStop() functions
+//	** Also controls the start/stop of the record stream.
+//	** 
+//	**   H264_360P_CODEC          = 0x81  // Live stream with 360p H264 hardware encoder. No record stream.
+//	**   H264_720P_CODEC          = 0x83  // Live stream with 720p H264 hardware encoder. No record stream.
+//	** 
+//	**   MP4_360P_CODEC           = 0x80  // Live stream with MPEG4.2 soft encoder. No record stream.
+//	**   MP4_360P_H264_360P_CODEC = 0x82  // Live stream with MPEG4.2 soft encoder. Record stream with 360p H264 hardware encoder.
+//	**   MP4_360P_H264_720P_CODEC = 0x88  // Live stream with MPEG4.2 soft encoder. Record stream with 720p H264 hardware encoder.
+//	** 
+//	** Other values:
+//	** 
+//	**   NULL_CODEC               = 0,
+//	**   UVLC_CODEC               = 0x20  // codec_type value is used for START_CODE
+//	**   P264_CODEC               = 0x40
+//	**   MP4_360P_SLRS_CODEC      = 0x84
+//	**   H264_360P_SLRS_CODEC     = 0x85
+//	**   H264_720P_SLRS_CODEC     = 0x86
+//	**   H264_AUTO_RESIZE_CODEC   = 0x87  // resolution is automatically adjusted according to bitrate
+//	** 
+		get {
+			liveCodec := getConfig("VIDEO:video_codec", false)?.toInt ?: 0x81
+			return VideoResolution.vals.find { it.liveCodec == liveCodec }
+		}
+		set { setConfig("VIDEO:video_codec", it.liveCodec.toStr) }		
+	}
 
 	** Maximum bitrate (kilobits per second) the device can decode. This is set as the upper bound for drone bitrate values.
 	** 
@@ -165,17 +177,6 @@ const class DroneSessionConfig {
 	Int videoMaxBitrate {
 		get { getConfig("VIDEO:max_bitrate").toInt }
 		set { setConfig("VIDEO:max_bitrate", it.toStr) }
-	}
-
-	** The video channel that will be sent to the controller.
-	** 
-	**   0 = ZAP_CHANNEL_HORI
-	**   1 = ZAP_CHANNEL_VERT
-	** 
-	** Corresponds to the 'VIDEO:videol_channel' configuration key.
-	Int videoChannel {
-		get { getConfig("VIDEO:videol_channel", false)?.toInt ?: 0 }
-		set { setConfig("VIDEO:videol_channel", it.toStr) }		
 	}
 
 	// TODO bool -> hover on roundel (what does the detect hori do for us? play with vision tags)
@@ -262,6 +263,7 @@ const class DroneSessionConfig {
 		}
 	}
 
+	// FIXME userbox config commands
 //USERBOX:userbox_cmd
 //CAT_SESSION | Read/Write
 //Description :
@@ -326,5 +328,31 @@ const class DroneSessionConfig {
 			_config.sendMultiConfig(key, val)
 			_config.drone._updateConfig(key, val)
 		}
+	}
+}
+
+** The video cameras on the AR Drone. 
+enum class VideoCamera {
+	** The forward facing horizontal camera.
+	horizontal,
+
+	** The botton facing vertical camera.
+	vertical;
+}
+
+** A selection of video resolutions. 
+enum class VideoResolution {
+	** 640 x 360
+	_360p(0x81, 0x82),
+
+	** 1280 x 720
+	_720p(0x83, 0x88);
+	
+	internal const Int liveCodec
+	internal const Int recordCodec
+	
+	private new make(Int liveCodec, Int recordCodec) {
+		this.liveCodec	 = liveCodec
+		this.recordCodec = recordCodec
 	}
 }
