@@ -31,7 +31,7 @@ Quick Start
     class Example {
         Void main() {
             drone := Drone().connect
-            drone.clearEmergencyFlag
+            drone.clearEmergency
 
             // handle feedback events
             drone.onEmergency = |->| {
