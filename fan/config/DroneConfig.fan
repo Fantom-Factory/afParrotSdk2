@@ -164,14 +164,11 @@ const class DroneConfig {
 		private set { }		
 	}
 	
-	** The drone can either send a reduced set of navigation data (navdata) to its clients, or send 
-	** all the available information which contain many debugging information that are useless for everyday flights.
-	** 
-	** If this parameter is set to 'true', the reduced set is sent by the drone.
-	** If this parameter is set to 'false', all the available data is sent.
+	** Set to 'true' to have the drone send 'NavData' at a full 200 times a second (approx). 
+	** When 'false' (the default) 'NavData' is sent 15 times a second (approx).
 	** 
 	** Corresponds to the 'GENERAL:navdata_demo' configuration key.
-	Bool navDataDemo {	// TODO rename config navDataDemo
+	Bool hiResNavData {
 		get { Bool(getConfig("GENERAL:navdata_demo").lower) }
 		set { setConfig("GENERAL:navdata_demo", it.toStr.upper) }		
 	}
@@ -356,7 +353,6 @@ const class DroneConfig {
 		if (dumpToStdOut)
 			echo(dump)
 		return dump
-
 	}
 	
 	** Sends config to the drone, using the current Session, User, and Application IDs.

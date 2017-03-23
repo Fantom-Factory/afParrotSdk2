@@ -1,17 +1,16 @@
 
 ** (Advanced)
-@NoDoc
+** Represents a low level AT command to send to the drone. 
+** See [Drone.sendCmd()]`Drone.sendCmd`. 
 const class Cmd {
     const Str?	id
     const Obj[]	params
 
 	** (Advanced) Creates a Cmd with the given id and params.
 	** Param values must be either an 'Int', 'Float', or 'Str'.
-	@NoDoc
-	new make(Str id, Obj[] params, |This|? f := null) {
+	new make(Str id, Obj[] params) {
 		this.id		= id
 		this.params	= params
-		f?.call(this)
 	}
 	
 	// ---- Cmd Factories ----

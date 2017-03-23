@@ -3,8 +3,12 @@ Release Notes
 
 v0.0.6
 ======
+ - New: Example programs for viewing 'NavData' and processing video data.
  - New: Added 'VideoCamera' and 'VideoResolution' enums.
+ - Chg: Better initial drone connection sequence.
  - Chg: Renamed session config for selecting camera and changing resolution.
+ - Chg: Un-NoDoc'ed the advanced 'Cmd' class and a few drone methods.
+ - Chg: Renamed a few other config settings.
  - Bug: Can now select bottom camera and change the video codec resolution.
 
 v0.0.4

@@ -374,17 +374,17 @@ enum class NavOption {
 
 	static internal Str:Obj parseVisionDetect(InStream in) {
 		Str:Obj[
-			"nbDetected"			: uint32(in),
-			"type"					: x(4) { uint32(in) },
-			"xc"					: x(4) { uint32(in) },
-			"yc"					: x(4) { uint32(in) },
-			"width"					: x(4) { uint32(in) },
+			"nbDetected"			: uint32(in),			// number of detected tags or oriented roundel.
+			"type"					: x(4) { uint32(in) },	// Type of the detected tag or oriented roundel #i ; see the CAD_TYPE enumeration.
+			"xc"					: x(4) { uint32(in) },	// X and Y coordinates of detected tag or oriented roundel #i inside the picture, 
+			"yc"					: x(4) { uint32(in) },	// with (0,0) being the top-left corner, and (1000,1000) the right-bottom corner regardless the picture resolution or the source camera.
+			"width"					: x(4) { uint32(in) },	// Width and height of the detection bounding-box (tag or oriented roundel #i), when applicable.
 			"height"				: x(4) { uint32(in) },
-			"orientationAngle"		: x(4) { uint32(in) },
-			"type"					: x(4) { float32(in) },
-			"rotation"				: x(4) { matrix3x3(in) },
-			"translation"			: x(4) { vector3x1(in) },
-			"cameraSource"			: x(4) { uint32(in) }
+			"orientationAngle"		: x(4) { uint32(in) },	// Angle of the oriented roundel #i in degrees in the screen, when applicable.
+			"type"					: x(4) { float32(in) },	// Distance from camera to detected tag or oriented roundel #i in centimeters, when applicable.
+			"rotation"				: x(4) { matrix3x3(in) },	//  Reserved for future use
+			"translation"			: x(4) { vector3x1(in) },	//  Reserved for future use
+			"cameraSource"			: x(4) { uint32(in) }	// Camera Source which detected tag or oriented roundel #i.
 		]
 	}
 	
