@@ -108,8 +108,8 @@ const class VideoStreamer {
 	** ffmpegArgs : (Str[]) an array of arguments for FFmpeg.
 	**              Defaults to "-f h264 -i - -codec:v copy".split
 	** 
-	** throttle   : (Duration) Time to sleep while waiting for FFmpeg console output. 
-	**              Defaults to 200ms.
+	** quiet      : (Bool) if true, then FFmpeg console output is suppressed.
+	**              Defaults to false.
 	** 
 	** actorPool  : (ActorPool) the ActorPool to use for thread processing
 	**              Defaults to a new instance.
@@ -123,13 +123,14 @@ const class VideoStreamer {
 		actorPool	:= options?.get("actorPool")	?: ActorPool()
 		ffmpegPath	:= options?.get("ffmpegPath")	?: (Env.cur.os == "win32" ? `ffmpeg.exe` : `ffmpeg`)
 		ffmpegArgs	:= options?.get("ffmpegArgs")	?: "-f h264 -i - -codec:v copy".split
+		quiet		:= options?.get("quiet")		?: false
 		throttle	:= options?.get("throttle")		?: 200ms	// 5 times a second should be fine for console output
 
 		return VideoStreamer {
 			itFile := addFileSuffix(outputFile)
 			it.file = itFile
 			it.mutex = SynchronizedState(actorPool) |->Obj| {
-				VideoStreamerToMp4File(ffmpegPath, ffmpegArgs, itFile, actorPool, throttle)
+				VideoStreamerToMp4File(ffmpegPath, ffmpegArgs, itFile, actorPool, throttle, quiet)
 			}
 		}
 	}
@@ -157,8 +158,10 @@ const class VideoStreamer {
 	** ffmpegArgs : (Str[]) an array of arguments for FFmpeg.
 	**              Defaults to "-f h264 -i - -f image2pipe -codec:v png -".split
 	** 
-	** throttle   : (Duration) Time to sleep while waiting for FFmpeg console output. 
-	**              Defaults to 200ms.
+	** frameRate  : (Int?) The frame rate FFmpeg should enforce.
+	**              Defaults to null - same as video input.
+	** 
+	** quiet      : (Bool) if true, then FFmpeg console output is suppressed.
 	** 
 	** actorPool  : (ActorPool) the ActorPool to use for thread processing
 	**              Defaults to a new instance.
@@ -170,6 +173,7 @@ const class VideoStreamer {
 		ffmpegPath	:= options?.get("ffmpegPath")	?: (Env.cur.os == "win32" ? `ffmpeg.exe` : `ffmpeg`)
 		ffmpegArgs	:= options?.get("ffmpegArgs")	?: "-f h264 -i - -f image2pipe -codec:v png -".split
 		frameRate	:= options?.get("frameRate")
+		quiet		:= options?.get("quiet")		?: false
 		throttle	:= options?.get("throttle")		?: 200ms	// 5 times a second should be fine for console output
 
 		args := (Str[]) ffmpegArgs
@@ -186,7 +190,7 @@ const class VideoStreamer {
 			vs := it
 			it.pngEventThread = Synchronized(actorPool)
 			it.mutex = SynchronizedState(actorPool) |->Obj| {
-				VideoStreamerToPngEvents(ffmpegPath, iArgs, actorPool, throttle, #onNewPngImage.func.bind([vs]))
+				VideoStreamerToPngEvents(ffmpegPath, iArgs, actorPool, throttle, quiet, #onNewPngImage.func.bind([vs]))
 			}
 		}
 	}
@@ -294,7 +298,7 @@ internal class VideoStreamerToH264File : VideoStreamerImpl {
 internal class VideoStreamerToMp4File : VideoStreamerImpl {
 	Process2 ffmpegProcess
 
-	new make(Uri ffmpegPath, Str[] ffmpegArgs, File output, ActorPool actorPool, Duration throttle) {
+	new make(Uri ffmpegPath, Str[] ffmpegArgs, File output, ActorPool actorPool, Duration throttle, Bool quiet) {
 		ffmpegFile := ffmpegPath.toFile.normalize
 		if (!ffmpegFile.exists)
 			throw IOErr("${ffmpegFile.osPath} does not exist")
@@ -308,8 +312,11 @@ internal class VideoStreamerToMp4File : VideoStreamerImpl {
 			it.mergeErr = false
 			it.env.clear
 		}.run
-		ffmpegProcess.pipeFromStdOut(Env.cur.out, throttle)
-		ffmpegProcess.pipeFromStdErr(Env.cur.err, throttle)
+
+		if (!quiet) {
+			ffmpegProcess.pipeFromStdOut(Env.cur.out, throttle)
+			ffmpegProcess.pipeFromStdErr(Env.cur.err, throttle)
+		}
 	}
 	
 	override Void onVideoFrame(Buf payload, PaveHeader pave) {
@@ -326,7 +333,7 @@ internal class VideoStreamerToPngEvents : VideoStreamerImpl {
 	Process2 			ffmpegProcess
 	|Buf|	 			onNewPngImage
 
-	new make(Uri ffmpegPath, Str[] ffmpegArgs, ActorPool actorPool, Duration throttle, |Buf| onNewPngImage) {
+	new make(Uri ffmpegPath, Str[] ffmpegArgs, ActorPool actorPool, Duration throttle, Bool quiet, |Buf| onNewPngImage) {
 		this.onNewPngImage = onNewPngImage
 		
 		ffmpegFile := ffmpegPath.toFile.normalize
@@ -341,7 +348,9 @@ internal class VideoStreamerToPngEvents : VideoStreamerImpl {
 			it.mergeErr = false
 			it.env.clear
 		}.run
-		ffmpegProcess.pipeFromStdErr(Env.cur.err, throttle)
+		
+		if (!quiet)
+			ffmpegProcess.pipeFromStdErr(Env.cur.err, throttle)
 
 		// kick off a thread to read data from the ffmpeg output
 		pngReaderThread	:= Synchronized(actorPool)
