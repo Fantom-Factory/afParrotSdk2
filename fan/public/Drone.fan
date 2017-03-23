@@ -200,7 +200,6 @@ const class Drone {
 			cmdSender.send(Cmd("CTRL", [0]))
 		}
 
-
 		try droneVersion = BareBonesFtp().readVersion(networkConfig)
 		catch (Err err)
 			log.warn("Could not FTP version.txt from drone\n  ${err.msg}")
@@ -476,19 +475,19 @@ const class Drone {
 	** 
 	** pre>
 	** syntax: fantom
-	** // move the drone
+	** // move the drone for 5secs
 	** cancel := drone.moveUp(0.5f, 5sec, false)
 	**
 	** // wait a bit
 	** Actor.sleep(2sec) 
 	** 
-	** // cancel the move
+	** // cancel the move prematurely
 	** cancel()
 	** <pre 
 	** 
 	** If 'duration' is 'null' then the movement command is sent just the once.
 	** 
-	** See config commands 'control:altitude_max', 'control:control_vz_max'.
+	** See config commands 'CONTROL:altitude_max', 'CONTROL:control_vz_max'.
 	|->|? moveUp(Float verticalSpeed, Duration? duration := null, Bool? block := true) {
 		doMove(Cmd.makeMove(0f, 0f, verticalSpeed, 0f, combinedYawMode, absoluteMode), verticalSpeed, duration, block)
 	}
@@ -507,19 +506,19 @@ const class Drone {
 	** 
 	** pre>
 	** syntax: fantom
-	** // move the drone
+	** // move the drone for 5secs
 	** cancel := drone.moveDown(0.5f, 5sec, false)
 	**
 	** // wait a bit
 	** Actor.sleep(2sec) 
 	** 
-	** // cancel the move
+	** // cancel the move prematurely
 	** cancel()
 	** <pre 
 	** 
 	** If 'duration' is 'null' then the movement command is sent just the once.
 	** 
-	** See config commands 'control:altitude_min', 'control:control_vz_max'.
+	** See config commands 'CONTROL:altitude_min', 'CONTROL:control_vz_max'.
 	|->|? moveDown(Float verticalSpeed, Duration? duration := null, Bool? block := true) {
 		doMove(Cmd.makeMove(0f, 0f, -verticalSpeed, 0f, combinedYawMode, absoluteMode), verticalSpeed, duration, block)
 	}
@@ -538,19 +537,19 @@ const class Drone {
 	** 
 	** pre>
 	** syntax: fantom
-	** // move the drone
+	** // move the drone for 5secs
 	** cancel := drone.moveLeft(0.5f, 5sec, false)
 	**
 	** // wait a bit
 	** Actor.sleep(2sec) 
 	** 
-	** // cancel the move
+	** // cancel the move prematurely
 	** cancel()
 	** <pre 
 	** 
 	** If 'duration' is 'null' then the movement command is sent just the once.
 	** 
-	** See config command 'control:euler_angle_max'.
+	** See config command 'CONTROL:euler_angle_max'.
 	|->|? moveLeft(Float tilt, Duration? duration := null, Bool? block := true) {
 		doMove(Cmd.makeMove(-tilt, 0f, 0f, 0f, combinedYawMode, absoluteMode), tilt, duration, block)
 	}
@@ -569,19 +568,19 @@ const class Drone {
 	** 
 	** pre>
 	** syntax: fantom
-	** // move the drone
+	** // move the drone for 5secs
 	** cancel := drone.moveRight(0.5f, 5sec, false)
 	**
 	** // wait a bit
 	** Actor.sleep(2sec) 
 	** 
-	** // cancel the move
+	** // cancel the move prematurely
 	** cancel()
 	** <pre 
 	** 
 	** If 'duration' is 'null' then the movement command is sent just the once.
 	** 
-	** See config command 'control:euler_angle_max'.
+	** See config command 'CONTROL:euler_angle_max'.
 	|->|? moveRight(Float tilt, Duration? duration := null, Bool? block := true) {
 		doMove(Cmd.makeMove(tilt, 0f, 0f, 0f, combinedYawMode, absoluteMode), tilt, duration, block)		
 	}
@@ -600,19 +599,19 @@ const class Drone {
 	** 
 	** pre>
 	** syntax: fantom
-	** // move the drone
+	** // move the drone for 5secs
 	** cancel := drone.moveForward(0.5f, 5sec, false)
 	**
 	** // wait a bit
 	** Actor.sleep(2sec) 
 	** 
-	** // cancel the move
+	** // cancel the move prematurely
 	** cancel()
 	** <pre 
 	** 
 	** If 'duration' is 'null' then the movement command is sent just the once.
 	** 
-	** See config command 'control:euler_angle_max'.
+	** See config command 'CONTROL:euler_angle_max'.
 	|->|? moveForward(Float tilt, Duration? duration := null, Bool? block := true) {
 		doMove(Cmd.makeMove(0f, -tilt, 0f, 0f, combinedYawMode, absoluteMode), tilt, duration, block)
 	}
@@ -631,19 +630,19 @@ const class Drone {
 	** 
 	** pre>
 	** syntax: fantom
-	** // move the drone
+	** // move the drone for 5secs
 	** cancel := drone.moveBackward(0.5f, 5sec, false)
 	**
 	** // wait a bit
 	** Actor.sleep(2sec) 
 	** 
-	** // cancel the move
+	** // cancel the move prematurely
 	** cancel()
 	** <pre 
 	** 
 	** If 'duration' is 'null' then the movement command is sent just the once.
 	** 
-	** See config command 'control:euler_angle_max'.
+	** See config command 'CONTROL:euler_angle_max'.
 	|->|? moveBackward(Float tilt, Duration? duration := null, Bool? block := true) {
 		doMove(Cmd.makeMove(0f, tilt, 0f, 0f, combinedYawMode, absoluteMode), tilt, duration, block)
 	}
@@ -662,19 +661,19 @@ const class Drone {
 	** 
 	** pre>
 	** syntax: fantom
-	** // move the drone
+	** // move the drone for 5secs
 	** cancel := drone.spinClockwise(0.5f, 5sec, false)
 	**
 	** // wait a bit
 	** Actor.sleep(2sec) 
 	** 
-	** // cancel the move
+	** // cancel the move prematurely
 	** cancel()
 	** <pre 
 	** 
 	** If 'duration' is 'null' then the movement command is sent just the once.
 	** 
-	** See config command 'control:control_yaw'.
+	** See config command 'CONTROL:control_yaw'.
 	|->|? spinClockwise(Float angularSpeed, Duration? duration := null, Bool? block := true) {
 		doMove(Cmd.makeMove(0f, 0f, 0f, angularSpeed, combinedYawMode, absoluteMode), angularSpeed, duration, block)
 	}
@@ -693,20 +692,20 @@ const class Drone {
 	** 
 	** pre>
 	** syntax: fantom
-	** // move the drone
+	** // move the drone for 5secs
 	** cancel := drone.spinAntiClockwise(0.5f, 5sec, false)
 	**
 	** // wait a bit
 	** Actor.sleep(2sec) 
 	** 
-	** // cancel the move
+	** // cancel the move prematurely
 	** cancel()
 	** <pre 
 	** 
 	** If 'duration' is 'null' then the movement command is sent just the once.
 	** 
-	** See config command 'control:control_yaw'.
-	Void spinAntiClockwise(Float angularSpeed, Duration? duration := null, Bool? block := true) {
+	** See config command 'CONTROL:control_yaw'.
+	|->|? spinAntiClockwise(Float angularSpeed, Duration? duration := null, Bool? block := true) {
 		doMove(Cmd.makeMove(0f, 0f, 0f, -angularSpeed, combinedYawMode, absoluteMode), angularSpeed, duration, block)
 	}
 		
