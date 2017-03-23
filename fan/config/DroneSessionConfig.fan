@@ -85,8 +85,8 @@ const class DroneSessionConfig {
 	
 	// ---- Other Cmds ----
 
-	** Enables free flight or a semi-autonomous hover on top of a roundel picture. 
-	** If orientated then the drone will always face the same direction.
+	** Set to 'true' to enable roundel detection and activate a semi-autonomous hover on top of an 
+	** [oriented roundel]`https://bitbucket.org/AlienFactory/afparrotsdk2/downloads/orientedRoundel.png`. 
 	** 
 	**   0 = FREE_FLIGHT                // Normal mode, commands are enabled
 	**   1 = HOVER_ON_ROUNDEL           // Commands are disabled, drone hovers on a roundel
@@ -94,14 +94,18 @@ const class DroneSessionConfig {
 	** 
 	** Hover modes **MUST** be activated by the 'detect_type' configuration.
 	** 
-	** For all modes, progressive commands are possible.
-	** 
-	** Note 'HOVER_ON_ROUNDEL' was developed for 2011 CES autonomous demonstration.
+	** Note 'HOVER_ON_ROUNDEL' was developed for the 2011 CES autonomous demonstration.
 	** 
 	** Corresponds to the 'CONTROL:flying_mode' configuration key.
-	Int hoverMode {	// TODO rename to Bool hoverOnRoundel
-		get { getConfig("CONTROL:flying_mode").toInt }
-		set { setConfig("CONTROL:flying_mode", it.toStr) }		
+	Bool hoverOnRoundel {
+		get { getConfig("CONTROL:flying_mode").toInt == 2 }
+		set {
+			if (it == true) {
+				detectRoundel = VideoCamera.vertical
+				setConfig("CONTROL:flying_mode", 2.toStr)
+			} else
+				setConfig("CONTROL:flying_mode", 0.toStr)
+		}		
 	}
 
 	** The maximum distance (in millimetres) the drone should hover. 
@@ -136,26 +140,21 @@ const class DroneSessionConfig {
 	** Corresponds to the 'VIDEO:video_codec' configuration key.
 	VideoResolution videoResolution {
 //		TODO add recordStart(videoResolution) and recordStop() functions
-//	** Also controls the start/stop of the record stream.
-//	** 
-//	**   H264_360P_CODEC          = 0x81  // Live stream with 360p H264 hardware encoder. No record stream.
-//	**   H264_720P_CODEC          = 0x83  // Live stream with 720p H264 hardware encoder. No record stream.
-//	** 
-//	**   MP4_360P_CODEC           = 0x80  // Live stream with MPEG4.2 soft encoder. No record stream.
-//	**   MP4_360P_H264_360P_CODEC = 0x82  // Live stream with MPEG4.2 soft encoder. Record stream with 360p H264 hardware encoder.
-//	**   MP4_360P_H264_720P_CODEC = 0x88  // Live stream with MPEG4.2 soft encoder. Record stream with 720p H264 hardware encoder.
-//	** 
-//	** Other values:
-//	** 
-//	**   NULL_CODEC               = 0,
-//	**   UVLC_CODEC               = 0x20  // codec_type value is used for START_CODE
-//	**   P264_CODEC               = 0x40
-//	**   MP4_360P_SLRS_CODEC      = 0x84
-//	**   H264_360P_SLRS_CODEC     = 0x85
-//	**   H264_720P_SLRS_CODEC     = 0x86
-//	**   H264_AUTO_RESIZE_CODEC   = 0x87  // resolution is automatically adjusted according to bitrate
-//	** 
 		get {
+			// H264_360P_CODEC          = 0x81  // Live stream with 360p H264 hardware encoder. No record stream.
+			// H264_720P_CODEC          = 0x83  // Live stream with 720p H264 hardware encoder. No record stream.
+			//
+			// MP4_360P_CODEC           = 0x80  // Live stream with MPEG4.2 soft encoder. No record stream.
+			// MP4_360P_H264_360P_CODEC = 0x82  // Live stream with MPEG4.2 soft encoder. Record stream with 360p H264 hardware encoder.
+			// MP4_360P_H264_720P_CODEC = 0x88  // Live stream with MPEG4.2 soft encoder. Record stream with 720p H264 hardware encoder.
+			//
+			// NULL_CODEC               = 0,
+			// UVLC_CODEC               = 0x20  // codec_type value is used for START_CODE
+			// P264_CODEC               = 0x40
+			// MP4_360P_SLRS_CODEC      = 0x84
+			// H264_360P_SLRS_CODEC     = 0x85
+			// H264_720P_SLRS_CODEC     = 0x86
+			// H264_AUTO_RESIZE_CODEC   = 0x87  // resolution is automatically adjusted according to bitrate
 			liveCodec := getConfig("VIDEO:video_codec", false)?.toInt ?: 0x81
 			return VideoResolution.vals.find { it.liveCodec == liveCodec }
 		}
@@ -165,9 +164,9 @@ const class DroneSessionConfig {
 	** Maximum bitrate (kilobits per second) the device can decode. This is set as the upper bound for drone bitrate values.
 	** 
 	** Typical values for Apple iOS Device are:
-	**  - iPhone 4S : 4000 kbps
-	**  - iPhone 4 : 1500 kbps
-	**  - iPhone 3GS : 500 kbps
+	**  - iPhone 4S  : 4000 kbps
+	**  - iPhone 4   : 1500 kbps
+	**  - iPhone 3GS :  500 kbps
 	** 
 	** When using the bitrate control mode in 'VBC_MANUAL', this maximum bitrate is ignored.
 	** 
@@ -179,62 +178,63 @@ const class DroneSessionConfig {
 		set { setConfig("VIDEO:max_bitrate", it.toStr) }
 	}
 
-	// TODO bool -> hover on roundel (what does the detect hori do for us? play with vision tags)
-	// TODO roundel detect - none / hori / vert, set fps 30 / 60
-	// TODO userbox
-	
-	** Active tag detection.
+	** Enables roundel detection on the given camera.
+	**  
+	** TODO:  play with vision tags
 	** 
-	**    3 = CAD_TYPE_NONE : No detections
-	**   10 = CAD_TYPE_MULTIPLE_DETECTION_MODE : See following note
-	**   12 = CAD_TYPE_ORIENTED_COCARDE_BW : Black & White oriented roundel detected on bottom facing camera
-	**   13 = CAD_TYPE_VISION_V2 : Standard tag detection
-	** 
-	** It is preferred to enable multiple detection mode and configure each camera.
-	** 
-	** Note you should **NEVER** enable detection on both cameras, as this will cause failures in the algorithms.
-	** 
-	** Corresponds to the 'DETECT:detect_type' configuration key.
-	@Deprecated
-	Int detectType {
-		get { getConfig("DETECT:detect_type").toInt }
-		set { setConfig("DETECT:detect_type", it.toStr) }		
-	}
+	** Corresponds to the configuration keys:
+	**   - 'DETECT:detect_type'
+	**   - 'DETECT:detections_select_v'
+	**   - 'DETECT:detections_select_h'
+	VideoCamera? detectRoundel {
+		get {
+			//  3 = CAD_TYPE_NONE : No detections
+			// 10 = CAD_TYPE_MULTIPLE_DETECTION_MODE : See following note
+			// 12 = CAD_TYPE_ORIENTED_COCARDE_BW : Black & White oriented roundel detected on bottom facing camera
+			// 13 = CAD_TYPE_VISION_V2 : Standard tag detection
+			type := getConfig("DETECT:detect_type").toInt
+			if (type == 12)
+				return VideoCamera.vertical
+			if (type == 13) {
+				// 0 = TAG_TYPE_NONE : No tag to detect
+				// 3 = TAG_TYPE_ORIENTED_ROUNDEL 
+				// 6 = TAG_TYPE_SHELL_TAG_V2 : Standard hulls (both indoor and outdoor) tags
+				// 8 = TAG_TYPE_BLACK_ROUNDEL : Black&While oriented roundel
+				vert := getConfig("DETECT:detections_select_v").toInt
+				if (vert == 8)
+					return VideoCamera.vertical
 
-	** Horizontal camera detection.
-	** 
-	**   0 = TAG_TYPE_NONE : No tag to detect
-	**   3 = TAG_TYPE_ORIENTED_ROUNDEL (???)
-	**   6 = TAG_TYPE_SHELL_TAG_V2 : Standard hulls (both indoor and outdoor) tags
-	**   8 = TAG_TYPE_BLACK_ROUNDEL : Black&While oriented roundel
-	** 
-	** Note you should **NEVER** enable detection on both cameras, as this will cause failures in the algorithms.
-	** 
-	** Corresponds to the 'DETECT:detections_select_h' configuration key.
-	Int detectTypeHori {
-		get { getConfig("DETECT:detections_select_h").toInt }
-		set { setConfig("DETECT:detections_select_h", it.toStr) }		
-	}
-
-	** Vertical camera detection.
-	** 
-	**   0 = TAG_TYPE_NONE : No tag to detect
-	**   3 = TAG_TYPE_ORIENTED_ROUNDEL (???)
-	**   6 = TAG_TYPE_SHELL_TAG_V2 : Standard hulls (both indoor and outdoor) tags
-	**   8 = TAG_TYPE_BLACK_ROUNDEL : Black&While oriented roundel
-	** 
-	** Note you should **NEVER** enable detection on both cameras, as this will cause failures in the algorithms.
-	** 
-	** Corresponds to the 'DETECT:detections_select_v' configuration key.
-	Int detectTypeVert {
-		get { getConfig("DETECT:detections_select_v").toInt }
-		set { setConfig("DETECT:detections_select_v", it.toStr) }		
+				hori := getConfig("DETECT:detections_select_h").toInt
+				if (hori == 8)
+					return VideoCamera.horizontal
+			}
+			return null
+		}
+		set {
+			type := getConfig("DETECT:detect_type").toInt
+			if (type != 10)
+				setConfig("DETECT:detect_type", it.toStr)
+			
+			switch (it) {
+				case VideoCamera.vertical:
+					setConfig("DETECT:detections_select_v", 8.toStr)
+					setConfig("DETECT:detections_select_h", 0.toStr)
+				
+				case VideoCamera.horizontal:
+					setConfig("DETECT:detections_select_v", 0.toStr)
+					setConfig("DETECT:detections_select_h", 8.toStr)
+			
+				default:
+					setConfig("DETECT:detections_select_v", 0.toStr)
+					setConfig("DETECT:detections_select_h", 0.toStr)
+			}
+		}
 	}
 
 	** Detection defaults to 60 fps, but may be reduced to 30 fps to reduce the CPU load when you don’t need a 60Hz detection.
 	** 
 	** Corresponds to the 'DETECT:detections_select_v_hsync' configuration key.
-	Int detectTypeVertFps {
+	Int detectVertFps {	// TODO convert detectVertFps to Bool and rename 
 		get { getConfig("DETECT:detections_select_v_hsync").toInt }
 		set { setConfig("DETECT:detections_select_v_hsync", it.toStr) }		
 	}

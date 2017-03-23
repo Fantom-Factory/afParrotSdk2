@@ -182,14 +182,24 @@ const class Drone {
 		videoReader	 .addListener(#processVidData.func.bind([this]))
 
 		cmdSender.connect
-		navDataReader.connect
+		navData := navDataReader.connect
+		
+		if (navData == null)
+			throw IOErr("Drone did not respond to NavData initialisation")
+		
+		if (navData.flags.navDataBootstrap) {
+			// send me nav data please!
+			cmdSender.send(Cmd.makeConfig("general:navdata_demo", "TRUE"))
+			if (actorPool.isStopped)
+				throw IOErr("Drone not sending NavData")
+			NavDataLoop.waitForAckClear	(this, networkConfig.configCmdAckClearTimeout, true)
+			NavDataLoop.waitUntilReady	(this, networkConfig.actionTimeout)
+			
+			// this is a bit of a no-op, not really needed but mentioned in the docs
+			// see p40, 7.1.2 Initiating the reception of Navigation data
+			cmdSender.send(Cmd("CTRL", [0]))
+		}
 
-		// send me nav data please!
-		cmdSender.send(Cmd.makeConfig("general:navdata_demo", "TRUE"))
-		if (actorPool.isStopped)
-			throw IOErr("Drone Connection Error")
-		NavDataLoop.waitForAckClear	(this, networkConfig.configCmdAckClearTimeout, true)
-		NavDataLoop.waitUntilReady	(this, networkConfig.actionTimeout)
 
 		try droneVersion = BareBonesFtp().readVersion(networkConfig)
 		catch (Err err)
@@ -242,10 +252,11 @@ const class Drone {
 	** If a second Cmd is given, it is sent in the same UDP data packet.
 	** 
 	** This method does not block.
-	@NoDoc
 	Void sendCmd(Cmd cmd, Cmd? cmd2 := null) {
-		// FIXME have internal & public
-//		if (!isConnected) return	// needed to connect
+		if (!isConnected) return	// needed to connect
+		cmdSender.send(cmd, cmd2)
+	}
+	internal Void _sendCmd(Cmd cmd, Cmd? cmd2 := null) {
 		cmdSender.send(cmd, cmd2)
 	}
 	

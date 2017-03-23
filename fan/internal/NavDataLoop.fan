@@ -125,7 +125,7 @@ internal const class NavDataLoop {
 		if (future.state.isComplete || drone.actorPool.isStopped)
 			return
 		if (cmd != null)
-			drone.sendCmd(cmd)
+			drone._sendCmd(cmd)
 		thread.asyncLater(drone.networkConfig.cmdInterval, sendCmdFunc)
 	}
 }

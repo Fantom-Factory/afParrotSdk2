@@ -18,7 +18,7 @@ internal const class ControlReader {
 		try {
 			NavDataLoop.waitForAckClear	(drone, drone.networkConfig.configCmdAckClearTimeout, true)
 
-			drone.sendCmd(Cmd.makeCtrl(4, 0))
+			drone._sendCmd(Cmd.makeCtrl(4, 0))
 			
 			// config is usually ~ 4.5 KB
 			configStr := socket.in.readNullTerminatedStr(1024 * 8)

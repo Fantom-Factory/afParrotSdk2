@@ -121,8 +121,11 @@ const class NavDataFlags {
 	Bool	emergencyLanding()			{ data.and(1.shiftl(31)) != 0 }
 	
 	** Dumps all flags out to debug string.
-	Str dump() {
-		flagMethods.map { logFlagValue(it, null) }.join("\n")
+	Str dump(Bool dumpToStdOut := true) {
+		dump := flagMethods.map { logFlagValue(it, null) }.join("\n")
+		if (dumpToStdOut)
+			echo(dump)
+		return dump
 	}
 	
 	** Dumps to a debug string all flags that are different to the instance passed in.
