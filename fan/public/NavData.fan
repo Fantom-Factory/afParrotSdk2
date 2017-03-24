@@ -51,6 +51,11 @@ const class NavData {
 	NavOption[] optionKeys() {
 		_lazyOpts.keys
 	}
+	
+	** Returns 'true' if the nav data contains the given option.
+	Bool contains(NavOption navOpt) {
+		_lazyOpts.containsKey(navOpt)
+	}
 }
 
 ** Standard state flags returned by the drone.

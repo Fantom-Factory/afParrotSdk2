@@ -135,14 +135,14 @@ enum class NavOption {
 			it.velocityY			= float32(in)
 			it.velocityZ			= float32(in)
 			it.frameIndex			= uint32 (in)
-				detection			:= Str:Obj[
+			detection				:= Str:Obj[
 				"camera"			: Str:Obj[
 					"rotation"		: matrix3x3(in),
 					"translation"	: vector3x1(in)
 				],
 				"tagIndex"			: uint32(in)
 			]
-				detection["camera"]->set("type", uint32(in))
+			detection["camera"]->set("type", uint32(in))
 			it.detection			= detection
 			it.drone				= Str:Obj[
 				"camera"			: Str:Obj[

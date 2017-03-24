@@ -192,6 +192,7 @@ const class Drone {
 			cmdSender.send(Cmd.makeConfig("general:navdata_demo", "TRUE"))
 			if (actorPool.isStopped)
 				throw IOErr("Drone not sending NavData")
+			// TODO wot if times out here?
 			NavDataLoop.waitForAckClear	(this, networkConfig.configCmdAckClearTimeout, true)
 			NavDataLoop.waitUntilReady	(this, networkConfig.actionTimeout)
 			
@@ -230,14 +231,18 @@ const class Drone {
 	** Returns a read only map of the drone's raw configuration data, as read from the control 
 	** (TCP 5559) port.
 	** 
-	** All config data is cached, pass a 'reRead' value of 'true' to obtain fresh data from the 
+	** All config data is cached, see [configRefresh()]`configRefresh` obtain fresh data from the
 	** drone.
-	Str:Str configMap(Bool reRead := false) {
-		if ((reRead || configMapRef.isEmpty) && isConnected)
-			configMapRef.map = controlReader.read
-		return configMapRef.map
+	Str:Str configMap() {
+		configMapRef.map
 	}
 
+	** Reloads the 'configMap' with fresh data from the drone. 
+	Void configRefresh() {
+		if (isConnected)
+			configMapRef.map = controlReader.read
+	}
+	
 	** Returns config for the drone. Note all data is backed by the raw 'configMap'.
 	DroneConfig config() {
 		configRef

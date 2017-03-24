@@ -32,7 +32,7 @@ const class DroneConfig {
 		userId.val = defId		
 		drone.sendConfig("CUSTOM:session_id", defId)
 		sessId.val = defId
-		drone.configMap(true)
+		drone.configRefresh
 	}
 	
 	** If the done contains data for the given 'sessionName' then it is loaded. 
@@ -52,7 +52,7 @@ const class DroneConfig {
 				userId.val = defId
 				appId.val  = defId
 				sendMultiConfig("CUSTOM:session_desc", sessionName)
-				drone.configMap(true)
+				drone.configRefresh
 			}
 		}
 		return sessConfig
@@ -67,7 +67,8 @@ const class DroneConfig {
 				drone.sendConfig("CUSTOM:profile_id", id)
 				userId.val = id
 				sendMultiConfig("CUSTOM:profile_desc", userName)
-				drone.configMap(reReadConfig)
+				if (reReadConfig)
+					drone.configRefresh
 			}
 		}
 		return userConfig
@@ -83,7 +84,8 @@ const class DroneConfig {
 				drone.sendConfig("CUSTOM:application_id", id)
 				appId.val = id
 				sendMultiConfig("CUSTOM:application_desc", appicationName)
-				drone.configMap(reReadConfig)
+				if (reReadConfig)
+					drone.configRefresh
 			}
 		}
 		return appConfig
@@ -371,21 +373,21 @@ const class DroneConfig {
 		drone.sendConfig("CUSTOM:session_id", id)
 		drone.sendConfig("CUSTOM:session_id", defId)
 		sessId.val = defId
-		drone.configMap(true)
+		drone.configRefresh
 	}
 
 	internal Void _delUser(Str id) {
 		drone.sendConfig("CUSTOM:profile_id", id)
 		drone.sendConfig("CUSTOM:profile_id", defId)
 		userId.val = defId		
-		drone.configMap(true)
+		drone.configRefresh
 	}
 	
 	internal Void _delApp(Str id) {
 		drone.sendConfig("CUSTOM:application_id", id)
 		drone.sendConfig("CUSTOM:application_id", defId)
 		appId.val = defId
-		drone.configMap(true)
+		drone.configRefresh
 	}
 	
 	private Str getConfig(Str key) {

@@ -23,7 +23,7 @@ const class DroneSessionConfig {
 	internal new make(DroneConfig config, Bool reReadConfig := true) {
 		this._config = config
 		if (reReadConfig)
-			config.drone.configMap(true)
+			config.drone.configRefresh
 	}
 	
 	** The wrapped drone instance
@@ -213,8 +213,14 @@ const class DroneSessionConfig {
 		set {
 			type := getConfig("DETECT:detect_type").toInt
 			if (type != 10)
-				setConfig("DETECT:detect_type", it.toStr)
+				setConfig("DETECT:detect_type", 10.toStr)
 			
+			if (it == null) {	// NPE if null used in switch 
+				setConfig("DETECT:detections_select_v", 0.toStr)
+				setConfig("DETECT:detections_select_h", 0.toStr)
+				return
+			}
+
 			switch (it) {
 				case VideoCamera.vertical:
 					setConfig("DETECT:detections_select_v", 8.toStr)
@@ -223,10 +229,6 @@ const class DroneSessionConfig {
 				case VideoCamera.horizontal:
 					setConfig("DETECT:detections_select_v", 0.toStr)
 					setConfig("DETECT:detections_select_h", 8.toStr)
-			
-				default:
-					setConfig("DETECT:detections_select_v", 0.toStr)
-					setConfig("DETECT:detections_select_h", 0.toStr)
 			}
 		}
 	}
