@@ -143,7 +143,7 @@ const class DroneAppConfig {
 		config.drone.configMap[key] ?: (checked ? throw UnknownKeyErr(key) : null)
 	}
 	
-	private Void setConfig(Str key, Str val) {
+	private Void setConfig(Str key, Obj val) {
 		config._config.sendMultiConfig(key, val)
 		config.drone._updateConfig(key, val)
 	}
