@@ -17,14 +17,18 @@ using afConcurrent::SynchronizedState
 ** For ease of use, just put 'ffmpeg' in the same directory as your program. 
 const class VideoStreamer {
 	private const SynchronizedState			mutex
-	private const |Buf, PaveHeader, Drone|	onVideoFrameListener := #onVideoFrame.func.bind([this])
-	private const |Bool, Drone|				onDisconnectListener := #onDisconnect.func.bind([this])
 	private const AtomicRef					pngImageRef			 := AtomicRef(null)
 	private const AtomicRef					onPngImageRef		 := AtomicRef(null)
 	private const AtomicRef					droneRef		 	 := AtomicRef(null)
 	private const AtomicRef					oldVideoFrameHookRef := AtomicRef(null)
 	private const AtomicRef					oldDisconnectHookRef := AtomicRef(null)
 	private const Synchronized?				pngEventThread
+
+	** The 'onVideoFrame()' listener for this streamer, should you wish to attach / call it yourself
+	const |Buf, PaveHeader, Drone|	onVideoFrameListener := #onVideoFrame.func.bind([this])
+
+	** The 'onDisconnect()' listener for this streamer, should you wish to attach / call it yourself
+	const |Bool, Drone|				onDisconnectListener := #onDisconnect.func.bind([this])
 
 	** The output file that the video is saved to.
 	** 
@@ -313,10 +317,8 @@ internal class VideoStreamerToMp4File : VideoStreamerImpl {
 			it.env.clear
 		}.run
 
-		if (!quiet) {
-			ffmpegProcess.pipeFromStdOut(Env.cur.out, throttle)
-			ffmpegProcess.pipeFromStdErr(Env.cur.err, throttle)
-		}
+		ffmpegProcess.pipeFromStdOut(quiet ? null : Env.cur.out, throttle)
+		ffmpegProcess.pipeFromStdErr(quiet ? null : Env.cur.err, throttle)
 	}
 	
 	override Void onVideoFrame(Buf payload, PaveHeader pave) {
@@ -349,8 +351,7 @@ internal class VideoStreamerToPngEvents : VideoStreamerImpl {
 			it.env.clear
 		}.run
 		
-		if (!quiet)
-			ffmpegProcess.pipeFromStdErr(Env.cur.err, throttle)
+		ffmpegProcess.pipeFromStdErr(quiet ? null : Env.cur.err, throttle)
 
 		// kick off a thread to read data from the ffmpeg output
 		pngReaderThread	:= Synchronized(actorPool)

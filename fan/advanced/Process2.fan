@@ -153,16 +153,20 @@ class Process2 {
 	}
 	
 	** Launches a new thread that constantly streams stdOut to the given 'OutStream'.
+	** Pass 'null' to silently drain std out.
+	**  
 	** The thread terminates once the process has finished.
-	Void pipeFromStdOut(OutStream out, Duration throttle := 20ms) {
+	Void pipeFromStdOut(OutStream? out, Duration throttle := 20ms) {
 		PipeInToOut(getActorPool, this, stdOut, out, throttle).pipe
 	}
 	
 	** Launches a new thread that constantly streams stdOut to the given 'OutStream'.
+	** Pass 'null' to silently drain std err.
+	** 
 	** The thread terminates once the process has finished.
 	** 
 	** Does nothing if 'mergeErr' is 'true'.
-	Void pipeFromStdErr(OutStream err, Duration throttle := 20ms) {
+	Void pipeFromStdErr(OutStream? err, Duration throttle := 20ms) {
 		if (!mergeErr)
 			PipeInToOut(getActorPool, this, stdErr, err, throttle).pipe
 	}
