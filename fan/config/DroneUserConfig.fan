@@ -22,7 +22,7 @@ const class DroneUserConfig {
 	internal new make(DroneSessionConfig config, Bool reReadConfig := true) {
 		this.config = config
 		if (reReadConfig)
-			config.drone.configMap(true)
+			config.drone.configRefresh
 	}
 
 	// ---- Identity ----
