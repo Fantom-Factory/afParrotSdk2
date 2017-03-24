@@ -277,9 +277,6 @@ const class Drone {
 		diff := (sessionId != null ? 1 : 0) + (userId != null ? 1 : 0) + (appId != null ? 1 : 0)
 		if (diff != 0 && diff != 3)
 			throw ArgErr("For multi-config support, either ALL IDs must be set or NONE - ${sessionId} : ${userId} : ${appId}")
-		if (val is List)
-			val = ((List) val).join(",") { encodeConfigParam(it) }
-		val = encodeConfigParam(val)
 		
 		block := true
 		NavDataLoop.waitForAckClear	(this, networkConfig.configCmdAckClearTimeout, block)
@@ -752,10 +749,10 @@ const class Drone {
 		navDataReader.removeListener(f)		
 	}
 	
-	internal Void _updateConfig(Str key, Str val) {
+	internal Void _updateConfig(Str key, Obj val) {
 		// selectively update config (i.e. MY code!) 'cos we don't trust the user not to add random shite!
 		if (configMapRef.containsKey(key))
-			configMapRef[key] = val
+			configMapRef[key] = Cmd.encodeConfigParams(val)
 	}
 	
 	private Void processNavData(NavData navData) {
@@ -858,14 +855,6 @@ const class Drone {
 		}
 		
 		return |->| { if (!future.state.isComplete) future.cancel }
-	}
-	
-	private Str encodeConfigParam(Obj? p) {
-		if (p is Bool)	return ((Bool ) p).toStr.upper
-		if (p is Int)	return ((Int  ) p).toStr
-		if (p is Float)	return ((Float) p).bits32.toStr
-		if (p is Str)	return ((Str  ) p)
-		throw ArgErr("Param should be a Bool, Int, Float, or Str - not ${p?.typeof} -> ${p}")
 	}
 
 	private Void callSafe(Func? f, Obj[]? args) {

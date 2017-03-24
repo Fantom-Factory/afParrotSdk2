@@ -21,8 +21,10 @@ const class Cmd {
 	}
 	
 	** Makes a 'CONFIG' cmd with the given name / value pair. 
-	static Cmd makeConfig(Str name, Str value) {
-		Cmd("CONFIG", [name.lower, value])
+	** 
+	** 'value' may be a Bool, Int, Float, Str, or a List of any.
+	static Cmd makeConfig(Str name, Obj value) {
+		Cmd("CONFIG", [name.lower, encodeConfigParams(value)])
 	}
 	
 	** Makes a 'CONFIG_IDS' cmd with the given IDs. 
@@ -131,6 +133,20 @@ const class Cmd {
 		}
 	}
 
+	internal static Str encodeConfigParams(Obj? val) {
+		if (val is List)
+			val = ((List) val).join(",") { encodeConfigParam(it) }
+		return encodeConfigParam(val)
+	}
+	
+	internal static Str encodeConfigParam(Obj? p) {
+		if (p is Bool)	return ((Bool ) p).toStr.upper
+		if (p is Int)	return ((Int  ) p).toStr
+		if (p is Float)	return ((Float) p).bits32.toStr
+		if (p is Str)	return ((Str  ) p)
+		throw ArgErr("Param should be a Bool, Int, Float, or Str - not ${p?.typeof} -> ${p}")
+	}
+	
 	** Returns the `cmdStr` with a seq of '0'.
 	override Str toStr() { cmdStr(0) }
 }

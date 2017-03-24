@@ -394,7 +394,7 @@ const class DroneConfig {
 		drone.configMap[key] ?: throw UnknownKeyErr(key)
 	}
 	
-	private Void setConfig(Str key, Str val) {
+	private Void setConfig(Str key, Obj val) {
 		drone.sendConfig(key, val)
 		drone._updateConfig(key, val)
 	}

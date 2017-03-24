@@ -306,7 +306,7 @@ const class DroneSessionConfig {
 		fields := typeof.fields.findAll { it.isPublic && it.parent == this.typeof }
 		names  := (Str[]) fields.map { it.name.toDisplayName }
 		width  := names.max |p1, p2| { p1.size <=> p2.size }.size
-		values := fields.map |field, i| { names[i].padr(width, '.') + "..." + field.get(this).toStr }
+		values := fields.map |field, i| { names[i].padr(width, '.') + "...${field.get(this)}" }
 		dump   := values.join("\n")
 		
 		dump = "SESSION CONFIG\n==============\n" + dump + "\n\n"
@@ -325,7 +325,7 @@ const class DroneSessionConfig {
 		_config.drone.configMap[key] ?: (checked ? throw UnknownKeyErr(key) : null)
 	}
 	
-	private Void setConfig(Str key, Str? val) {
+	private Void setConfig(Str key, Obj? val) {
 		if (val != null) {	// for GPS position
 			_config.sendMultiConfig(key, val)
 			_config.drone._updateConfig(key, val)
