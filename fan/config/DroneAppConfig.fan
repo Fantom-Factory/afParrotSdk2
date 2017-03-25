@@ -80,12 +80,11 @@ const class DroneAppConfig {
 	}	
 
 	** If 'true' then roll commands ('moveLeft()' & 'moveRight()') generate roll + yaw based turns 
-	** so the drone banks like an aeroplane. This is an easier control mode for racing games.
+	** so the drone banks like an aeroplane / leans into the corners.
+	** This is an easier control mode for racing games.
 	** 
-	** To activate the combined yaw mode, you must set both the bit 1 of the control_level 
-	** configuration, and the bit 1 of the function parameters.
-	** 
-	** Note : This configuration does not need to be changed to use the new Absolute Control mode. 
+	** Note, unlike other SDKs, to enable 'combinedYawMode' you need only set this config to 'true'.
+	** The move commands are automatically updated for you. 
 	** 
 	** Corresponds to the 'CONTROL:control_level' configuration key.
 	Bool combinedYawMode {

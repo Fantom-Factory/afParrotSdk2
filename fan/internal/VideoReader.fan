@@ -11,10 +11,12 @@ internal const class VideoReader {
 	private const ActorPool			actorPool
 	private const SynchronizedList	listeners
 	private const SynchronizedState	mutex
+	private const Int				port
 	
 	new make(Drone drone, ActorPool actorPool, Int port) {
 		this.drone		= drone
 		this.actorPool	= actorPool
+		this.port		= port
 		this.listeners	= SynchronizedList(actorPool) { it.valType = |Buf, PaveHeader|# }
 		this.mutex		= SynchronizedState(actorPool) |->Obj?| {
 			VideoReaderImpl(drone.networkConfig, port)
@@ -46,9 +48,11 @@ internal const class VideoReader {
 	}
 
 	Void disconnect() {
-		mutex.getState |VideoReaderImpl reader| {
-			reader.disconnect
-		}
+		if (!mutex.lock.actor.pool.isStopped)
+			try mutex.getState |VideoReaderImpl reader| {
+				reader.disconnect
+			}
+			catch { /* meh */ }
 	}
 
 	private Void readVidData() {
@@ -66,14 +70,15 @@ internal const class VideoReader {
 			pave = reader.receive
 
 		catch (IOErr err) {
-			// drone.isConnected is set *before* we stop the ActorPool
+			// drone.isConnected is set to false *before* we stop the ActorPool
 			if (drone.isConnected)
-				log.err("Could not decode Video data - $err.msg")
+				log.err("Could not decode Video data on port $port - $err.msg")
 
 		} catch (Err err) {
 			// log err as this could mess up our position in the stream
 			// TODO maybe auto-disconnect / re-connect to re-establish stream position?
-			log.err("Could not decode Video data - $err.msg")
+			// TODO have a video data error listener - let the user do what they want
+			log.err("Could not decode Video data on port $port - $err.msg")
 		}
 		
 		if (pave != null) {

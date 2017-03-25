@@ -317,7 +317,7 @@ where 'flags' may be a combination of upto 4 of:
 
 'Shell=1 | Roundel=2 | BlackRoundel=4 | Stripe=8 | Cap=16 | ShellV2=32 | TowerSide=64 | OrientedRoundel=128'
 
-The Roundel (looks like a bull's eye) is available from the [downloads section]`https://bitbucket.org/AlienFactory/afparrotsdk2/downloads/` but I don't know what the other markers look like.
+The *Roundel* (looks like a bull's eye) is available from the [downloads section]`https://bitbucket.org/AlienFactory/afparrotsdk2/downloads/` but I don't know what the other markers look like.
 
 
 

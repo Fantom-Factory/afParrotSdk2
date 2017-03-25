@@ -91,7 +91,7 @@ const class NavDataFlags {
 	Bool	eulerAnglesControl()		{ data.and(1.shiftl( 3)) == 0 }	// yep - this is correct!
 	Bool	angularSpeedControl()		{ data.and(1.shiftl( 3)) != 0 }
 	Bool	altitudeControlActive()		{ data.and(1.shiftl( 4)) != 0 }
-	Bool	userFeedbackOn()			{ data.and(1.shiftl( 5)) != 0 }
+	Bool	userFeedbackOn()			{ data.and(1.shiftl( 5)) != 0 }	// start button?
 	Bool	controlCommandAck()			{ data.and(1.shiftl( 6)) != 0 }
 	Bool	cameraReady()				{ data.and(1.shiftl( 7)) != 0 }
 	Bool	travellingEnabled()			{ data.and(1.shiftl( 8)) != 0 }
