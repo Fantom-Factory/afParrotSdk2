@@ -61,7 +61,7 @@ const class DroneAppConfig {
 
 	// ---- Other Cmds ----
 
-	** When using 'navDataDemo', this configuration allows the application to ask for other navData packets.
+	** Allows the drone to send other packets of NavData.
 	** 
 	** Use the flag values of the `NavOption` enum to add / or flags values together. Example:
 	** 
