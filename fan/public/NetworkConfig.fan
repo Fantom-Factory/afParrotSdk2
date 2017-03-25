@@ -17,16 +17,16 @@ const class NetworkConfig {
 	// Not used
 //	const Int	authPort			:= 5552	// AUTH
 	
-	// Not used
-//	const Int	videoRecPort		:= 5553	// VIDEO_RECORDER
+	** The TCP port that Record Video is streamed over.
+	const Int	videoRecPort		:= 5553	// VIDEO_RECORDER
 	
-	** The port that UDP NavData packets are received on.
+	** The UDP port that NavData packets are received on.
 	const Int	navDataPort			:= 5554 // NAVDATA
 	
-	** The port that TCP Video data is received on.
+	** The TCP port that Video data is streamed over.
 	const Int	videoPort			:= 5555 // VIDEO
 
-	** The port that UDP Command packets are transmitted on.
+	** The UDP port that Command packets are transmitted on.
 	const Int	cmdPort				:= 5556	// AT
 	
 	// Not used

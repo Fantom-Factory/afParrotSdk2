@@ -4,6 +4,7 @@ Release Notes
 v0.0.6
 ======
  - New: Example programs for viewing 'NavData' and processing video data.
+ - New: Roundel detection methods and docs.
  - New: Added 'VideoCamera' and 'VideoResolution' enums.
  - Chg: Better initial drone connection sequence.
  - Chg: Renamed session config for selecting camera and changing resolution.

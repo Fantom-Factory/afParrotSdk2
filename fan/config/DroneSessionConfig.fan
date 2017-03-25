@@ -135,9 +135,10 @@ const class DroneSessionConfig {
 
 	** Selects the resolution of the video that's streamed back.
 	** 
+	** It is generally not advised to change this whilst video is already streaming.
+	** 
 	** Corresponds to the 'VIDEO:video_codec' configuration key.
 	VideoResolution videoResolution {
-//		TODO add recordStart(videoResolution) and recordStop() functions
 		get {
 			// H264_360P_CODEC          = 0x81  // Live stream with 360p H264 hardware encoder. No record stream.
 			// H264_720P_CODEC          = 0x83  // Live stream with 720p H264 hardware encoder. No record stream.
@@ -145,16 +146,8 @@ const class DroneSessionConfig {
 			// MP4_360P_CODEC           = 0x80  // Live stream with MPEG4.2 soft encoder. No record stream.
 			// MP4_360P_H264_360P_CODEC = 0x82  // Live stream with MPEG4.2 soft encoder. Record stream with 360p H264 hardware encoder.
 			// MP4_360P_H264_720P_CODEC = 0x88  // Live stream with MPEG4.2 soft encoder. Record stream with 720p H264 hardware encoder.
-			//
-			// NULL_CODEC               = 0,
-			// UVLC_CODEC               = 0x20  // codec_type value is used for START_CODE
-			// P264_CODEC               = 0x40
-			// MP4_360P_SLRS_CODEC      = 0x84
-			// H264_360P_SLRS_CODEC     = 0x85
-			// H264_720P_SLRS_CODEC     = 0x86
-			// H264_AUTO_RESIZE_CODEC   = 0x87  // resolution is automatically adjusted according to bitrate
-			liveCodec := getConfig("VIDEO:video_codec", false)?.toInt ?: 0x81
-			return VideoResolution.vals.find { it.liveCodec == liveCodec }
+			liveCodec := getConfig("VIDEO:video_codec", false)?.toInt
+			return (liveCodec == VideoResolution._720p.liveCodec) ? VideoResolution._720p : VideoResolution._360p
 		}
 		set { setConfig("VIDEO:video_codec", it.liveCodec.toStr) }		
 	}
@@ -233,12 +226,13 @@ const class DroneSessionConfig {
 		}
 	}
 
-	** Detection defaults to 60 fps, but may be reduced to 30 fps to reduce the CPU load when you don’t need a 60Hz detection.
+	** Detection, by default, runs at 60 frames per section (fps) but by setting this to 'true'
+	** it is reduced to 30 fps, removing unnecessary CPU load when not needed. 
 	** 
 	** Corresponds to the 'DETECT:detections_select_v_hsync' configuration key.
-	Int detectVertFps {	// TODO convert detectVertFps to Bool and rename -> detectLoResRoundel
-		get { getConfig("DETECT:detections_select_v_hsync").toInt }
-		set { setConfig("DETECT:detections_select_v_hsync", it) }		
+	Bool detectRoundelLoRes {
+		get { getConfig("DETECT:detections_select_v_hsync").toInt == 30 }
+		set { setConfig("DETECT:detections_select_v_hsync", it ? 30 : 60) }
 	}
 
 	** The GPS position used for media tagging and userbox recording.

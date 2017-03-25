@@ -20,7 +20,9 @@ const class Drone {
 	private	const	AtomicRef		onBatteryLowRef		:= AtomicRef()
 	private	const	AtomicRef		onDisconnectRef		:= AtomicRef()
 	private	const	AtomicRef		onVideoFrameRef		:= AtomicRef()
+	private	const	AtomicRef		onRecordFrameRef	:= AtomicRef()
 	private	const	AtomicRef		droneVersionRef		:= AtomicRef()
+	private	const	AtomicRef		oldVideoCodecRef	:= AtomicRef()
 	private	const	AtomicBool		connectedRef		:= AtomicBool(false)
 	private	const	AtomicMap		configMapRef		:= AtomicMap { it.keyType = Str#; it.valType = Str#; it.caseInsensitive = true }
 	private	const	DroneConfig		configRef			:= DroneConfig(this)
@@ -29,13 +31,14 @@ const class Drone {
 	private const	NavDataReader	navDataReader
 	private const	ControlReader	controlReader
 	private const	VideoReader		videoReader
+	private const	VideoReader		recordReader
 	private	const	|->|			shutdownHook
 
 	** The 'ActorPool' responsible for controlling all the threads handled by this drone.
 	@NoDoc	const	ActorPool		actorPool
 	
 	** The version of the drone, as reported by an FTP of 'version.txt'.
-					Version?		droneVersion {
+					Version			droneVersion {
 						get { droneVersionRef.val ?: Version.defVal }
 						private set { droneVersionRef.val = it }
 					}
@@ -136,12 +139,12 @@ const class Drone {
 						set { onDisconnectRef.val = it?.toImmutable }
 					}
 
-	** Event hook that's called when video frame is received. (On Drone TCP port 5555.)
+	** Event hook that's called when a video frame is received. (On Drone TCP port 5555.)
 	** 
 	** The payload is a raw frame from the H.264 codec.
 	** 
-	** Setting this hook instructs the drone to start streaming video. 
-	** Setting this to 'null' instructs the drone to stop streaming video.
+	** Setting this hook instructs the drone to start streaming live video. 
+	** Setting to 'null' instructs the drone to stop streaming video.
 	** 
 	** Throws 'NotImmutableErr' if the function is not immutable.
 	** Note this hook is called from a different Actor / thread to the one that sets it. 
@@ -155,6 +158,29 @@ const class Drone {
 						}
 					}
 
+	** Event hook that's called when video record frame is received. (On Drone TCP port 5553.)
+	** Video recordings are generally not streamed live but do have better quality.
+	** 
+	** Call [startRecording()]`startRecording` before setting this. 
+	** 
+	** The payload is a raw frame from the H.264 codec.
+	** 
+	** Setting this hook instructs the drone to start streaming video that it's recording. 
+	** Setting to 'null' instructs the drone to stop streaming the video recording.
+	** 
+	** Throws 'NotImmutableErr' if the function is not immutable.
+	** Note this hook is called from a different Actor / thread to the one that sets it.
+	@NoDoc 
+					|Buf, PaveHeader, Drone|? onRecordFrame {
+						get { onRecordFrameRef.val }
+						set { onRecordFrameRef.val = it?.toImmutable
+							if (it == null)
+								recordReader.disconnect
+							if (it != null && !recordReader.isConnected)
+								recordReader.connect
+						}
+					}
+
 	** Creates a 'Drone' instance, optionally passing in network configuration.
 	new make(NetworkConfig networkConfig := NetworkConfig()) {
 		this.actorPool		= ActorPool() { it.name = "Parrot Drone" }
@@ -162,6 +188,7 @@ const class Drone {
 		this.navDataReader	= NavDataReader(this, actorPool)
 		this.controlReader	= ControlReader(this)
 		this.videoReader	= VideoReader(this, actorPool, networkConfig.videoPort)
+		this.recordReader	= VideoReader(this, actorPool, networkConfig.videoRecPort)
 		this.cmdSender		= CmdSender(this, actorPool)
 		this.eventThread	= Synchronized(actorPool)
 		this.shutdownHook	= #onShutdown.func.bind([this])
@@ -180,6 +207,7 @@ const class Drone {
 
 		navDataReader.addListener(#processNavData.func.bind([this]))
 		videoReader	 .addListener(#processVidData.func.bind([this]))
+		recordReader .addListener(#processRecData.func.bind([this]))
 
 		cmdSender.connect
 		navData := navDataReader.connect
@@ -248,6 +276,64 @@ const class Drone {
 	** Returns config for the drone. Note all data is backed by the raw 'configMap'.
 	DroneConfig config() {
 		configRef
+	}
+
+
+	
+	// ---- Video Recording ----
+
+	** Instructs the drone to start recording video. Video will be automatically saved to any USB 
+	** drive attached to the drone.
+	** 
+	** Use the 'VideoStreamer' class to have the drone send the record stream to your computer:
+	** 
+	** pre>
+	** syntax: fantom
+	** drone.startRecording
+	** vs := VideoStreamer.toMp4File(`vid.mp4`).attachTo(drone)
+	** 
+	** // ... wait for bit ...
+	** 
+	** drone.stopRecording 
+	** <pre
+	** 
+	** Note this is not the same as *streaming live video* - to enable live video just set the 'onVideoFrame' hook.
+	@NoDoc 
+	Void startRecording(VideoResolution res := VideoResolution._720p) {
+		if (isRecording) return
+		// MP4_360P_H264_360P_CODEC = 0x82  // Live stream with MPEG4.2 soft encoder. Record stream with 360p H264 hardware encoder.
+		// MP4_360P_H264_720P_CODEC = 0x88  // Live stream with MPEG4.2 soft encoder. Record stream with 720p H264 hardware encoder.
+		newCodec := (res == VideoResolution._720p) ? 0x88 : 0x82
+		newCodec = 0x82
+		oldCodec := configMap["VIDEO:video_codec"].toInt
+		
+		oldHook	:= onVideoFrame
+		onVideoFrame = null
+
+		Actor.sleep(2sec)
+		config.sendMultiConfig("VIDEO:video_codec", newCodec)
+		oldVideoCodecRef.val = oldCodec
+		
+		Actor.sleep(2sec)
+//		onVideoFrame = oldHook
+	}
+	
+	** Stops the video recording.
+	@NoDoc 
+	Void stopRecording() {
+		if (!isRecording) return
+		oldCodec := oldVideoCodecRef.val
+		if (oldCodec != null) {
+			config.sendMultiConfig("VIDEO:video_codec", oldCodec)
+			oldVideoCodecRef.val = null
+		}
+	}
+	
+	** Returns 'true' if video is being recorded.
+	@NoDoc 
+	Bool isRecording() {
+		codec := configMap["VIDEO:video_codec"].toInt
+		return (codec == 0x82 || codec == 0x88) && oldVideoCodecRef.val != null
 	}
 
 
@@ -727,6 +813,8 @@ const class Drone {
 		// set connectedRef AFTER we've called the shutdown hook
 		connectedRef.val = false
 
+		videoReader.disconnect
+		recordReader.disconnect
 		navDataReader.disconnect
 		cmdSender.disconnect
 
@@ -812,6 +900,18 @@ const class Drone {
 		// should I use a different thread for vid data?
 		eventThread.async |->| {
 			callSafe(onVideoFrame, [payload, pave, this])			
+		}
+	}
+	
+	private Void processRecData(Buf payload, PaveHeader pave) {
+		if (actorPool.isStopped) return
+
+		// ---- call event handlers ----
+		
+		// call handlers from a different thread so they don't block the VidReader
+		// should I use a different thread for vid data?
+		eventThread.async |->| {
+			callSafe(onRecordFrame, [payload, pave, this])			
 		}
 	}
 	
