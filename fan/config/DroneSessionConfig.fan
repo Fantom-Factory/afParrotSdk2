@@ -86,25 +86,23 @@ const class DroneSessionConfig {
 	// ---- Other Cmds ----
 
 	** Set to 'true' to enable roundel detection and activate a semi-autonomous hover on top of an 
-	** [oriented roundel]`https://bitbucket.org/AlienFactory/afparrotsdk2/downloads/orientedRoundel.png`. 
-	** 
-	**   0 = FREE_FLIGHT                // Normal mode, commands are enabled
-	**   1 = HOVER_ON_ROUNDEL           // Commands are disabled, drone hovers on a roundel
-	**   2 = HOVER_ON_ORIENTED_ROUNDEL  // Commands are disabled, drone hovers on an oriented roundel
-	** 
-	** Hover modes **MUST** be activated by the 'detect_type' configuration.
+	** [oriented roundel]`https://bitbucket.org/AlienFactory/afparrotsdk2/downloads/orientedRoundel.png`.
+	** Setting this also sets the 'detectRoundel' config to 'vertical'.
 	** 
 	** Note 'HOVER_ON_ROUNDEL' was developed for the 2011 CES autonomous demonstration.
 	** 
 	** Corresponds to the 'CONTROL:flying_mode' configuration key.
 	Bool hoverOnRoundel {
+		// 0 = FREE_FLIGHT                // Normal mode, commands are enabled
+		// 1 = HOVER_ON_ROUNDEL           // Commands are disabled, drone hovers on a roundel
+		// 2 = HOVER_ON_ORIENTED_ROUNDEL  // Commands are disabled, drone hovers on an oriented roundel
 		get { getConfig("CONTROL:flying_mode").toInt == 2 }
 		set {
 			if (it == true) {
 				detectRoundel = VideoCamera.vertical
-				setConfig("CONTROL:flying_mode", 2.toStr)
+				setConfig("CONTROL:flying_mode", 2)
 			} else
-				setConfig("CONTROL:flying_mode", 0.toStr)
+				setConfig("CONTROL:flying_mode", 0)
 		}		
 	}
 
@@ -178,57 +176,59 @@ const class DroneSessionConfig {
 		set { setConfig("VIDEO:max_bitrate", it.toStr) }
 	}
 
-	** Enables roundel detection on the given camera.
-	**  
-	** TODO:  play with vision tags
+	** Enables black & white oriented roundel detection on the given camera.
+	** To receive detection data, enable 'NavOption.visionDetect' in 
+	** [DroneAppConfig.navDataOptions()]`DroneAppConfig.navDataOptions` and inspect the 
+	** 'visionDetect' data in 'NavData'
 	** 
+	** Set to 'null' to disable detection.
+	**  
 	** Corresponds to the configuration keys:
 	**   - 'DETECT:detect_type'
 	**   - 'DETECT:detections_select_v'
 	**   - 'DETECT:detections_select_h'
 	VideoCamera? detectRoundel {
 		get {
-			//  3 = CAD_TYPE_NONE : No detections
+			//  3 = CAD_TYPE_NONE                : No detections
+			//  5 = CAD_TYPE_ORIENTED_COCARDE    : Detects an oriented roundel under the drone
+			//  8 = CAD_TYPE_H_ORIENTED_COCARDE  : Detects an oriented roundel in front of the drone
 			// 10 = CAD_TYPE_MULTIPLE_DETECTION_MODE : See following note
 			// 12 = CAD_TYPE_ORIENTED_COCARDE_BW : Black & White oriented roundel detected on bottom facing camera
-			// 13 = CAD_TYPE_VISION_V2 : Standard tag detection
 			type := getConfig("DETECT:detect_type").toInt
 			if (type == 12)
 				return VideoCamera.vertical
-			if (type == 13) {
-				// 0 = TAG_TYPE_NONE : No tag to detect
-				// 3 = TAG_TYPE_ORIENTED_ROUNDEL 
-				// 6 = TAG_TYPE_SHELL_TAG_V2 : Standard hulls (both indoor and outdoor) tags
-				// 8 = TAG_TYPE_BLACK_ROUNDEL : Black&While oriented roundel
+			if (type == 3) {
+				// Shell=1 | Roundel=2 | BlackRoundel=4 | Stripe=8 | Cap=16 | ShellV2=32 | TowerSide=64 | OrientedRoundel=128
 				vert := getConfig("DETECT:detections_select_v").toInt
-				if (vert == 8)
+				if (vert == 128)
 					return VideoCamera.vertical
 
+				// Shell=1 | Roundel=2 | BlackRoundel=4 | Stripe=8 | Cap=16 | ShellV2=32 | TowerSide=64 | OrientedRoundel=128
 				hori := getConfig("DETECT:detections_select_h").toInt
-				if (hori == 8)
+				if (hori == 128)
 					return VideoCamera.horizontal
 			}
 			return null
 		}
 		set {
 			type := getConfig("DETECT:detect_type").toInt
-			if (type != 10)
-				setConfig("DETECT:detect_type", 10.toStr)
+			if (type != 3)
+				setConfig("DETECT:detect_type", 3)
 			
 			if (it == null) {	// NPE if null used in switch 
-				setConfig("DETECT:detections_select_v", 0.toStr)
-				setConfig("DETECT:detections_select_h", 0.toStr)
+				setConfig("DETECT:detections_select_v", 0)
+				setConfig("DETECT:detections_select_h", 0)
 				return
 			}
 
 			switch (it) {
 				case VideoCamera.vertical:
-					setConfig("DETECT:detections_select_v", 8.toStr)
-					setConfig("DETECT:detections_select_h", 0.toStr)
+					setConfig("DETECT:detections_select_v", 128)
+					setConfig("DETECT:detections_select_h", 0)
 				
 				case VideoCamera.horizontal:
-					setConfig("DETECT:detections_select_v", 0.toStr)
-					setConfig("DETECT:detections_select_h", 8.toStr)
+					setConfig("DETECT:detections_select_v", 0)
+					setConfig("DETECT:detections_select_h", 128)
 			}
 		}
 	}
@@ -236,9 +236,9 @@ const class DroneSessionConfig {
 	** Detection defaults to 60 fps, but may be reduced to 30 fps to reduce the CPU load when you don’t need a 60Hz detection.
 	** 
 	** Corresponds to the 'DETECT:detections_select_v_hsync' configuration key.
-	Int detectVertFps {	// TODO convert detectVertFps to Bool and rename 
+	Int detectVertFps {	// TODO convert detectVertFps to Bool and rename -> detectLoResRoundel
 		get { getConfig("DETECT:detections_select_v_hsync").toInt }
-		set { setConfig("DETECT:detections_select_v_hsync", it.toStr) }		
+		set { setConfig("DETECT:detections_select_v_hsync", it) }		
 	}
 
 	** The GPS position used for media tagging and userbox recording.

@@ -187,14 +187,16 @@ const class Drone {
 		if (navData == null)
 			throw IOErr("Drone did not respond to NavData initialisation")
 		
-		if (navData.flags.navDataBootstrap) {
+		if (navData.flags.bootstrapMode) {
 			// send me nav data please!
 			cmdSender.send(Cmd.makeConfig("general:navdata_demo", "TRUE"))
 			if (actorPool.isStopped)
 				throw IOErr("Drone not sending NavData")
-			// TODO wot if times out here?
-			NavDataLoop.waitForAckClear	(this, networkConfig.configCmdAckClearTimeout, true)
-			NavDataLoop.waitUntilReady	(this, networkConfig.actionTimeout)
+			try {
+				NavDataLoop.waitForAckClear	(this, networkConfig.configCmdAckClearTimeout, true)
+				NavDataLoop.waitUntilReady	(this, networkConfig.actionTimeout)
+			} catch (TimeoutErr err)
+				throw IOErr(err.msg)
 			
 			// this is a bit of a no-op, not really needed but mentioned in the docs
 			// see p40, 7.1.2 Initiating the reception of Navigation data

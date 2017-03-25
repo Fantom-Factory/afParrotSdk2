@@ -171,8 +171,8 @@ const class DroneConfig {
 	** 
 	** Corresponds to the 'GENERAL:navdata_demo' configuration key.
 	Bool hiResNavData {
-		get { Bool(getConfig("GENERAL:navdata_demo").lower) }
-		set { setConfig("GENERAL:navdata_demo", it.toStr.upper) }		
+		get { Bool(getConfig("GENERAL:navdata_demo").lower).not }
+		set { setConfig("GENERAL:navdata_demo", it.not) }		
 	}
 
 	** Minimum battery level before the drone lands automatically.

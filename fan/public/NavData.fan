@@ -6,7 +6,7 @@
 ** Unfortunately, the NavOption data is not really documented in the Drone SDK so make of it what 
 ** you may. 
 ** 
-** To tell the drone what data to return, see `DroneAppConfig.navDataOptions` and `DroneConfig.navDataDemo`.
+** To tell the drone what data to return, see `DroneAppConfig.navDataOptions`.
 const class NavData {
 		
 	** The sequence number of the originating UDP packet.
@@ -25,7 +25,7 @@ const class NavData {
 	@NoDoc
 	new make(|This| f) { f(this) }
 	
-	** Return the 'NavOptionDemo' data (if any) from the nav options.
+	** Return the 'NavOption.demo' data (if any) from the nav options.
 	** Convenience for:
 	** 
 	**   syntax: fantom
@@ -96,9 +96,10 @@ const class NavDataFlags {
 	Bool	cameraReady()				{ data.and(1.shiftl( 7)) != 0 }
 	Bool	travellingEnabled()			{ data.and(1.shiftl( 8)) != 0 }
 	Bool	usbReady()					{ data.and(1.shiftl( 9)) != 0 }
-	Bool	navDataDemo()				{ data.and(1.shiftl(10)) != 0 }
+	** NavData is being sent at ~ 200 times a second.
+	Bool	hiResNavData()				{ data.and(1.shiftl(10)) == 0 }	// yep - this is correct!
 	** Bootstap mode is on.
-	Bool	navDataBootstrap()			{ data.and(1.shiftl(11)) != 0 }
+	Bool	bootstrapMode()			{ data.and(1.shiftl(11)) != 0 }
 	Bool	motorProblem()				{ data.and(1.shiftl(12)) != 0 }
 	Bool	communicationLost()			{ data.and(1.shiftl(13)) != 0 }
 	Bool	gyrometersDown()			{ data.and(1.shiftl(14)) != 0 }
@@ -110,12 +111,12 @@ const class NavDataFlags {
 	Bool	magnometerNeedsCalibration(){ data.and(1.shiftl(18)) != 0 }
 	** Drone exceeded maximum tilt. This also sets 'emergencyLanding'.
 	Bool	anglesOutOufRange()			{ data.and(1.shiftl(19)) != 0 }
-	** Too much wind.
+	** Too much wind. (pffft!)
 	Bool	tooMuchWind()				{ data.and(1.shiftl(20)) != 0 }
 	Bool	ultrasonicSensorDeaf()		{ data.and(1.shiftl(21)) != 0 }
 	Bool	cutOutDetected()			{ data.and(1.shiftl(22)) != 0 }
 	Bool	picVersionNumberOK()		{ data.and(1.shiftl(23)) != 0 }
-	Bool	atCodedThreadOn()			{ data.and(1.shiftl(24)) != 0 }
+	Bool	atCodecThreadOn()			{ data.and(1.shiftl(24)) != 0 }
 	Bool	navDataThreadOn()			{ data.and(1.shiftl(25)) != 0 }
 	Bool	videoThreadOn()				{ data.and(1.shiftl(26)) != 0 }
 	Bool	acquisitionThreadOn()		{ data.and(1.shiftl(27)) != 0 }
