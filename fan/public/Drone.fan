@@ -304,18 +304,13 @@ const class Drone {
 		// MP4_360P_H264_360P_CODEC = 0x82  // Live stream with MPEG4.2 soft encoder. Record stream with 360p H264 hardware encoder.
 		// MP4_360P_H264_720P_CODEC = 0x88  // Live stream with MPEG4.2 soft encoder. Record stream with 720p H264 hardware encoder.
 		newCodec := (res == VideoResolution._720p) ? 0x88 : 0x82
-		newCodec = 0x82
 		oldCodec := configMap["VIDEO:video_codec"].toInt
-		
-		oldHook	:= onVideoFrame
-		onVideoFrame = null
+		oldHook	 := onVideoFrame
 
-		Actor.sleep(2sec)
+		onVideoFrame = null
 		config.sendMultiConfig("VIDEO:video_codec", newCodec)
 		oldVideoCodecRef.val = oldCodec
-		
-		Actor.sleep(2sec)
-//		onVideoFrame = oldHook
+		onVideoFrame = oldHook
 	}
 	
 	** Stops the video recording.
@@ -324,7 +319,7 @@ const class Drone {
 		if (!isRecording) return
 		oldCodec := oldVideoCodecRef.val
 		if (oldCodec != null) {
-			config.sendMultiConfig("VIDEO:video_codec", oldCodec)
+			config.sendMultiConfig("VIDEO:video_codec", oldCodec.toStr)
 			oldVideoCodecRef.val = null
 		}
 	}
@@ -1026,7 +1021,7 @@ enum class LedAnimation {
 
 ** Pre-configured flight paths.
 enum class FlightAnimation {
-	phiM30Deg(1sec), phi30Deg(1sec), thetaM30Deg(1sec), theta30Deg(1sec), theta20degYaw200Deg(1sec), theta20degYawM200Deg(1sec), turnaround(5sec), turnaroundGodown(5sec), yawShake(2sec), yawDance(5sec), phiDance(5sec), thetaDance(5sec), vzDance(5sec), wave(5sec), phiThetaMixed(5sec), doublePhiThetaMixed(5sec), flipForward(15ms), flipBackward(15ms), flipLeft(15ms), flipRight(15ms);
+	phiM30Deg(1sec), phi30Deg(1sec), thetaM30Deg(1sec), theta30Deg(1sec), theta20degYaw200Deg(1sec), theta20degYawM200Deg(1sec), turnaround(5sec), turnaroundGodown(5sec), yawShake(2sec), yawDance(5sec), phiDance(5sec), thetaDance(5sec), vzDance(5sec), wave(5sec), phiThetaMixed(5sec), doublePhiThetaMixed(5sec), flipForward(1.5sec), flipBackward(1.5sec), flipLeft(1.5sec), flipRight(1.5sec);
 
 	** How long the manoeuvre should take.
 	const Duration defaultDuration

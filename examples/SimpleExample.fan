@@ -1,22 +1,31 @@
 //using afParrotSdk2
+using concurrent
 
 class SimpleExample {
 	Void main() {
+		Drone#.pod.log.level = LogLevel.debug
+
 		drone := Drone().connect
 		drone.clearEmergency
+
+		drone.config.session("afSquawk")
+		drone.config.session.videoCamera = VideoCamera.horizontal
+		drone.config.session.videoResolution = VideoResolution._720p
 		
-		// handle feedback events
-		drone.onEmergency = |->| {
-			echo("!!! EMERGENCY LANDING !!!")
-		}
+		streamer := VideoStreamer.toMp4File(`vid.mp4`).attachTo(drone)
+		Actor.sleep(5sec)
+
 		
-		// control the drone
 		drone.takeOff
-		drone.spinClockwise(0.5f, 3sec)
-		drone.moveForward  (1.0f, 2sec)
-		drone.animateFlight(FlightAnimation.flipBackward)
+//		drone.animateFlight(FlightAnimation.vzDance)
+		drone.animateFlight(FlightAnimation.flipBackward)		
+		Actor.sleep(2sec)
 		drone.land
 		
+		Actor.sleep(2sec)
+		streamer.detach
+
+		Actor.sleep(2sec)
 		drone.disconnect
 	}
 }

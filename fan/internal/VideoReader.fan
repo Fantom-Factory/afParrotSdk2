@@ -33,7 +33,8 @@ internal const class VideoReader {
 	}
 	
 	Void connect() {
-		mutex.withState |VideoReaderImpl reader| {
+		mutex.getState |VideoReaderImpl reader| {
+//		mutex.withState |VideoReaderImpl reader| {
 			reader.connect
 			
 			if (reader.isConnected && !actorPool.isStopped)
@@ -78,7 +79,7 @@ internal const class VideoReader {
 			// log err as this could mess up our position in the stream
 			// TODO maybe auto-disconnect / re-connect to re-establish stream position?
 			// TODO have a video data error listener - let the user do what they want
-			log.err("Could not decode Video data on port $port - $err.msg")
+			log.err("Could not decode Video data on port $port - $err.msg", err)
 		}
 		
 		if (pave != null) {
@@ -123,6 +124,7 @@ internal class VideoReaderImpl {
 	}
 	
 	PaveHeader? receive() {
+		if (socket == null)	return null
 		in := socket.in { endian = Endian.little }
 		
 		// may need to wait until we have all the header data -> readBufFully() ??

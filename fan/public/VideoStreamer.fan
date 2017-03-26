@@ -1,6 +1,7 @@
 using concurrent::Actor
 using concurrent::ActorPool
 using concurrent::AtomicRef
+using concurrent::AtomicBool
 using afConcurrent::Synchronized
 using afConcurrent::SynchronizedState
 
@@ -22,13 +23,14 @@ const class VideoStreamer {
 	private const AtomicRef					droneRef		 	 := AtomicRef(null)
 	private const AtomicRef					oldVideoFrameHookRef := AtomicRef(null)
 	private const AtomicRef					oldDisconnectHookRef := AtomicRef(null)
+	private const AtomicBool				attachedToRecordRef	 := AtomicBool()
 	private const Synchronized?				pngEventThread
 
 	** The 'onVideoFrame()' listener for this streamer, should you wish to attach / call it yourself
-	const |Buf, PaveHeader, Drone|	onVideoFrameListener := #onVideoFrame.func.bind([this])
+	const |Buf, PaveHeader, Drone|			onVideoFrameListener := #onVideoFrame.func.bind([this])
 
 	** The 'onDisconnect()' listener for this streamer, should you wish to attach / call it yourself
-	const |Bool, Drone|				onDisconnectListener := #onDisconnect.func.bind([this])
+	const |Bool, Drone|						onDisconnectListener := #onDisconnect.func.bind([this])
 
 	** The output file that the video is saved to.
 	** 
@@ -129,7 +131,7 @@ const class VideoStreamer {
 		ffmpegArgs	:= options?.get("ffmpegArgs")	?: "-f h264 -i - -codec:v copy".split
 		quiet		:= options?.get("quiet")		?: false
 		throttle	:= options?.get("throttle")		?: 200ms	// 5 times a second should be fine for console output
-
+		
 		return VideoStreamer {
 			itFile := addFileSuffix(outputFile)
 			it.file = itFile
@@ -203,15 +205,26 @@ const class VideoStreamer {
 	** 
 	** This methods sets new 'onVideoFrame' and 'onDisconnect' hooks on the drone, but wraps any 
 	** existing hooks. Meaning any hooks that were set previously, still get called.
-	This attachTo(Drone drone) {
+	** 
+	** If 'attachToRecordStream' is true then this method sets 'onRecordFrame' and not ''onVideoFrame'.
+	This attachTo(Drone drone, Bool attachToRecordStream := false) {
 		if (droneRef.val != null)
 			throw Err("Already attached to ${droneRef.val}")
 		droneRef.val = drone
 
-		oldVideoFrameHookRef.val = drone.onVideoFrame
-		drone.onVideoFrame = |Buf payload, PaveHeader pave, Drone dron| {
-			onVideoFrameListener(payload, pave, dron)
-			((Func?) oldVideoFrameHookRef.val)?.call(payload, pave, dron)
+		attachedToRecordRef.val = attachToRecordStream
+		if (attachToRecordStream) {
+			oldVideoFrameHookRef.val = drone.onRecordFrame
+			drone.onRecordFrame = |Buf payload, PaveHeader pave, Drone dron| {
+				onVideoFrameListener(payload, pave, dron)
+				((Func?) oldVideoFrameHookRef.val)?.call(payload, pave, dron)
+			}
+		} else {
+			oldVideoFrameHookRef.val = drone.onVideoFrame
+			drone.onVideoFrame = |Buf payload, PaveHeader pave, Drone dron| {
+				onVideoFrameListener(payload, pave, dron)
+				((Func?) oldVideoFrameHookRef.val)?.call(payload, pave, dron)
+			}
 		}
 		
 		oldDisconnectHookRef.val = drone.onDisconnect
@@ -232,7 +245,10 @@ const class VideoStreamer {
 	Void detach() {
 		// revert the drone hooks
 		drone := (Drone) droneRef.val
-		drone.onVideoFrame = oldVideoFrameHookRef.val
+		if (attachedToRecordRef.val)
+			drone.onRecordFrame = oldVideoFrameHookRef.val
+		else
+			drone.onVideoFrame = oldVideoFrameHookRef.val
 		drone.onDisconnect = oldDisconnectHookRef.val
 		
 		// kill any stream processing
@@ -284,10 +300,12 @@ internal mixin VideoStreamerImpl {
 }
 
 internal class VideoStreamerToH264File : VideoStreamerImpl {
+	private static const Log log := VideoStreamer#.pod.log
 	OutStream	out
 
 	new make(File file, Bool append) {
 		this.out = file.out(append)
+		log.info("Streaming video to ${file.normalize.osPath}")
 	}
 	
 	override Void onVideoFrame(Buf payload, PaveHeader pave) {
@@ -300,7 +318,8 @@ internal class VideoStreamerToH264File : VideoStreamerImpl {
 }
 
 internal class VideoStreamerToMp4File : VideoStreamerImpl {
-	Process2 ffmpegProcess
+	private static const Log log := VideoStreamer#.pod.log
+	Process2	ffmpegProcess
 
 	new make(Uri ffmpegPath, Str[] ffmpegArgs, File output, ActorPool actorPool, Duration throttle, Bool quiet) {
 		ffmpegFile := ffmpegPath.toFile.normalize
@@ -319,6 +338,8 @@ internal class VideoStreamerToMp4File : VideoStreamerImpl {
 
 		ffmpegProcess.pipeFromStdOut(quiet ? null : Env.cur.out, throttle)
 		ffmpegProcess.pipeFromStdErr(quiet ? null : Env.cur.err, throttle)
+		
+		log.info("Streaming video to ${output.normalize.osPath}")		
 	}
 	
 	override Void onVideoFrame(Buf payload, PaveHeader pave) {
@@ -331,9 +352,9 @@ internal class VideoStreamerToMp4File : VideoStreamerImpl {
 }
 
 internal class VideoStreamerToPngEvents : VideoStreamerImpl {
-	static const Log	log			:= Drone#.pod.log
-	Process2 			ffmpegProcess
-	|Buf|	 			onNewPngImage
+	private static const Log log := VideoStreamer#.pod.log
+	Process2 	ffmpegProcess
+	|Buf|	 	onNewPngImage
 
 	new make(Uri ffmpegPath, Str[] ffmpegArgs, ActorPool actorPool, Duration throttle, Bool quiet, |Buf| onNewPngImage) {
 		this.onNewPngImage = onNewPngImage
