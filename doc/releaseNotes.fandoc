@@ -6,6 +6,7 @@ v0.0.6
  - New: Example programs for viewing 'NavData' and processing video data.
  - New: Roundel detection methods and docs.
  - New: Added 'VideoCamera' and 'VideoResolution' enums.
+ - New: Video frame error listeners.
  - Chg: Better initial drone connection sequence.
  - Chg: Renamed session config for selecting camera and changing resolution.
  - Chg: Un-NoDoc'ed the advanced 'Cmd' class and a few drone methods.

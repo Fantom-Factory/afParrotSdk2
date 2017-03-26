@@ -1,5 +1,6 @@
 using concurrent::Actor
 using concurrent::ActorPool
+using concurrent::AtomicRef
 using afConcurrent::SynchronizedList
 using afConcurrent::SynchronizedState
 using inet::TcpSocket
@@ -9,7 +10,8 @@ internal const class VideoReader {
 	
 	private const Drone				drone
 	private const ActorPool			actorPool
-	private const SynchronizedList	listeners
+	private const AtomicRef			frameListenerRef	:= AtomicRef()
+	private const AtomicRef			errorListenerRef	:= AtomicRef()
 	private const SynchronizedState	mutex
 	private const Int				port
 	
@@ -17,19 +19,18 @@ internal const class VideoReader {
 		this.drone		= drone
 		this.actorPool	= actorPool
 		this.port		= port
-		this.listeners	= SynchronizedList(actorPool) { it.valType = |Buf, PaveHeader|# }
 		this.mutex		= SynchronizedState(actorPool) |->Obj?| {
 			VideoReaderImpl(drone.networkConfig, port)
 		}
 	}
 	
 	** Only internal listeners should be added here.
-	Void addListener(|Buf, PaveHeader| f) {
-		listeners.add(f)
+	Void setFrameListener(|Buf, PaveHeader| f) {
+		frameListenerRef.val = f
 	}
 	
-	Void removeListener(|Buf, PaveHeader| f) {
-		listeners.remove(f)
+	Void setErrorListener(|Err| f) {
+		errorListenerRef.val = f
 	}
 	
 	Void connect() {
@@ -54,6 +55,9 @@ internal const class VideoReader {
 				reader.disconnect
 			}
 			catch { /* meh */ }
+
+		frameListenerRef.val = null
+		errorListenerRef.val = null
 	}
 
 	private Void readVidData() {
@@ -67,28 +71,19 @@ internal const class VideoReader {
 	private Void doReadVidData(VideoReaderImpl reader) {
 		pave := null as PaveHeader
 		
-		try
-			pave = reader.receive
-
-		catch (IOErr err) {
+		try	pave = reader.receive
+		catch (IOErr err)
 			// drone.isConnected is set to false *before* we stop the ActorPool
 			if (drone.isConnected)
-				log.err("Could not decode Video data on port $port - $err.msg")
+				((|Err|?) errorListenerRef.val)?.call(err)
 
-		} catch (Err err) {
-			// log err as this could mess up our position in the stream
-			// TODO maybe auto-disconnect / re-connect to re-establish stream position?
-			// TODO have a video data error listener - let the user do what they want
-			log.err("Could not decode Video data on port $port - $err.msg", err)
-		}
+		catch (Err err)
+			((|Err|?) errorListenerRef.val)?.call(err)
 		
-		if (pave != null) {
-			// call internal listeners
-			listeners.each {
-				try ((|Buf, PaveHeader|) it).call(pave.payload, pave)
-				catch (Err err)	err.trace
-			}
-		}
+		// call internal listeners
+		if (pave != null)
+			((|Buf, PaveHeader|?) frameListenerRef.val)?.call(pave.payload, pave)
+
 		pave = null
 	}
 }
