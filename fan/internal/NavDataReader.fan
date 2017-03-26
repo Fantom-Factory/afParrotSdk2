@@ -8,7 +8,7 @@ using inet::UdpPacket
 
 internal const class NavDataReader {
 	private const ActorPool			actorPool
-	private const SynchronizedList	listeners
+	private const SynchronizedList	listeners	// List 'cos NavDataLoop adds & removes its own listeners
 	private const SynchronizedState	mutex
 	
 	new make(Drone drone, ActorPool actorPool) {

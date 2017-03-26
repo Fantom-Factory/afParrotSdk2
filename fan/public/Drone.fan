@@ -20,7 +20,9 @@ const class Drone {
 	private	const	AtomicRef		onBatteryLowRef		:= AtomicRef()
 	private	const	AtomicRef		onDisconnectRef		:= AtomicRef()
 	private	const	AtomicRef		onVideoFrameRef		:= AtomicRef()
+	private	const	AtomicRef		onVideoErrorRef		:= AtomicRef()
 	private	const	AtomicRef		onRecordFrameRef	:= AtomicRef()
+	private	const	AtomicRef		onRecordErrorRef	:= AtomicRef()
 	private	const	AtomicRef		droneVersionRef		:= AtomicRef()
 	private	const	AtomicRef		oldVideoCodecRef	:= AtomicRef()
 	private	const	AtomicBool		connectedRef		:= AtomicBool(false)
@@ -158,6 +160,16 @@ const class Drone {
 						}
 					}
 
+	** Event hook that's called when there's an error decoding the video stream.
+	** 
+	** Given the nature of streaming chunks, errors may be un-recoverable and future video frames 
+	** may not be decoded. Therefore on error, it is advised to restart the video comms with the 
+	** drone. 
+					|Err, Drone|? onVideoErr {
+						get { onVideoErrorRef.val }
+						set { onVideoErrorRef.val = it?.toImmutable }
+					}
+
 	** Event hook that's called when video record frame is received. (On Drone TCP port 5553.)
 	** Video recordings are generally not streamed live but do have better quality.
 	** 
@@ -179,6 +191,16 @@ const class Drone {
 							if (it != null && !recordReader.isConnected)
 								recordReader.connect
 						}
+					}
+
+	** Event hook that's called when there's an error decoding the video record stream.
+	** 
+	** Given the nature of streaming chunks, errors may be un-recoverable and future video frames 
+	** may not be decoded. Therefore on error, it is advised to restart the video comms with the 
+	** drone. 
+					|Err, Drone|? onRecordErr {
+						get { onRecordErrorRef.val }
+						set { onRecordErrorRef.val = it?.toImmutable }
 					}
 
 	** Creates a 'Drone' instance, optionally passing in network configuration.
@@ -206,8 +228,10 @@ const class Drone {
 			throw Err("Can not re-use Drone() instances")
 
 		navDataReader.addListener(#processNavData.func.bind([this]))
-		videoReader	 .addListener(#processVidData.func.bind([this]))
-		recordReader .addListener(#processRecData.func.bind([this]))
+		videoReader	 .setFrameListener(#processVidData.func.bind([this]))
+		videoReader	 .setErrorListener(#processVidErr .func.bind([this]))
+		recordReader .setFrameListener(#processRecData.func.bind([this]))
+		recordReader .setErrorListener(#processRecErr .func.bind([this]))
 
 		cmdSender.connect
 		navData := navDataReader.connect
@@ -519,14 +543,54 @@ const class Drone {
 
 	// TODO set absolute compass position
 	private const AtomicBool absoluteModeRef := AtomicBool()
-	// TODO only need to set absoluteMode when turning to a compass position  
-	internal Bool absoluteMode {
+	// TODO only need to set absoluteMode when turning to a compass position?  
+	Bool absoluteMode {
 		get { absoluteModeRef.val }
-		set { absoluteModeRef.val = it }
+		set {
+			absoluteAngleRef.val = it ? navData.demoData.psi : null 
+			absoluteModeRef.val = it
+		}
+	}
+	
+	private const AtomicRef absoluteAngleRef := AtomicRef()
+	private Float[] absoluteRotation(Float tiltRight, Float tiltBackwards) {
+		if (absoluteMode) {
+			absYaw := (Float) absoluteAngleRef.val
+			// flip Y because 'tiltBackwards' means the Y axis is reversed (if we want the drone to face away)
+			x := tiltRight
+			y := -tiltBackwards
+			a := (navData.demoData.psi / 1000).toRadians
+
+			// px = (x * cos) - (y * sin) 
+			// py = (x * sin) + (y * cos)
+			
+			px := (x * a.cos) - (y * a.sin)  
+			py := (x * a.sin) + (y * a.cos)
+			return Float[px, py]
+		}
+		return Float[tiltRight, tiltBackwards]
 	}
 
 	private Bool combinedYawMode() {
 		configMap["CONTROL:control_level"].toInt.and(0x02) > 0
+	}
+	
+	
+	Void turnTo(Float angle, Float? accuracy := null) {
+		angle = angle.minusInt(angle.toInt)
+		if (angle < 0f)
+			angle += 1f
+		if (accuracy < -1f || accuracy > 1f)
+			throw ArgErr("accuracy must be between -1 and 1 : ${accuracy}")
+		
+		mode := 1
+		if (combinedYawMode)
+			mode = mode.or(0x2)
+		if (absoluteMode)
+			mode = mode.or(0x4)
+		cmd := Cmd("PCMD_MAG", [mode, 0f, 0f, 0f, 0f, angle, accuracy ?: 0.1f])
+
+		cmdSender.send(cmd)
 	}
 	
 	** A combined move method encapsulating:
@@ -543,7 +607,8 @@ const class Drone {
 			throw ArgErr("verticalSpeed must be between -1 and 1 : ${verticalSpeed}")
 		if (clockwiseSpin < -1f || clockwiseSpin > 1f)
 			throw ArgErr("clockwiseSpin must be between -1 and 1 : ${clockwiseSpin}")
-		return doMove(Cmd.makeMove(tiltRight, tiltBackward, verticalSpeed, clockwiseSpin, combinedYawMode, absoluteMode), tiltRight, duration, block)
+		abs := absoluteRotation(tiltRight, tiltBackward)
+		return doMove(Cmd.makeMove(abs[0], abs[1], verticalSpeed, clockwiseSpin, combinedYawMode, absoluteMode), tiltRight, duration, block)
 	}
 	
 	** Moves the drone vertically upwards.
@@ -636,7 +701,8 @@ const class Drone {
 	** 
 	** See config command 'CONTROL:euler_angle_max'.
 	|->|? moveLeft(Float tilt, Duration? duration := null, Bool? block := true) {
-		doMove(Cmd.makeMove(-tilt, 0f, 0f, 0f, combinedYawMode, absoluteMode), tilt, duration, block)
+		abs := absoluteRotation(-tilt, 0f)
+		return doMove(Cmd.makeMove(abs[0], abs[1], 0f, 0f, combinedYawMode, absoluteMode), tilt, duration, block)
 	}
 
 	** Moves the drone to the right.
@@ -667,7 +733,8 @@ const class Drone {
 	** 
 	** See config command 'CONTROL:euler_angle_max'.
 	|->|? moveRight(Float tilt, Duration? duration := null, Bool? block := true) {
-		doMove(Cmd.makeMove(tilt, 0f, 0f, 0f, combinedYawMode, absoluteMode), tilt, duration, block)		
+		abs := absoluteRotation(tilt, 0f)
+		return doMove(Cmd.makeMove(abs[0], abs[1], 0f, 0f, combinedYawMode, absoluteMode), tilt, duration, block)		
 	}
 	
 	** Moves the drone forward.
@@ -698,7 +765,8 @@ const class Drone {
 	** 
 	** See config command 'CONTROL:euler_angle_max'.
 	|->|? moveForward(Float tilt, Duration? duration := null, Bool? block := true) {
-		doMove(Cmd.makeMove(0f, -tilt, 0f, 0f, combinedYawMode, absoluteMode), tilt, duration, block)
+		abs := absoluteRotation(0f, -tilt)
+		return doMove(Cmd.makeMove(abs[0], abs[1], 0f, 0f, combinedYawMode, absoluteMode), tilt, duration, block)
 	}
 
 	** Moves the drone backward.
@@ -729,7 +797,8 @@ const class Drone {
 	** 
 	** See config command 'CONTROL:euler_angle_max'.
 	|->|? moveBackward(Float tilt, Duration? duration := null, Bool? block := true) {
-		doMove(Cmd.makeMove(0f, tilt, 0f, 0f, combinedYawMode, absoluteMode), tilt, duration, block)
+		abs := absoluteRotation(0f, -tilt)
+		return doMove(Cmd.makeMove(abs[0], abs[1], 0f, 0f, combinedYawMode, absoluteMode), tilt, duration, block)
 	}
 	
 	** Spins the drone clockwise.
@@ -894,8 +963,23 @@ const class Drone {
 		// call handlers from a different thread so they don't block the VidReader
 		// should I use a different thread for vid data?
 		eventThread.async |->| {
-			callSafe(onVideoFrame, [payload, pave, this])			
+			callSafe(onVideoFrame, [payload, pave, this])
 		}
+	}
+	
+	private Void processVidErr(Err err) {
+		if (actorPool.isStopped) return
+
+		// ---- call event handlers ----
+		
+		// call handlers from a different thread so they don't block the VidReader
+		// should I use a different thread for vid data?
+		if (onVideoErr == null)
+			log.err("Could not decode Video data on port $networkConfig.videoPort", err)
+		else
+			eventThread.async |->| {
+				callSafe(onVideoErr, [err, this])
+			}
 	}
 	
 	private Void processRecData(Buf payload, PaveHeader pave) {
@@ -906,8 +990,23 @@ const class Drone {
 		// call handlers from a different thread so they don't block the VidReader
 		// should I use a different thread for vid data?
 		eventThread.async |->| {
-			callSafe(onRecordFrame, [payload, pave, this])			
+			callSafe(onRecordFrame, [payload, pave, this])
 		}
+	}
+	
+	private Void processRecErr(Err err) {
+		if (actorPool.isStopped) return
+
+		// ---- call event handlers ----
+		
+		// call handlers from a different thread so they don't block the VidReader
+		// should I use a different thread for vid data?
+		if (onRecordErr == null)
+			log.err("Could not decode Video data on port $networkConfig.videoRecPort", err)
+		else
+			eventThread.async |->| {
+				callSafe(onRecordErr, [err, this])
+			}
 	}
 	
 	private Void onShutdown() {
