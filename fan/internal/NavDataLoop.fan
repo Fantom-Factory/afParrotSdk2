@@ -116,9 +116,8 @@ internal const class NavDataLoop {
 	private Void onNavData(NavData? navData) {
 		if (process(navData) || (completeOnEmergency && drone.navData?.flags?.emergencyLanding == true)) {
 			drone._removeNavDataListener(listener)
-			// FIXME fix race condition
 			if (!future.state.isComplete)
-				future.complete(null)
+				try { future.complete(null) } catch { /* meh - race condition */ }
 		}
 	}
 	

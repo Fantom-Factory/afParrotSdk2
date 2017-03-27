@@ -1050,7 +1050,10 @@ const class Drone {
 			return null 
 		}
 		
-		return |->| { if (!future.state.isComplete) future.cancel }
+		return |->| {
+			if (!future.state.isComplete)
+				try { future.cancel } catch { /* meh - race condition */ }
+		}
 	}
 
 	private Void callSafe(Func? f, Obj[]? args) {
