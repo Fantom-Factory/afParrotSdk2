@@ -259,42 +259,43 @@ const class DroneSessionConfig {
 		}
 	}
 
-	// FIXME userbox config commands
-//USERBOX:userbox_cmd
-//CAT_SESSION | Read/Write
-//Description :
-//The USERBOX:userbox_cmd provide a feature to save navigation data from drone during a time period and to take
-//pictures. When the USERBOX:userbox_cmd is sent with parameter USERBOX_CMD_START, the AR.Drone create
-//directory /data/video/boxes/tmp_flight_YYYYMMDD_hhmmss in AR.Drone flash memory and save a binary file
-//containingnavigationdataandnamed/data/video/boxes/tmp_flight_YYYYMMDD_hhmmss/userbox_<timestamp>.
-//<timestamp> represent the time since the AR.Drone booted.
-//When the USERBOX:userbox_cmd is sent with parameter USERBOX_CMD_STOP, the AR.Drone finish saving of
-///data/video/boxes/tmp_flight_YYYYMMDD_hhmmss/userbox_<timestamp>. and rename directory from
-///data/video/boxes/tmp_flight_YYYYMMDD_hhmmss to /data/video/boxes/flight_YYYYMMDD_hhmmss.
-//When the USERBOX:userbox_cmd is sent with parameter USERBOX_CMD_CANCEL, the AR.Drone stop the user-
-//box like sending USERBOX_CMD_STOP and delete file
-///data/video/boxes/tmp_flight_YYYYMMDD_hhmmss/userbox_<timestamp>.
-//When the USERBOX:userbox_cmd is sent with parameter USERBOX_CMD_SCREENSHOT, the AR.Drone takes pic-
-//ture of frontal camera and saves it as JPEG image named
-///data/video/boxes/tmp_flight_YYYYMMDD_hhmmss/picture_YYMMDD_hhmmss.jpg.
-//Note : If the userbox is started, the picture is saved in userbox directory. Note : After stopping userbox or taking
-//picture, you MUST call academy_download_resume function to download flight directory by ftp protocol.
-//Typical values are :
-//• USERBOX_CMD_STOP : Command to stop userbox. This command takes no parameters.
-//• USERBOX_CMD_CANCEL : Command to cancel userbox. If the userbox is started, stop the userbox and
-//delete its content.
-//• USERBOX_CMD_START : Command to start userbox. This command takes the current date as string pa-
-//rameter with format YYYYMMDD_hhmmss
-//• USERBOX_CMD_SCREENSHOT : Command to take a picture from AR.Drone . This command takes 3
-//parameters.
-//– 1 - delay : This value is an unsigned integer representing the delay (in seconds) between each screen-
-//shot.
-//– 1 - number of burst : This value is an unsigned integer representing the number of screenshot to take.
-//– 1 - current date : This value is the current date as string parameter with format YYYYMMDD_hhmmss.
-//Note : The file /data/video/boxes/tmp_flight_YYYYMMDD_hhmmss/userbox_<timestamp> will be used for future
-//feature. (AR.Drone Academy ).
-//	
-
+	** Starts saving navigation data to flash memory.
+	** 
+	** Creates the binary file '/data/video/boxes/tmp_flight_<dateTime>/userbox_<timestamp>' in flash memory 
+	** containing navigation data where '<timestamp>' is the time since the drone booted.
+	** 
+	** Corresponds to the 'USERBOX:userbox_cmd' configuration key.
+	Void userboxStart() {
+		setConfig("USERBOX:userbox_cmd", [1, DateTime.now.toLocale("YYYYMMDD_hhmmss")])
+	}
+	
+	** Stops saving navigation data to flash memory.
+	** 
+	** Renames the directory containing the binary files to '/data/video/boxes/flight_<dateTime>/'.
+	**
+	** Corresponds to the 'USERBOX:userbox_cmd' configuration key.
+	Void userboxStop() {
+		setConfig("USERBOX:userbox_cmd", [0])		
+	}
+	
+	** Stops saving navigation data to flash memory and deletes the temporary files.
+	** 
+	** Corresponds to the 'USERBOX:userbox_cmd' configuration key.
+	Void userboxCancel() {
+		setConfig("USERBOX:userbox_cmd", [3])		
+	}
+	
+	** Takes photographs with the forward facing front camera and saves it as JPEG images named
+	** '/data/video/boxes/tmp_flight_<dateTime>/picture_<dateTime>.jpg'.
+	** 
+	** Note 'delayBetweenPhotos' must be in seconds.
+	** 
+	** Corresponds to the 'USERBOX:userbox_cmd' configuration key.
+	Void takePhoto(Int numberOfPhotos := 1, Duration delayBetweenPhotos := 1sec) {
+		setConfig("USERBOX:userbox_cmd", [2, delayBetweenPhotos.toSec, numberOfPhotos, DateTime.now.toLocale("YYYYMMDD_hhmmss")])		
+	}
+	
+	
 	** Dumps all fields to debug string.
 	Str dump(Bool dumpToStdOut := true) {
 		fields := typeof.fields.findAll { it.isPublic && it.parent == this.typeof }
