@@ -36,7 +36,7 @@ internal const class NavDataLoop {
 		blockAndLog(drone, timeout, |NavData? navData->Bool| {
 			state := navData?.demoData?.flightState
 			// stop taking off if we start landing -> landing takes precedence!
-			return state == FlightState.flying || state == FlightState.hovering || state == FlightState.transLanding // FIXME || navData?.flags?.flying == false
+			return state == FlightState.flying || state == FlightState.hovering || state == FlightState.transLanding
 		}, Cmd.makeTakeOff, "Drone took off", block, true, "Timed out waiting for drone to take off")
 	}
 	

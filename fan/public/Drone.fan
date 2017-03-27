@@ -36,6 +36,12 @@ const class Drone {
 	private const	VideoReader		recordReader
 	private	const	|->|			shutdownHook
 
+	// FIXME Easy save mp4 video
+	// FIXME Stream recording video
+	// FIXME turnTo() cmd
+	// FIXME absoluteMode()
+	// FIXME userBox cmds
+	
 	** The 'ActorPool' responsible for controlling all the threads handled by this drone.
 	@NoDoc	const	ActorPool		actorPool
 	
