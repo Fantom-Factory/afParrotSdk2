@@ -28,8 +28,8 @@ const class Cmd {
 	}
 	
 	** Makes a 'CONFIG_IDS' cmd with the given IDs. 
-	static Cmd makeConfigIds(Str sessionId, Str userId, Str applicationId) {
-		Cmd("CONFIG_IDS", [sessionId, userId, applicationId])
+	static Cmd makeConfigIds(Int sessionId, Int userId, Int applicationId) {
+		Cmd("CONFIG_IDS", [sessionId.toHex(8).upper, userId.toHex(8).upper, applicationId.toHex(8).upper])
 	}
 
 	** Makes a 'CTRL' cmd.

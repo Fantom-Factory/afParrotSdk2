@@ -210,7 +210,7 @@ const class Drone {
 					}
 
 	** Creates a 'Drone' instance, optionally passing in network configuration.
-	new make(NetworkConfig networkConfig := NetworkConfig()) {
+	new make(NetworkConfig networkConfig := NetworkConfig(), |This|? f := null) {
 		this.actorPool		= ActorPool() { it.name = "Parrot Drone" }
 		this.networkConfig	= networkConfig
 		this.navDataReader	= NavDataReader(this, actorPool)
@@ -220,6 +220,8 @@ const class Drone {
 		this.cmdSender		= CmdSender(this, actorPool)
 		this.eventThread	= Synchronized(actorPool)
 		this.shutdownHook	= #onShutdown.func.bind([this])
+		
+		f(this)
 	}
 
 	** Sets up the socket connections to the drone. 
@@ -319,6 +321,7 @@ const class Drone {
 	** 
 	** pre>
 	** syntax: fantom
+	** drone.config.session("Video Test")
 	** drone.startRecording
 	** vs := VideoStreamer.toMp4File(`vid.mp4`).attachTo(drone)
 	** 
@@ -328,9 +331,13 @@ const class Drone {
 	** <pre
 	** 
 	** Note this is not the same as *streaming live video* - to enable live video just set the 'onVideoFrame' hook.
+	** 
+	** Can only be called with a non-default session ID. Throws an Err if this is not the case.
 	@NoDoc 
 	Void startRecording(VideoResolution res := VideoResolution._720p) {
 		if (isRecording) return
+		config.session._checkId("start recording")
+
 		// MP4_360P_H264_360P_CODEC = 0x82  // Live stream with MPEG4.2 soft encoder. Record stream with 360p H264 hardware encoder.
 		// MP4_360P_H264_720P_CODEC = 0x88  // Live stream with MPEG4.2 soft encoder. Record stream with 720p H264 hardware encoder.
 		newCodec := (res == VideoResolution._720p) ? 0x88 : 0x82
@@ -338,18 +345,22 @@ const class Drone {
 		oldHook	 := onVideoFrame
 
 		onVideoFrame = null
-		config.sendMultiConfig("VIDEO:video_codec", newCodec)
+		config.sendConfig("VIDEO:video_codec", newCodec)
 		oldVideoCodecRef.val = oldCodec
 		onVideoFrame = oldHook
 	}
 	
 	** Stops the video recording.
+	** 
+	** Can only be called with a non-default session ID. Throws an Err if this is not the case.
 	@NoDoc 
 	Void stopRecording() {
 		if (!isRecording) return
+		config.session._checkId("stop recording")
+
 		oldCodec := oldVideoCodecRef.val
 		if (oldCodec != null) {
-			config.sendMultiConfig("VIDEO:video_codec", oldCodec.toStr)
+			config.sendConfig("VIDEO:video_codec", oldCodec.toStr)
 			oldVideoCodecRef.val = null
 		}
 	}
@@ -383,7 +394,7 @@ const class Drone {
 	** 'val' may be a Bool, Int, Float, Str, or a List of said types.
 	** 
 	** For multi-config support, pass in the appropriate IDs. 
-	Void sendConfig(Str key, Obj val, Str? sessionId := null, Str? userId := null, Str? appId := null) {
+	Void sendConfig(Str key, Obj val, Int? sessionId := null, Int? userId := null, Int? appId := null) {
 		if (!isConnected) return
 
 		// see http://stackoverflow.com/questions/3466452/xor-of-three-values
@@ -472,7 +483,7 @@ const class Drone {
 	Void animateLeds(LedAnimation anim, Duration duration, Float? freqInHz := null) {
 		if (!isConnected) return
 		params := [anim.ordinal, (freqInHz ?: anim.defaultFrequency), duration.toSec]
-		sendConfig("leds:leds_anim", params)
+		config.sendConfig("leds:leds_anim", params)
 	}
 
 	** Performs one of the pre-configured flight sequences.
@@ -485,14 +496,14 @@ const class Drone {
 	** Corresponds to the 'control:flight_anim' config cmd.
 	Void animateFlight(FlightAnimation anim, Duration? duration := null, Bool block := true) {
 		if (!isConnected) return
-		params	:= [anim.ordinal, (duration ?: anim.defaultDuration).toMillis].join(",")	
-		sendConfig("control:flight_anim", params)
+		params := [anim.ordinal, (duration ?: anim.defaultDuration).toMillis]
+		config.sendConfig("control:flight_anim", params)
 		if (block)
 			Actor.sleep(duration ?: anim.defaultDuration)
 	}
-	
-	
-	
+
+
+
 	// ---- Stabilising Commands ----
 	
 	** Repeatedly sends a take off command to the drone until it reports its state as either 'hovering' or 'flying'.
@@ -553,7 +564,7 @@ const class Drone {
 	Bool absoluteMode {
 		get { absoluteModeRef.val }
 		set {
-			absoluteAngleRef.val = it ? navData.demoData.psi : null 
+			absoluteAngleRef.val = it ? -navData.demoData.psi : null 
 			absoluteModeRef.val = it
 		}
 	}
@@ -562,10 +573,12 @@ const class Drone {
 	private Float[] absoluteRotation(Float tiltRight, Float tiltBackwards) {
 		if (absoluteMode) {
 			absYaw := (Float) absoluteAngleRef.val
+
 			// flip Y because 'tiltBackwards' means the Y axis is reversed (if we want the drone to face away)
 			x := tiltRight
-			y := -tiltBackwards
-			a := (navData.demoData.psi / 1000).toRadians
+			y := tiltBackwards
+//			a := navData.demoData.psi.toRadians
+			a := absYaw.toRadians
 
 			// px = (x * cos) - (y * sin) 
 			// py = (x * sin) + (y * cos)
@@ -583,6 +596,7 @@ const class Drone {
 	
 	
 	Void turnTo(Float angle, Float? accuracy := null) {
+		accuracy = accuracy ?: 0.1f
 		angle = angle.minusInt(angle.toInt)
 		if (angle < 0f)
 			angle += 1f
@@ -594,7 +608,7 @@ const class Drone {
 			mode = mode.or(0x2)
 		if (absoluteMode)
 			mode = mode.or(0x4)
-		cmd := Cmd("PCMD_MAG", [mode, 0f, 0f, 0f, 0f, angle, accuracy ?: 0.1f])
+		cmd := Cmd("PCMD_MAG", [mode, 0f, 0f, 0f, 0f, angle, accuracy])
 
 		cmdSender.send(cmd)
 	}
@@ -1129,7 +1143,7 @@ enum class LedAnimation {
 
 ** Pre-configured flight paths.
 enum class FlightAnimation {
-	phiM30Deg(1sec), phi30Deg(1sec), thetaM30Deg(1sec), theta30Deg(1sec), theta20degYaw200Deg(1sec), theta20degYawM200Deg(1sec), turnaround(5sec), turnaroundGodown(5sec), yawShake(2sec), yawDance(5sec), phiDance(5sec), thetaDance(5sec), vzDance(5sec), wave(5sec), phiThetaMixed(5sec), doublePhiThetaMixed(5sec), flipForward(1.5sec), flipBackward(1.5sec), flipLeft(1.5sec), flipRight(1.5sec);
+	phiM30Deg(1sec), phi30Deg(1sec), thetaM30Deg(1sec), theta30Deg(1sec), theta20degYaw200Deg(1sec), theta20degYawM200Deg(1sec), turnaround(5sec), turnaroundGodown(5sec), yawShake(2sec), yawDance(5sec), phiDance(5sec), thetaDance(5sec), vzDance(5sec), wave(5sec), phiThetaMixed(5sec), doublePhiThetaMixed(5sec), flipForward(15ms), flipBackward(15ms), flipLeft(15ms), flipRight(15ms);
 
 	** How long the manoeuvre should take.
 	const Duration defaultDuration

@@ -13,16 +13,13 @@
 **   drone.config.app.combinedYawMode = true
 ** 
 const class DroneAppConfig {
-	private const Log					log		:= Drone#.pod.log
-	private const Str					defId	:= "00000000"
-	private const DroneSessionConfig	config
+	private const Log			_log	:= Drone#.pod.log
+	private const DroneConfig	_config
 	
-	** Creates a wrapper around the given drone.
-	** Internal because we need to keep track of the multi-config IDs 
-	internal new make(DroneSessionConfig config, Bool reReadConfig := true) {
-		this.config = config
-		if (reReadConfig)
-			config.drone.configRefresh
+	** Creates a new 'DroneAppConfig' instance for the given Drone. 
+	** Note this class holds no state.
+	new make(Drone drone) {
+		this._config = DroneConfig(drone)
 	}
 
 	// ---- Identity ----
@@ -30,8 +27,8 @@ const class DroneAppConfig {
 	** The current application ID.
 	**  
 	** Corresponds to the 'CUSTOM:application_id' configuration key.
-	Str id {
-		get { getConfig("CUSTOM:application_id") }
+	Int id {
+		get { _config._appId }
 		private set { }
 	}
 	
@@ -46,18 +43,18 @@ const class DroneAppConfig {
 	** Deletes this application data from the drone.
 	Void deleteMe() {
 		id := id
-		if (id == "00000000") {
-			log.warn("Will not delete default data!")	// don't know what might happen if we try this!?
+		if (id == DroneConfig.defId) {
+			_log.warn("Will not delete default data!")	// don't know what might happen if we try this!?
 			return
 		}
-		config._config._delApp("-${id}")
+		_config._delApp("-${id.toHex(8)}")
 	}
 
 	** Deletes **ALL** application data from the drone.
 	** Use with caution.
 	Void deleteAll() {
-		log.warn("Deleting ALL application data!")
-		config._config._delApp("-all")
+		_log.warn("Deleting ALL application data!")
+		_config._delApp("-all")
 	}
 
 	// ---- Other Cmds ----
@@ -102,7 +99,7 @@ const class DroneAppConfig {
 	Int videoBitrate {
 		get { getConfig("VIDEO:bitrate").toInt }
 		set {
-			if (id == defId) throw Err("Can not change video bitrate with default application ID: $id")
+			_checkId("change video bitrate")
 			setConfig("VIDEO:bitrate", it.toStr)
 		}		
 	}
@@ -120,7 +117,7 @@ const class DroneAppConfig {
 	Int videoBitrateControlMode {
 		get { getConfig("VIDEO:bitrate_control_mode", false)?.toInt ?: 0}
 		set {
-			if (id == defId) throw Err("Can not change video bitrate control with default application ID: $id")
+			_checkId("change video bitrate control")
 			setConfig("VIDEO:bitrate_control_mode", it.toStr)
 		}		
 	}
@@ -149,12 +146,16 @@ const class DroneAppConfig {
 	@NoDoc
 	override Str toStr() { dump	}
 
+	internal Void _checkId(Str what) {
+		if (id == DroneConfig.defId)
+			throw Err("Can not ${what} with default application ID: $id")
+	}
+
 	private Str? getConfig(Str key, Bool checked := true) {
-		config.drone.configMap[key] ?: (checked ? throw UnknownKeyErr(key) : null)
+		_config.drone.configMap[key] ?: (checked ? throw UnknownKeyErr(key) : null)
 	}
 	
 	private Void setConfig(Str key, Obj val) {
-		config._config.sendMultiConfig(key, val)
-		config.drone._updateConfig(key, val)
+		_config.sendConfig(key, val)
 	}
 }
