@@ -1,4 +1,3 @@
-using concurrent::AtomicRef
 
 ** Drone config in the Common category.
 ** This contains config in the *Common* category. See `session` for other config.
@@ -9,29 +8,23 @@ using concurrent::AtomicRef
 **   config := drone.config() 
 ** 
 const class DroneConfig {
-	private const	Log		log		:= Drone#.pod.log
-	private const	Str		defId	:= "00000000"
+	** The default ID for session, user, and application when the drone is first turned on.
+	static const	Int		defId	:= 0
 
 	** The wrapped drone.
 	const Drone 	drone
 
-	private const AtomicRef	sessId	:= AtomicRef(defId)
-	private const AtomicRef	userId	:= AtomicRef(defId)
-	private const AtomicRef	appId	:= AtomicRef(defId)
-	
-	** Internal because we need to keep track of the multi-config IDs 
-	internal new make(Drone drone) {
+	** Creates a new 'DroneConfig' instance for the given Drone. 
+	** Note this class holds no state.
+	new make(Drone drone) {
 		this.drone = drone
 	}
 
 	** Resets the session, user, and application profiles back to the default id of '00000000'.
 	Void reset() {
-		drone.sendConfig("CUSTOM:application_id", defId)
-		appId.val = defId
-		drone.sendConfig("CUSTOM:profile_id", defId)
-		userId.val = defId		
-		drone.sendConfig("CUSTOM:session_id", defId)
-		sessId.val = defId
+		drone.sendConfig("CUSTOM:application_id", defId.toHex(8).upper)
+		drone.sendConfig("CUSTOM:profile_id", defId.toHex(8).upper)
+		drone.sendConfig("CUSTOM:session_id", defId.toHex(8).upper)
 		drone.configRefresh
 	}
 	
@@ -42,16 +35,13 @@ const class DroneConfig {
 	** 
 	** See `DroneSessionConfig` for details.
 	DroneSessionConfig session(Str? sessionName := null) {
-		sessConfig := DroneSessionConfig(this, false)
+		sessConfig := DroneSessionConfig(drone)
 		if (sessionName != null) {
 			//id := Int.random.and(0xFFFFFFFF).toHex(8).upper	// I got too many sessions!
-			id := sessionName.toBuf.crc("CRC-32-Adler").toHex(8).upper
-			if (id != sessId.val) {
-				drone.sendConfig("CUSTOM:session_id", id)
-				sessId.val = id
-				userId.val = defId
-				appId.val  = defId
-				sendMultiConfig("CUSTOM:session_desc", sessionName)
+			id := sessionName.toBuf.crc("CRC-32-Adler")
+			if (id != _sessId) {
+				sendConfig("CUSTOM:session_id", id.toHex(8).upper)
+				sendConfig("CUSTOM:session_desc", sessionName)
 				drone.configRefresh
 			}
 		}
@@ -59,16 +49,14 @@ const class DroneConfig {
 	}
 	
 	** Gets or makes user config.
-	internal DroneUserConfig _userConfig(Str? userName, Bool reReadConfig) {
-		userConfig := DroneUserConfig(session, false)
+	internal DroneUserConfig _userConfig(Str? userName) {
+		userConfig := DroneUserConfig(drone)
 		if (userName != null) {
-			id := userName.toBuf.crc("CRC-32-Adler").toHex(8).upper
-			if (id != userId.val) {
-				drone.sendConfig("CUSTOM:profile_id", id)
-				userId.val = id
-				sendMultiConfig("CUSTOM:profile_desc", userName)
-				if (reReadConfig)
-					drone.configRefresh
+			id := userName.toBuf.crc("CRC-32-Adler")
+			if (id != _userId) {
+				sendConfig("CUSTOM:profile_id", id.toHex(8).upper)
+				sendConfig("CUSTOM:profile_desc", userName)
+				drone.configRefresh
 			}
 		}
 		return userConfig
@@ -76,16 +64,14 @@ const class DroneConfig {
 
 	** Gets or makes application config.
 	** If 'null' is passed, this just returns the current config.
-	internal DroneAppConfig _appConfig(Str? appicationName, Bool reReadConfig) {
-		appConfig := DroneAppConfig(session, false)
+	internal DroneAppConfig _appConfig(Str? appicationName) {
+		appConfig := DroneAppConfig(drone)
 		if (appicationName != null) {
-			id := appicationName.toBuf.crc("CRC-32-Adler").toHex(8).upper
-			if (id != appId.val) {
-				drone.sendConfig("CUSTOM:application_id", id)
-				appId.val = id
-				sendMultiConfig("CUSTOM:application_desc", appicationName)
-				if (reReadConfig)
-					drone.configRefresh
+			id := appicationName.toBuf.crc("CRC-32-Adler")
+			if (id != _appId) {
+				sendConfig("CUSTOM:application_id", id.toHex(8).upper)
+				sendConfig("CUSTOM:application_desc", appicationName)
+				drone.configRefresh
 			}
 		}
 		return appConfig
@@ -359,8 +345,11 @@ const class DroneConfig {
 	
 	** Sends config to the drone, using the current Session, User, and Application IDs.
 	** This method blocks until the config has been acknowledged. 
-	Void sendMultiConfig(Str key, Obj val) {
-		drone.sendConfig(key, val, sessId.val, userId.val, appId.val)
+	Void sendConfig(Str key, Obj val) {
+		if (_sessId != defId || _userId != defId || _appId != defId)
+			drone.sendConfig(key, val, _sessId, _userId, _appId)
+		else
+			drone.sendConfig(key, val)
 		drone._updateConfig(key, val)
 	}
 
@@ -369,24 +358,33 @@ const class DroneConfig {
 
 	// ---- Internal Methods ----
 
+	internal Int _sessId() {
+		getConfig("CUSTOM:session_id").toInt(16)
+	}
+
+	internal Int _userId() {
+		getConfig("CUSTOM:profile_id").toInt(16)
+	}
+
+	internal Int _appId() {
+		getConfig("CUSTOM:application_id").toInt(16)
+	}
+
 	internal Void _delSess(Str id) {
 		drone.sendConfig("CUSTOM:session_id", id)
-		drone.sendConfig("CUSTOM:session_id", defId)
-		sessId.val = defId
+		drone.sendConfig("CUSTOM:session_id", defId.toHex(8))
 		drone.configRefresh
 	}
 
 	internal Void _delUser(Str id) {
 		drone.sendConfig("CUSTOM:profile_id", id)
-		drone.sendConfig("CUSTOM:profile_id", defId)
-		userId.val = defId		
+		drone.sendConfig("CUSTOM:profile_id", defId.toHex(8))
 		drone.configRefresh
 	}
 	
 	internal Void _delApp(Str id) {
 		drone.sendConfig("CUSTOM:application_id", id)
-		drone.sendConfig("CUSTOM:application_id", defId)
-		appId.val = defId
+		drone.sendConfig("CUSTOM:application_id", defId.toHex(8))
 		drone.configRefresh
 	}
 	
@@ -395,7 +393,6 @@ const class DroneConfig {
 	}
 	
 	private Void setConfig(Str key, Obj val) {
-		drone.sendConfig(key, val)
-		drone._updateConfig(key, val)
+		sendConfig(key, val)
 	}
 }

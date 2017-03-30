@@ -15,30 +15,22 @@ using concurrent::AtomicRef
 **   drone.config.session.hoveringRange = 1000
 ** 
 const class DroneSessionConfig {
-	private const Log			log		:= Drone#.pod.log
-	private const Str			defId	:= "00000000"
+	private const Log			_log		:= Drone#.pod.log
 	internal const DroneConfig	_config
 	
-	** Internal because we need to keep track of the multi-config IDs 
-	** Creates a wrapper around the given drone.
-	internal new make(DroneConfig config, Bool reReadConfig := true) {
-		this._config = config
-		if (reReadConfig)
-			config.drone.configRefresh
+	** Creates a new 'DroneSessionConfig' instance for the given Drone. 
+	** Note this class holds no state.
+	new make(Drone drone) {
+		this._config = DroneConfig(drone)
 	}
-	
-	** The wrapped drone instance
-	Drone drone() {
-		_config.drone
-	}
-	
+
 	// ---- Identity ----
 	
 	** The current session ID.
 	**  
 	** Corresponds to the 'CUSTOM:profile_id' configuration key.
-	Str id {
-		get { getConfig("CUSTOM:session_id") }
+	Int id {
+		get { _config._sessId }
 		private set { }
 	}
 	
@@ -53,17 +45,17 @@ const class DroneSessionConfig {
 	** Deletes this session data from the drone.
 	Void deleteMe() {
 		id := id
-		if (id == "00000000") {
-			log.warn("Will not delete default data!")	// don't know what might happen if we try this!?
+		if (id == DroneConfig.defId) {
+			_log.warn("Will not delete default data!")	// don't know what might happen if we try this!?
 			return
 		}
-		_config._delSess("-${id}")
+		_config._delSess("-${id.toHex(8)}")
 	}
 
 	** Deletes **ALL** session data from the drone.
 	** Use with caution.
 	Void deleteAll() {
-		log.warn("Deleting ALL session data!")
+		_log.warn("Deleting ALL session data!")
 		_config._delSess("-all")
 	}
 
@@ -73,13 +65,13 @@ const class DroneSessionConfig {
 
 	** Gets or makes user config.
 	DroneUserConfig user(Str? userName := null) {
-		_config._userConfig(userName, true)
+		_config._userConfig(userName)
 	}
 
 	** Gets or makes application config.
 	** If 'null' is passed, this just returns the current config.
 	DroneAppConfig app(Str? appicationName := null) {
-		_config._appConfig(appicationName, true)
+		_config._appConfig(appicationName)
 	}	
 
 
@@ -153,7 +145,7 @@ const class DroneSessionConfig {
 			return (liveCodec == VideoResolution._720p.liveCodec) ? VideoResolution._720p : VideoResolution._360p
 		}
 		set {
-			if (id == defId) throw Err("Can not change video codec with default session ID: $id")
+			_checkId("change video codec")
 			setConfig("VIDEO:video_codec", it.liveCodec.toStr)
 		}		
 	}
@@ -175,7 +167,7 @@ const class DroneSessionConfig {
 	Int videoMaxBitrate {
 		get { getConfig("VIDEO:max_bitrate").toInt }
 		set {
-			if (id == defId) throw Err("Can not change video bitrate with default session ID: $id")
+			_checkId("change video bitrate")
 			setConfig("VIDEO:max_bitrate", it.toStr)
 		}
 	}
@@ -326,15 +318,19 @@ const class DroneSessionConfig {
 	
 	@NoDoc
 	override Str toStr() { dump	}
+	
+	internal Void _checkId(Str what) {
+		if (id == DroneConfig.defId)
+			throw Err("Can not ${what} with default session ID: $id")
+	}
 
 	private Str? getConfig(Str key, Bool checked := true) {
 		_config.drone.configMap[key] ?: (checked ? throw UnknownKeyErr(key) : null)
 	}
 	
 	private Void setConfig(Str key, Obj? val) {
-		if (val != null) {	// for GPS position
-			_config.sendMultiConfig(key, val)
-			_config.drone._updateConfig(key, val)
+		if (val != null) {	// for setting GPS position
+			_config.sendConfig(key, val)
 		}
 	}
 }

@@ -14,15 +14,13 @@
 **   prof := drone.config.session.user.currentProfile
 ** 
 const class DroneUserConfig {
-	private const Log					log		:= Drone#.pod.log
-	private const DroneSessionConfig	config
+	private const Log			_log	:= Drone#.pod.log
+	private const DroneConfig	_config
 	
-	** Creates a wrapper around the given drone.
-	** Internal because we need to keep track of the multi-config IDs 
-	internal new make(DroneSessionConfig config, Bool reReadConfig := true) {
-		this.config = config
-		if (reReadConfig)
-			config.drone.configRefresh
+	** Creates a new 'DroneUserConfig' instance for the given Drone. 
+	** Note this class holds no state.
+	new make(Drone drone) {
+		this._config = DroneConfig(drone)
 	}
 
 	// ---- Identity ----
@@ -30,8 +28,8 @@ const class DroneUserConfig {
 	** The current user ID.
 	**  
 	** Corresponds to the 'CUSTOM:user_id' configuration key.
-	Str id {
-		get { getConfig("CUSTOM:profile_id") }
+	Int id {
+		get { _config._userId }
 		private set { }
 	}
 	
@@ -46,18 +44,18 @@ const class DroneUserConfig {
 	** Deletes this user profile from the drone.
 	Void deleteMe() {
 		id := id
-		if (id == "00000000") {
-			log.warn("Will not delete default data!")	// don't know what might happen if we try this!?
+		if (id == DroneConfig.defId) {
+			_log.warn("Will not delete default data!")	// don't know what might happen if we try this!?
 			return
 		}
-		config._config._delUser("-${id}")
+		_config._delUser("-${id.toHex(8)}")
 	}
 
 	** Deletes **ALL** user data from the drone.
 	** Use with caution.
 	Void deleteAll() {
-		log.warn("Deleting ALL user data!")
-		config._config._delUser("-all")
+		_log.warn("Deleting ALL user data!")
+		_config._delUser("-all")
 	}
 
 	// ---- Other Cmds ----
@@ -182,13 +180,11 @@ const class DroneUserConfig {
 	override Str toStr() { dump	}
 	
 	private Str getConfig(Str key) {
-		config.drone.configMap[key] ?: throw UnknownKeyErr(key)
+		_config.drone.configMap[key] ?: throw UnknownKeyErr(key)
 	}
 	
 	private Void setConfig(Str key, Float? val) {
-		if (val != null) {
-			config._config.sendMultiConfig(key, val.toStr)
-			config.drone._updateConfig(key, val.toStr)
-		}
+		if (val != null)
+			_config.sendConfig(key, val.toStr)
 	}
 }
