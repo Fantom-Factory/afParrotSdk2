@@ -67,7 +67,7 @@ internal class CmdSenderImpl {
 				socket.send(UdpPacket() { data = cmdStr.toBuf.seek(0) })
 				if (log.isDebug)
 //					if (cmd.id != "COMWDG")
-					if (cmd.id != "COMWDG" && cmd.id != "REF" && cmd.id != "PCMD" && cmd.id != "CTRL")
+					if (cmd.id != "COMWDG" && cmd.id != "REF" && cmd.id != "PCMD" && cmd.id != "PCMD_MAG" && cmd.id != "CTRL")
 						log.debug("--> " + cmdStr.trim.replace("\r", "  "))
 			} catch (IOErr ioe) {
 				if (ioe.msg.contains("java.net.SocketException")) {

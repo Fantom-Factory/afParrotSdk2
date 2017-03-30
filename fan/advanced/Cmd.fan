@@ -86,13 +86,15 @@ const class Cmd {
 		Cmd("LED", [animNo, frequency, duration.toMillis])
 	}
 	
-	** Makes a 'PCMD' cmd.
-	static Cmd makeMove(Float leftRightTilt, Float frontBackTilt, Float verticalSpeed, Float angularSpeed, Bool combinedYawMode, Bool absoluteMode) {
+	** Makes a 'PCMD' or 'PCMD_MAG' cmd.
+	static Cmd makeMove(Float leftRightTilt, Float frontBackTilt, Float verticalSpeed, Float angularSpeed, Bool combinedYawMode, Bool absoluteMode, Float absAngle, Float absAccuracy) {
 		mode := 1
 		if (combinedYawMode)
 			mode = mode.or(0x2)
-		if (absoluteMode)
+		if (absoluteMode) {
 			mode = mode.or(0x4)
+			return makePcmdMag(mode, leftRightTilt, frontBackTilt, verticalSpeed, angularSpeed, absAngle, absAccuracy)
+		}
 		return makePcmd(mode, leftRightTilt, frontBackTilt, verticalSpeed, angularSpeed)
 	}
 
@@ -111,6 +113,11 @@ const class Cmd {
 	** Makes a 'PCMD' cmd.
 	private static Cmd makePcmd(Int mode, Float leftRightTilt, Float frontBackTilt, Float verticalSpeed, Float angularSpeed) {
 		Cmd("PCMD", [mode, leftRightTilt, frontBackTilt, verticalSpeed, angularSpeed])
+	}
+	
+	** Makes a 'PCMD_MAG' cmd.
+	private static Cmd makePcmdMag(Int mode, Float leftRightTilt, Float frontBackTilt, Float verticalSpeed, Float angularSpeed, Float absAngle, Float absAccuracy) {
+		Cmd("PCMD_MAG", [mode, leftRightTilt, frontBackTilt, verticalSpeed, angularSpeed, absAngle, absAccuracy])
 	}
 	
 	// ---- 

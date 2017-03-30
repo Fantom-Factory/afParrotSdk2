@@ -16,7 +16,7 @@ class SimpleExample {
 		Actor.sleep(5sec)
 
 		
-		drone.takeOff
+//		drone.takeOff
 //		drone.animateFlight(FlightAnimation.vzDance)
 		drone.animateFlight(FlightAnimation.flipBackward)		
 		Actor.sleep(2sec)
