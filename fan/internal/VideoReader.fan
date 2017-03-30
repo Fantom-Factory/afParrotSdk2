@@ -35,7 +35,6 @@ internal const class VideoReader {
 	
 	Void connect() {
 		mutex.getState |VideoReaderImpl reader| {
-//		mutex.withState |VideoReaderImpl reader| {
 			reader.connect
 			
 			if (reader.isConnected && !actorPool.isStopped)
@@ -74,7 +73,7 @@ internal const class VideoReader {
 		try	pave = reader.receive
 		catch (IOErr err)
 			// drone.isConnected is set to false *before* we stop the ActorPool
-			if (drone.isConnected)
+			if (reader.isConnected && drone.isConnected)
 				((|Err|?) errorListenerRef.val)?.call(err)
 
 		catch (Err err)

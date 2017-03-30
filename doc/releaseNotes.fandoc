@@ -5,6 +5,7 @@ v0.0.6
 ======
  - New: Example programs for viewing 'NavData' and processing video data.
  - New: Roundel detection methods and docs.
+ - New: Absolute movement mode.
  - New: Added 'VideoCamera' and 'VideoResolution' enums.
  - New: Video frame error listeners.
  - Chg: Better initial drone connection sequence.

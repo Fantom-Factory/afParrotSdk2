@@ -168,7 +168,7 @@ const class NavOptionDemo {
 	const	Float		theta
 	** Roll in milli-degrees
 	const	Float		phi
-	** Yaw in milli-degrees
+	** Yaw in degrees, -180..180
 	const	Float		psi
 	** Altitude in metres
 	const	Float		altitude
