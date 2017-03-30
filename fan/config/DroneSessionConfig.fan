@@ -16,6 +16,7 @@ using concurrent::AtomicRef
 ** 
 const class DroneSessionConfig {
 	private const Log			log		:= Drone#.pod.log
+	private const Str			defId	:= "00000000"
 	internal const DroneConfig	_config
 	
 	** Internal because we need to keep track of the multi-config IDs 
@@ -137,6 +138,8 @@ const class DroneSessionConfig {
 	** 
 	** It is generally not advised to change this whilst video is already streaming.
 	** 
+	** Can only be set with a non-default session ID. Throws an Err if this is not the case.
+	** 
 	** Corresponds to the 'VIDEO:video_codec' configuration key.
 	VideoResolution videoResolution {
 		get {
@@ -149,7 +152,10 @@ const class DroneSessionConfig {
 			liveCodec := getConfig("VIDEO:video_codec", false)?.toInt
 			return (liveCodec == VideoResolution._720p.liveCodec) ? VideoResolution._720p : VideoResolution._360p
 		}
-		set { setConfig("VIDEO:video_codec", it.liveCodec.toStr) }		
+		set {
+			if (id == defId) throw Err("Can not change video codec with default session ID: $id")
+			setConfig("VIDEO:video_codec", it.liveCodec.toStr)
+		}		
 	}
 
 	** Maximum bitrate (kilobits per second) the device can decode. This is set as the upper bound for drone bitrate values.
@@ -163,10 +169,15 @@ const class DroneSessionConfig {
 	** 
 	** When using the bitrate control mode in 'VBC_MODE_DISABLED', the bitrate is fixed to this maximum bitrate.
 	**  
+	** Can only be set with a non-default session ID. Throws an Err if this is not the case.
+	** 
 	** Corresponds to the 'VIDEO:max_bitrate' configuration key.
 	Int videoMaxBitrate {
 		get { getConfig("VIDEO:max_bitrate").toInt }
-		set { setConfig("VIDEO:max_bitrate", it.toStr) }
+		set {
+			if (id == defId) throw Err("Can not change video bitrate with default session ID: $id")
+			setConfig("VIDEO:max_bitrate", it.toStr)
+		}
 	}
 
 	** Enables black & white oriented roundel detection on the given camera.

@@ -14,6 +14,7 @@
 ** 
 const class DroneAppConfig {
 	private const Log					log		:= Drone#.pod.log
+	private const Str					defId	:= "00000000"
 	private const DroneSessionConfig	config
 	
 	** Creates a wrapper around the given drone.
@@ -95,10 +96,15 @@ const class DroneAppConfig {
 	** Sets the bitrate of the video transmission (kilobits per second) when 'videoBitrateControlMode'
 	** is set to 'MANUAL'. Typical values range from 500 to 4000 kbps.
 	** 
+	** Can only be set with a non-default application ID. Throws an Err if this is not the case.
+	** 
 	** Corresponds to the 'VIDEO:bitrate' configuration key.
 	Int videoBitrate {
 		get { getConfig("VIDEO:bitrate").toInt }
-		set { setConfig("VIDEO:bitrate", it.toStr) }		
+		set {
+			if (id == defId) throw Err("Can not change video bitrate with default application ID: $id")
+			setConfig("VIDEO:bitrate", it.toStr)
+		}		
 	}
 	
 	** Enables the automatic bitrate control of the video stream. Enabling this configuration reduces 
@@ -108,10 +114,15 @@ const class DroneAppConfig {
 	**   1 = DYNAMIC  - Video bitrate varies between [250 - videoMaxBitrate] kbps
 	**   2 = MANUAL   - Video stream bitrate is fixed to videoBitrate
 	** 
+	** Can only be set with a non-default application ID. Throws an Err if this is not the case.
+	** 
 	** Corresponds to the 'VIDEO:bitrate_control_mode' configuration key.
 	Int videoBitrateControlMode {
 		get { getConfig("VIDEO:bitrate_control_mode", false)?.toInt ?: 0}
-		set { setConfig("VIDEO:bitrate_control_mode", it.toStr) }		
+		set {
+			if (id == defId) throw Err("Can not change video bitrate control with default application ID: $id")
+			setConfig("VIDEO:bitrate_control_mode", it.toStr)
+		}		
 	}
 
 	** The bitrate (kilobits per second) of the recording stream, both for USB and WiFi record.
