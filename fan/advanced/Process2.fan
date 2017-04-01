@@ -134,6 +134,11 @@ class Process2 {
 		}
 	}
 	
+	** A hacky way that doesn't involve catching errs.
+	Bool isRunning() {
+		_jProc != null
+	}
+
 	Bool isAlive() {
 		// hacky to use exception for flow control, but there
 		// doesn't seem to be any other way to check state

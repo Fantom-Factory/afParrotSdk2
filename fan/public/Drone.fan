@@ -224,7 +224,7 @@ const class Drone {
 		this.eventThread	= Synchronized(actorPool)
 		this.shutdownHook	= #onShutdown.func.bind([this])
 		
-		f(this)
+		f?.call(this)
 	}
 
 	** Sets up the socket connections to the drone. 
@@ -347,10 +347,10 @@ const class Drone {
 		oldCodec := configMap["VIDEO:video_codec"].toInt
 		oldHook	 := onVideoFrame
 
-		onVideoFrame = null
+//		onVideoFrame = null
 		config.sendConfig("VIDEO:video_codec", newCodec)
 		oldVideoCodecRef.val = oldCodec
-		onVideoFrame = oldHook
+//		onVideoFrame = oldHook
 	}
 	
 	** Stops the video recording.
@@ -364,6 +364,7 @@ const class Drone {
 		oldCodec := oldVideoCodecRef.val
 		if (oldCodec != null) {
 			config.sendConfig("VIDEO:video_codec", oldCodec.toStr)
+//			onVideoFrame = oldVideoCodecRef.val
 			oldVideoCodecRef.val = null
 		}
 	}
@@ -586,7 +587,6 @@ const class Drone {
 	private Bool combinedYawMode() {
 		configMap["CONTROL:control_level"].toInt.and(0x02) > 0
 	}
-	
 	
 	Void turnTo(Float angle, Float? accuracy := null) {
 		accuracy = accuracy ?: 0.1f
