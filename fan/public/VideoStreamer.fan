@@ -126,7 +126,7 @@ const class VideoStreamer {
 		if (outputFile.isDir)
 			throw ArgErr("Output file is a directory: ${outputFile}")
 
-		actorPool	:= options?.get("actorPool")	?: ActorPool()
+		actorPool	:= options?.get("actorPool")	?: ActorPool() { it.name = typeof.name }
 		ffmpegPath	:= options?.get("ffmpegPath")	?: (Env.cur.os == "win32" ? `ffmpeg.exe` : `ffmpeg`)
 		ffmpegArgs	:= options?.get("ffmpegArgs")	?: "-f h264 -i - -codec:v copy".split
 		quiet		:= options?.get("quiet")		?: false
@@ -243,15 +243,6 @@ const class VideoStreamer {
 	** was called.
 	** Closes files and halts stream processing.
 	Void detach() {
-		// revert the drone hooks
-		drone := (Drone) droneRef.val
-		if (attachedToRecordRef.val)
-			drone.onRecordFrame = oldVideoFrameHookRef.val
-		else
-			drone.onVideoFrame = oldVideoFrameHookRef.val
-		drone.onDisconnect = oldDisconnectHookRef.val
-		
-		// kill any stream processing
 		onDisconnect(false)
 	}
 	
@@ -264,10 +255,21 @@ const class VideoStreamer {
 	
 	private Void onDisconnect(Bool abnormal) {
 		if (!mutex.lock.actor.pool.isStopped)
-			mutex.withState |VideoStreamerImpl state| {
+			mutex.getState |VideoStreamerImpl state| {
 				state.onDisconnect(abnormal)
 			}
-		mutex.lock.actor.pool.stop
+
+		// revert the drone hooks
+		drone := (Drone) droneRef.val
+		if (attachedToRecordRef.val)
+			drone.onRecordFrame = oldVideoFrameHookRef.val
+		else
+			drone.onVideoFrame = oldVideoFrameHookRef.val
+		drone.onDisconnect = oldDisconnectHookRef.val
+
+		// only stop *our* ActorPools
+		if (mutex.lock.actor.pool.name == typeof.name)
+			mutex.lock.actor.pool.stop
 	}
 	
 	private Void onNewPngImage(Buf buf) {
@@ -343,7 +345,8 @@ internal class VideoStreamerToMp4File : VideoStreamerImpl {
 	}
 	
 	override Void onVideoFrame(Buf payload, PaveHeader pave) {
-		ffmpegProcess.stdIn.writeBuf(payload).flush
+		if (ffmpegProcess.isRunning)
+			ffmpegProcess.stdIn.writeBuf(payload).flush
 	}
 
 	override Void onDisconnect(Bool abnormal) {
