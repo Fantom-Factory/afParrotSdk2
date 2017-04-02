@@ -68,7 +68,7 @@ const class VideoStreamer {
 	** 
 	** To wrap the file in a more usable '.mp4' container, try the following:
 	** 
-	**   C:\> ffmpeg -f h264 -i droneStunts.h264 -codec:v copy droneStunts.mp4
+	**   C:\> ffmpeg -f h264 -i droneStunts.h264 -f mp4 -codec:v copy droneStunts.mp4
 	** 
 	** The input URI is given a unique numerical suffix to prevent file from being overwritten.
 	** Example, 'drone.h264' may become 'drone-001F.h264'. See the `file` field to acquire the
@@ -112,7 +112,7 @@ const class VideoStreamer {
 	**              Defaults to `ffmpeg.exe` on Windows, 'ffmpeg' otherwise.
 	** 
 	** ffmpegArgs : (Str[]) an array of arguments for FFmpeg.
-	**              Defaults to "-f h264 -i - -codec:v copy".split
+	**              Defaults to "-f h264 -i - -f mp4 -codec:v copy -movflags +faststart".split
 	** 
 	** quiet      : (Bool) if true, then FFmpeg console output is suppressed.
 	**              Defaults to false.
@@ -128,7 +128,7 @@ const class VideoStreamer {
 
 		actorPool	:= options?.get("actorPool")	?: ActorPool() { it.name = typeof.name }
 		ffmpegPath	:= options?.get("ffmpegPath")	?: (Env.cur.os == "win32" ? `ffmpeg.exe` : `ffmpeg`)
-		ffmpegArgs	:= options?.get("ffmpegArgs")	?: "-f h264 -i - -codec:v copy".split
+		ffmpegArgs	:= options?.get("ffmpegArgs")	?: "-f h264 -i - -f mp4 -codec:v copy -movflags +faststart".split
 		quiet		:= options?.get("quiet")		?: false
 		throttle	:= options?.get("throttle")		?: 200ms	// 5 times a second should be fine for console output
 		
