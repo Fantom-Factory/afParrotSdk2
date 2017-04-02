@@ -1,8 +1,8 @@
-#Parrot Drone SDK 2 v0.0.4
+#Parrot Drone SDK 2 v0.0.6
 ---
 
 [![Written in: Fantom](http://img.shields.io/badge/written%20in-Fantom-lightgray.svg)](http://fantom-lang.org/)
-[![pod: v0.0.4](http://img.shields.io/badge/pod-v0.0.4-yellow.svg)](http://www.fantomfactory.org/pods/afParrotSdk2)
+[![pod: v0.0.6](http://img.shields.io/badge/pod-v0.0.6-yellow.svg)](http://www.fantomfactory.org/pods/afParrotSdk2)
 ![Licence: ISC](http://img.shields.io/badge/licence-ISC-blue.svg)
 
 ## Overview
