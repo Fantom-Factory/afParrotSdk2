@@ -31,7 +31,6 @@ Quick Start
     class Example {
         Void main() {
             drone := Drone().connect
-            drone.clearEmergency
 
             // handle feedback events
             drone.onEmergency = |->| {
@@ -263,7 +262,7 @@ Note the frames are raw H.264 codec frames and may not immediately usable in the
 
 pre>
 syntax: fantom
-vs := VideoStreamer.toPngImages.attachTo(drone)
+vs := VideoStreamer.toPngImages.attachToLiveStream(drone)
 vs.onPngImage = |Bug pngBuf| {
     echo("Got new image of size ${pngBuf.size}")
 }

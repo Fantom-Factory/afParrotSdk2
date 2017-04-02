@@ -25,7 +25,7 @@ class VideoExample {
     Void main() {
         thisRef  := Unsafe(this)
         drone    := Drone().connect
-        streamer := VideoStreamer.toPngImages.attachTo(drone)
+        streamer := VideoStreamer.toPngImages.attachToLiveStream(drone)
         streamer.onPngImage = |Buf pngBuf| {
             Desktop.callAsync |->| {
                 thisRef.val->canvas->onPngImage(pngBuf)

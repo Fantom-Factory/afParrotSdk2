@@ -1,5 +1,6 @@
 [sys::Uri:sys::Str][
-	`/doc/pod.fandoc`           : "User Guide",
-	`/doc/navDataExample.fandoc`: "NavData Example",
-	`/doc/videoExample.fandoc`	: "Video Example"
+    `/doc/pod.fandoc`            : "User Guide",
+    `/doc/example-simple.fandoc` : "Simple Example",
+    `/doc/example-navData.fandoc`: "NavData Example",
+    `/doc/example-video.fandoc`  : "Video Example"
 ]

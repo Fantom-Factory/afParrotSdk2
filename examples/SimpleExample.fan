@@ -1,31 +1,28 @@
 //using afParrotSdk2
-using concurrent
+using concurrent::Actor
 
 class SimpleExample {
 	Void main() {
-		Drone#.pod.log.level = LogLevel.debug
-
 		drone := Drone().connect
 		drone.clearEmergency
+		drone.flatTrim
 
-		drone.config.session("afSquawk")
+		// set some outdoor configuration
+		drone.config.useOutdoorProfile = true
+		drone.config.useOutdoorShell = true
+
+		// record the action to an MP4 file
+		drone.config.session("Simple Example")
 		drone.config.session.videoCamera = VideoCamera.horizontal
 		drone.config.session.videoResolution = VideoResolution._720p
-		
-		streamer := VideoStreamer.toMp4File(`vid.mp4`).attachTo(drone)
-		Actor.sleep(5sec)
+		VideoStreamer.toMp4File(`simpleExample.mp4`).attachToLiveStream(drone)
 
-		
-//		drone.takeOff
-//		drone.animateFlight(FlightAnimation.vzDance)
+		// let's fly!!!
+		drone.takeOff
 		drone.animateFlight(FlightAnimation.flipBackward)		
 		Actor.sleep(2sec)
 		drone.land
 		
-		Actor.sleep(2sec)
-		streamer.detach
-
-		Actor.sleep(2sec)
 		drone.disconnect
 	}
 }
