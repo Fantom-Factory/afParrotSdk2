@@ -36,19 +36,19 @@ internal const class NavDataLoop {
 		blockAndLog(drone, timeout, |NavData? navData->Bool| {
 			state := navData?.demoData?.flightState
 			// stop taking off if we start landing -> landing takes precedence!
-			return state == FlightState.flying || state == FlightState.hovering || state == FlightState.transLanding
+			return state == FlightState.flying || state == FlightState.hovering || state == FlightState.transLanding || (navData?.flags?.emergencyLanding ?: false)
 		}, Cmd.makeTakeOff, "Drone took off", block, true, "Timed out waiting for drone to take off")
 	}
 	
 	static Void land(Drone drone, Bool block, Duration timeout) {
 		blockAndLog(drone, timeout, |NavData? navData->Bool| {
-			navData?.demoData?.flightState == FlightState.landed
+			navData?.demoData?.flightState == FlightState.landed || (navData?.flags?.emergencyLanding ?: false)
 		}, Cmd.makeLand, "Drone landed", block, true, "Timed out waiting for drone to land")
 	}
 	
 	static Void hover(Drone drone, Bool block, Duration timeout) {
 		blockAndLog(drone, timeout, |NavData? navData->Bool| {
-			navData?.demoData?.flightState == FlightState.hovering
+			navData?.demoData?.flightState == FlightState.hovering || (navData?.flags?.emergencyLanding ?: false)
 		}, Cmd.makeHover, "Drone hovering", block, true, "Timed out waiting for drone to hover")
 	}
 	
