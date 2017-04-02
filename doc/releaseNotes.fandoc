@@ -11,6 +11,7 @@ v0.0.6
  - Chg: Better initial drone connection sequence.
  - Chg: Renamed session config for selecting camera and changing resolution.
  - Chg: Un-NoDoc'ed the advanced 'Cmd' class and a few drone methods.
+ - Chg: More robust MP4 support.
  - Chg: Renamed a few other config settings.
  - Bug: Can now select bottom camera and change the video codec resolution.
 
