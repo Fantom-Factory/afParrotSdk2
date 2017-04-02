@@ -79,6 +79,7 @@ class Process2 {
 		builder.redirectErrorStream(mergeErr)
 		
 		_jProc 	= builder.start
+		// we're gonna read / write straight away so there should not be any need to buffer anything
 		_stdIn	= Interop.toFan(_jProc.getOutputStream, 0)
 		_stdOut	= Interop.toFan(_jProc.getInputStream,  0)
 		_stdErr	= Interop.toFan(_jProc.getErrorStream,  0)
@@ -121,6 +122,12 @@ class Process2 {
 	** Kill this process.  Returns this.
 	This kill() {
 		if (_jProc == null) throw Err("Process not running")
+		_stdIn.close
+		_jProc.getInputStream.close
+		
+		// fudge to let FFMEG notice the closed stream and tidy things up before we kill it 
+		Actor.sleep(0.1sec)
+
 		try {
 			_jProc.destroy
 			return this
