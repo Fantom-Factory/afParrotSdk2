@@ -295,7 +295,7 @@ const class Drone {
 	** Returns a read only map of the drone's raw configuration data, as read from the control 
 	** (TCP 5559) port.
 	** 
-	** All config data is cached, see [configRefresh()]`configRefresh` obtain fresh data from the
+	** All config data is cached, see [configRefresh()]`Drone.configRefresh` obtain fresh data from the
 	** drone.
 	Str:Str configMap() {
 		configMapRef.map
@@ -585,24 +585,6 @@ const class Drone {
 
 	private Bool combinedYawMode() {
 		configMap["CONTROL:control_level"].toInt.and(0x02) > 0
-	}
-	
-	Void turnTo(Float angle, Float? accuracy := null) {
-		accuracy = accuracy ?: 0.1f
-		angle = angle.minusInt(angle.toInt)
-		if (angle < 0f)
-			angle += 1f
-		if (accuracy < -1f || accuracy > 1f)
-			throw ArgErr("accuracy must be between -1 and 1 : ${accuracy}")
-		
-		mode := 1
-		if (combinedYawMode)
-			mode = mode.or(0x2)
-		if (absoluteMode)
-			mode = mode.or(0x4)
-		cmd := Cmd("PCMD_MAG", [mode, 0f, 0f, 0f, 0f, angle, accuracy])
-
-		cmdSender.send(cmd)
 	}
 	
 	** A combined move method encapsulating:

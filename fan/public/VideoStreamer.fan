@@ -37,20 +37,20 @@ const class VideoStreamer {
 
 	** The output file that the video is saved to.
 	** 
-	** Only available if this 'VideoSteamer' instance was initialised via [toRawFile()]`toRawFile` or 
-	** [toMp4File()]`toMp4File`. 
+	** Only available if this 'VideoSteamer' instance was initialised via [toRawFile()]`VideoStreamer.toRawFile` or 
+	** [toMp4File()]`VideoStreamer.toMp4File`. 
 	const File? file
 	
 	** Returns the latest PNG image from the video stream.
 	** 
-	** Only available if this 'VideoSteamer' instance was initialised via [toPngImages()]`toPngImages`. 
+	** Only available if this 'VideoSteamer' instance was initialised via [toPngImages()]`VideoStreamer.toPngImages`. 
 	Buf? pngImage() {
 		pngImageRef.val
 	}
 
 	** Event hook that's called when a new PNG image becomes available.
 	** 
-	** Only available if this 'VideoSteamer' instance was initialised via [toPngImages()]`toPngImages`. 
+	** Only available if this 'VideoSteamer' instance was initialised via [toPngImages()]`VideoStreamer.toPngImages`. 
 	** 
 	** Throws 'NotImmutableErr' if the function is not immutable.
 	** Note this hook is called from a different Actor / thread to the one that sets it. 
@@ -239,6 +239,7 @@ const class VideoStreamer {
 	** existing hooks. Meaning any hooks that were set previously, still get called.
 	** 
 	** Ensure you call 'Drone.startRecording()' before calling this.
+	@NoDoc
 	This attachToRecordStream(Drone drone) {
 		if (droneRef.val != null)
 			throw Err("Already attached to ${droneRef.val}")
