@@ -87,7 +87,7 @@ const class Cmd {
 	}
 	
 	** Makes a 'PCMD' or 'PCMD_MAG' cmd.
-	static Cmd makeMove(Float leftRightTilt, Float frontBackTilt, Float verticalSpeed, Float angularSpeed, Bool combinedYawMode, Bool absoluteMode, Float absAngle, Float absAccuracy) {
+	static Cmd makeMove(Float leftRightTilt, Float frontBackTilt, Float verticalSpeed, Float angularSpeed, Bool combinedYawMode, Bool absoluteMode, Float? absAngle, Float? absAccuracy) {
 		mode := 1
 		if (combinedYawMode)
 			mode = mode.or(0x2)
