@@ -53,7 +53,6 @@ Full API & fandocs are available on the [Eggbox](http://eggbox.fantomfactory.org
         class Example {
             Void main() {
                 drone := Drone().connect
-                drone.clearEmergencyFlag
         
                 // handle feedback events
                 drone.onEmergency = |->| {
@@ -234,7 +233,7 @@ By default the Fantom SDK puts the drone into *demo* mode whereby the drone send
 
 Switching to full mode resets the drone to sending out *ALL* option data, but this may be further configured with `navDataOptions`:
 
-    drone.config.navDataDemo = false
+    drone.config.hiResNavData = true
     drone.config.session.app("My App").navDataOptions = NavOption.demo.flag + NavOption.windSpeed.flag
 
 ## Video Streaming
@@ -244,7 +243,7 @@ Setting a listener on `Drone.onVideoFrame()` will instruct the drone to start st
 Note the frames are raw H.264 codec frames and may not immediately usable in their current format. Instead it is better to use the [VideoStreamer](http://eggbox.fantomfactory.org/pods/afParrotSdk2/api/VideoStreamer) utility class to either convert the video to a `.mp4` file, or create a stream of PNG images.
 
 ```
-vs := VideoStreamer.toPngImages.attachTo(drone)
+vs := VideoStreamer.toPngImages.attachToLiveStream(drone)
 vs.onPngImage = |Bug pngBuf| {
     echo("Got new image of size ${pngBuf.size}")
 }
@@ -253,6 +252,47 @@ vs.onPngImage = |Bug pngBuf| {
 Note that `VideoStreamer` requires [FFmpeg](https://ffmpeg.org/) so you should download (or compile) a version for your hardware. Installation isn't required, just place the `ffmpeg` executable in the current working directory.
 
 Note that PNG images are streamed at the same frame rate as the video, is not juttery, and is fine for piping / drawing to an FWT canvas.
+
+## Roundel Detection
+
+The AR Drone supports detecting certain machine-parsable images with its cameras. Only the cameras aren't that good so there's a limited range of luminance which provide acceptable results. Spotlights and reflections are also a serious problem. Due to this the Fantom SDK opted not to support the various detection options and instead focus on more positive and reliable attributes of the drone.
+
+That said, the *Black & White Oriented Roundel* (downloadable from the [downloads section](https://bitbucket.org/AlienFactory/afparrotsdk2/downloads/)) is usually detected without problems. To active detection, set [DroneSessionConfig.detectRoundel](http://eggbox.fantomfactory.org/pods/afParrotSdk2/api/DroneSessionConfig.detectRoundel) to the either the front or the ground camera, and enable the `visionDetect` NavData option:
+
+```
+drone.config.session.app.navDataOptions = NavOption.demo.flag + NavOption.visionDetect.flag
+drone.config.session.detectRoundel = VideoCamera.horizontal
+```
+
+The following can then be used to extract the roundel detection data:
+
+```
+data := (Str:Obj) drone.navData[NavOption.visionDetect]
+if (data["nbDetected"] > 0) {
+    // ... roundel detected ...
+    x := ((Int[])   data["xc"])[0]                // 0 - 1000
+    y := ((Int[])   data["yc"])[0]                // 0 - 1000
+    w := ((Int[])   data["width"])[0]             // 0 - 1000
+    h := ((Int[])   data["height"])[0]            // 0 - 1000
+    d := ((Int[])   data["dist"])[0]              // distance in cm
+    a := ((Float[]) data["orientationAngle"])[0]  // angle in degrees
+}
+```
+
+Note the `x`, `y`, `width`, and `height` co-ordinates are between 0 - 1000 regardless of the video resolution or the camera source. `(0, 0)` is the top-left hand corner.
+
+Detecting other tags and markers is still possible with the Fantom SDK, you just need to use the lower level configuration methods - such as:
+
+```
+drone.config.sendMultiConfig("DETECT:detect_type", 3)
+drone.config.sendMultiConfig("DETECT:detections_select_h", <flags>)
+```
+
+where `flags` may be a combination of upto 4 of:
+
+`Shell=1 | Roundel=2 | BlackRoundel=4 | Stripe=8 | Cap=16 | ShellV2=32 | TowerSide=64 | OrientedRoundel=128`
+
+The *Roundel* (looks like a bull's eye) is available from the [downloads section](https://bitbucket.org/AlienFactory/afparrotsdk2/downloads/) but I don't know what the other markers look like.
 
 ## References & Resources
 
