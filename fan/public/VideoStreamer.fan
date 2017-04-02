@@ -9,7 +9,7 @@ using afConcurrent::SynchronizedState
 ** Example usage:
 ** 
 **   syntax: fantom
-**   VideoStreamer.toMp4File(`droneStunts.mp4`).attachTo(drone)
+**   VideoStreamer.toMp4File(`droneStunts.mp4`).attachToLiveStream(drone)
 ** 
 ** Note some methods start and call out to an external [FFmpeg]`https://ffmpeg.org/` process for 
 ** video processing. Whilst this works for the limited functionality of these methods, this class 
@@ -17,13 +17,16 @@ using afConcurrent::SynchronizedState
 ** 
 ** For ease of use, just put 'ffmpeg' in the same directory as your program. 
 const class VideoStreamer {
+	// FIXME move all data to sync state to prevent race conditions
+	
 	private const SynchronizedState			mutex
 	private const AtomicRef					pngImageRef			 := AtomicRef(null)
 	private const AtomicRef					onPngImageRef		 := AtomicRef(null)
 	private const AtomicRef					droneRef		 	 := AtomicRef(null)
 	private const AtomicRef					oldVideoFrameHookRef := AtomicRef(null)
 	private const AtomicRef					oldDisconnectHookRef := AtomicRef(null)
-	private const AtomicBool				attachedToRecordRef	 := AtomicBool()
+	private const AtomicBool				attachedRef			 := AtomicBool()
+	private const AtomicBool				recordStreamRef	 	 := AtomicBool()
 	private const Synchronized?				pngEventThread
 
 	** The 'onVideoFrame()' listener for this streamer, should you wish to attach / call it yourself
@@ -61,7 +64,7 @@ const class VideoStreamer {
 	** Saves raw video frames to the given file. Example:
 	** 
 	**   syntax: fantom
-	**   VideoStreamer.toRawFile(`droneStunts.h264`).attachTo(drone)
+	**   VideoStreamer.toRawFile(`droneStunts.h264`).attachToLiveStream(drone)
 	** 
 	** Note the video consists of raw H.264 codec frames and is not readily readable by anything 
 	** (with the exception of VLC, try saving the file with a '.h264' extension.)
@@ -97,7 +100,7 @@ const class VideoStreamer {
 	** Saves the video stream as the given MP4 file. Example:
 	** 
 	**   syntax: fantom
-	**   VideoStreamer.toMp4File(`droneStunts.mp4`).attachTo(drone)
+	**   VideoStreamer.toMp4File(`droneStunts.mp4`).attachToLiveStream(drone)
 	** 
 	** Note this method starts an external FFmpeg process and pipes the raw video frames to it.
 	** FFmpeg then wraps the video in an MP4 container and writes the file.
@@ -144,7 +147,7 @@ const class VideoStreamer {
 	** Converts the video stream into a stream of PNG images. Example:
 	** 
 	**   syntax: fantom
-	**   vs := VideoStreamer.toPngImages.attachTo(drone)
+	**   vs := VideoStreamer.toPngImages.attachToLiveStream(drone)
 	**   vs.onPngImage = |Bug pngBuf| {
 	**       echo("Got new image of size ${pngBuf.size}")
 	**   }
@@ -205,26 +208,16 @@ const class VideoStreamer {
 	** 
 	** This methods sets new 'onVideoFrame' and 'onDisconnect' hooks on the drone, but wraps any 
 	** existing hooks. Meaning any hooks that were set previously, still get called.
-	** 
-	** If 'attachToRecordStream' is true then this method sets 'onRecordFrame' and not ''onVideoFrame'.
-	This attachTo(Drone drone, Bool attachToRecordStream := false) {
+	This attachToLiveStream(Drone drone) {
 		if (droneRef.val != null)
 			throw Err("Already attached to ${droneRef.val}")
 		droneRef.val = drone
 
-		attachedToRecordRef.val = attachToRecordStream
-		if (attachToRecordStream) {
-			oldVideoFrameHookRef.val = drone.onRecordFrame
-			drone.onRecordFrame = |Buf payload, PaveHeader pave, Drone dron| {
-				onVideoFrameListener(payload, pave, dron)
-				((Func?) oldVideoFrameHookRef.val)?.call(payload, pave, dron)
-			}
-		} else {
-			oldVideoFrameHookRef.val = drone.onVideoFrame
-			drone.onVideoFrame = |Buf payload, PaveHeader pave, Drone dron| {
-				onVideoFrameListener(payload, pave, dron)
-				((Func?) oldVideoFrameHookRef.val)?.call(payload, pave, dron)
-			}
+		recordStreamRef.val = false
+		oldVideoFrameHookRef.val = drone.onVideoFrame
+		drone.onVideoFrame = |Buf payload, PaveHeader pave, Drone dron| {
+			onVideoFrameListener(payload, pave, dron)
+			((Func?) oldVideoFrameHookRef.val)?.call(payload, pave, dron)
 		}
 		
 		oldDisconnectHookRef.val = drone.onDisconnect
@@ -236,6 +229,38 @@ const class VideoStreamer {
 		// fire it up! Sync so we can receive any ctor errors
 		mutex.sync |->| { }
 
+		attachedRef.val = true
+		return this
+	}
+	
+	** Attaches this instance to the given drone and starts stream processing.
+	** 
+	** This methods sets new 'onRecordFrame' and 'onDisconnect' hooks on the drone, but wraps any 
+	** existing hooks. Meaning any hooks that were set previously, still get called.
+	** 
+	** Ensure you call 'Drone.startRecording()' before calling this.
+	This attachToRecordStream(Drone drone) {
+		if (droneRef.val != null)
+			throw Err("Already attached to ${droneRef.val}")
+		droneRef.val = drone
+
+		recordStreamRef.val = true
+		oldVideoFrameHookRef.val = drone.onRecordFrame
+		drone.onRecordFrame = |Buf payload, PaveHeader pave, Drone dron| {
+			onVideoFrameListener(payload, pave, dron)
+			((Func?) oldVideoFrameHookRef.val)?.call(payload, pave, dron)
+		}
+		
+		oldDisconnectHookRef.val = drone.onDisconnect
+		drone.onDisconnect = |Bool abnormal, Drone dron| {
+			onDisconnectListener(abnormal, dron)
+			((Func?) oldDisconnectHookRef.val)?.call(abnormal, dron)
+		}
+
+		// fire it up! Sync so we can receive any ctor errors
+		mutex.sync |->| { }
+
+		attachedRef.val = true
 		return this
 	}
 	
@@ -254,6 +279,8 @@ const class VideoStreamer {
 	}
 	
 	private Void onDisconnect(Bool abnormal) {
+		if (attachedRef.val.not) return
+		
 		if (!mutex.lock.actor.pool.isStopped)
 			mutex.getState |VideoStreamerImpl state| {
 				state.onDisconnect(abnormal)
@@ -261,7 +288,7 @@ const class VideoStreamer {
 
 		// revert the drone hooks
 		drone := (Drone) droneRef.val
-		if (attachedToRecordRef.val)
+		if (recordStreamRef.val)
 			drone.onRecordFrame = oldVideoFrameHookRef.val
 		else
 			drone.onVideoFrame = oldVideoFrameHookRef.val

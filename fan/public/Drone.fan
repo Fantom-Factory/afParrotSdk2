@@ -326,7 +326,7 @@ const class Drone {
 	** syntax: fantom
 	** drone.config.session("Video Test")
 	** drone.startRecording
-	** vs := VideoStreamer.toMp4File(`vid.mp4`).attachTo(drone)
+	** vs := VideoStreamer.toMp4File(`vid.mp4`).attachToRecordStream(drone)
 	** 
 	** // ... wait for bit ...
 	** 
