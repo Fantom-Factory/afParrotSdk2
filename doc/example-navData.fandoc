@@ -1,7 +1,4 @@
 
-Example - NavData
-*****************
-
 The following example shows how to use the drone's event hooks to display nav data in a GUI window.
 
 ![Screenshot of NavData example]`example-navData.png`
