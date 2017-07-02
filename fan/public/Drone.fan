@@ -245,7 +245,7 @@ const class Drone {
 
 		cmdSender.connect
 		navData := navDataReader.connect
-		
+
 		if (navData == null)
 			throw IOErr("Drone did not respond to NavData initialisation")
 		
@@ -584,7 +584,8 @@ const class Drone {
 	}
 
 	private Bool combinedYawMode() {
-		configMap["CONTROL:control_level"].toInt.and(0x02) > 0
+		if (!configMap.containsKey("CONTROL:control_level")) return false
+		return configMap["CONTROL:control_level"].toInt.and(0x02) > 0
 	}
 	
 	** A combined move method encapsulating:

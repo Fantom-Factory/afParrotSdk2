@@ -432,14 +432,6 @@ internal class VideoStreamerToPngEvents : VideoStreamerImpl {
 		ffmpegProcess.kill
 	}
 	
-	
-	static Void main(Str[] args) {
-		in := `file:/C:/Projects/Fantom-Factory/FormBean/doc/icon.png`.toFile.in
-		out := readPng(in)
-		`icon.png-bad`.toFile.out.writeBuf(out).close
-		in.close
-	}
-	
 	** Luckily, the PNG format is easy to read and easy to find the end of and image.
 	static Buf? readPng(InStream in) {
 		pngMagicNum := 0x89_50_4E_47_0D_0A_1A_0A
