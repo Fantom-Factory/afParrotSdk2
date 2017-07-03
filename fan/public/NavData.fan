@@ -23,7 +23,11 @@ const class NavData {
 
 	** (Advanced)
 	@NoDoc
-	new make(|This| f) { f(this) }
+	new make(|This| f) {
+		f(this)
+		if (_lazyOpts == null)
+			_lazyOpts = NavOption:LazyNavOptData[:]
+	}
 	
 	** Return the 'NavOption.demo' data (if any) from the nav options.
 	** Convenience for:
@@ -181,12 +185,19 @@ const class NavOptionDemo {
 	** Streamed frame index. Not used -> To integrate in video stage.
 	const	Int			frameIndex
 	** (Deprecated) Camera parameters computed by detection
-	const	Str:Obj		detection
+	const	Str:Obj		cameraDetectionParams
 	** (Deprecated) Camera parameters computed by drone
-	const	Str:Obj		drone
+	const	Str:Obj		cameraDroneParams
 
 	@NoDoc
-	new make(|This| f) { f(this) }
+	new make(|This| f) {
+		f(this)
+		// don't force test data to create deprecated params
+		if (cameraDetectionParams == null)
+			cameraDetectionParams = Str:Obj[:]
+		if (cameraDroneParams == null)
+			cameraDroneParams = Str:Obj[:]
+	}
 
 	** Dumps all fields to debug string.
 	Str dump(Bool dumpToStdOut := true) {
