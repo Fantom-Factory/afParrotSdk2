@@ -74,7 +74,7 @@ const class VideoStreamer {
 	**   C:\> ffmpeg -f h264 -i droneStunts.h264 -f mp4 -codec:v copy droneStunts.mp4
 	** 
 	** The input URI is given a unique numerical suffix to prevent file from being overwritten.
-	** Example, 'drone.h264' may become 'drone-001F.h264'. See the `file` field to acquire the
+	** Example, 'drone.h264' may become 'drone-001F.h264'. See the [file]`#file` field to acquire the
 	** actual file created.
 	** 
 	** Available options:
@@ -301,6 +301,7 @@ const class VideoStreamer {
 	}
 	
 	private Void onNewPngImage(Buf buf) {
+		pngImageRef.val = buf
 		pngEventThread.async |->| {
 			callSafe(onPngImage, [buf])
 		}
@@ -369,7 +370,7 @@ internal class VideoStreamerToMp4File : VideoStreamerImpl {
 		ffmpegProcess.pipeFromStdOut(quiet ? null : Env.cur.out, throttle)
 		ffmpegProcess.pipeFromStdErr(quiet ? null : Env.cur.err, throttle)
 		
-		log.info("Streaming video to ${output.normalize.osPath}")		
+		log.info("Streaming video to ${output.normalize.osPath}")
 	}
 	
 	override Void onVideoFrame(Buf payload, PaveHeader pave) {
@@ -421,7 +422,7 @@ internal class VideoStreamerToPngEvents : VideoStreamerImpl {
 				}
 			}
 		}
-		return this
+		log.info("Streaming video to PNG images")
 	}
 	
 	override Void onVideoFrame(Buf payload, PaveHeader pave) {
@@ -432,7 +433,7 @@ internal class VideoStreamerToPngEvents : VideoStreamerImpl {
 		ffmpegProcess.kill
 	}
 	
-	** Luckily, the PNG format is easy to read and easy to find the end of and image.
+	** Luckily, the PNG format is easy to read and easy to find the end of an image.
 	static Buf? readPng(InStream in) {
 		pngMagicNum := 0x89_50_4E_47_0D_0A_1A_0A
 		try {

@@ -23,6 +23,7 @@ class VideoExample {
     Void main() {
         thisRef  := Unsafe(this)
         drone    := Drone().connect
+        drone.config.session("demo")
         drone.config.session.videoCamera     = VideoCamera.horizontal
         drone.config.session.videoResolution = VideoResolution._360p
 

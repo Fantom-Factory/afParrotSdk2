@@ -1,6 +1,10 @@
 Release Notes
 *************
 
+v0.0.8
+======
+ - Bug: 'VideoStreamer.pngImage' wasn't being updated.
+
 v0.0.6
 ======
  - New: Example programs for viewing 'NavData' and processing video data.
