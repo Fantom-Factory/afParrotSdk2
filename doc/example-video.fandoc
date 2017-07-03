@@ -23,6 +23,9 @@ class VideoExample {
     Void main() {
         thisRef  := Unsafe(this)
         drone    := Drone().connect
+        drone.config.session.videoCamera     = VideoCamera.horizontal
+        drone.config.session.videoResolution = VideoResolution._360p
+
         streamer := VideoStreamer.toPngImages.attachToLiveStream(drone)
         streamer.onPngImage = |Buf pngBuf| {
             Desktop.callAsync |->| {

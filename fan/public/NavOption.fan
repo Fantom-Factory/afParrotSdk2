@@ -66,8 +66,8 @@ enum class NavOption {
 				"tagIndex"			: uint32(in)
 			]
 			detection["camera"]->set("type", uint32(in))
-			it.detection			= detection
-			it.drone				= Str:Obj[
+			it.cameraDetectionParams= detection
+			it.cameraDroneParams	= Str:Obj[
 				"camera"			: Str:Obj[
 					"rotation"		: matrix3x3(in),
 					"translation"	: vector3x1(in)
