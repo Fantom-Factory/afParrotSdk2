@@ -1113,7 +1113,7 @@ enum class LedAnimation {
 
 ** Pre-configured flight paths.
 enum class FlightAnimation {
-	phiM30Deg(1sec), phi30Deg(1sec), thetaM30Deg(1sec), theta30Deg(1sec), theta20degYaw200Deg(1sec), theta20degYawM200Deg(1sec), turnaround(5sec), turnaroundGodown(5sec), yawShake(2sec), yawDance(5sec), phiDance(5sec), thetaDance(5sec), vzDance(5sec), wave(5sec), phiThetaMixed(5sec), doublePhiThetaMixed(5sec), flipForward(15ms), flipBackward(15ms), flipLeft(15ms), flipRight(15ms);
+	phiM30Deg(1sec), phi30Deg(1sec), thetaM30Deg(1sec), theta30Deg(1sec), theta20degYaw200Deg(1sec), theta20degYawM200Deg(1sec), turnaround(5sec), turnaroundGoDown(5sec), yawShake(2sec), yawDance(5sec), phiDance(5sec), thetaDance(5sec), vzDance(5sec), wave(5sec), phiThetaMixed(5sec), doublePhiThetaMixed(5sec), flipForward(15ms), flipBackward(15ms), flipLeft(15ms), flipRight(15ms);
 
 	** How long the manoeuvre should take.
 	const Duration defaultDuration
