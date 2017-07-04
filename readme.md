@@ -203,7 +203,7 @@ Raw drone configuration may be inspected with:
 
     drone.configMap()
 
-Reading config from the drone takes a number of milliseconds, so the config is cached. Pass in `true` to force a re-read of fresh config from the drone.
+Reading config from the drone takes a number of milliseconds, so the config is cached. Call `configRefresh()` to force a re-read of fresh config from the drone.
 
 New raw config may be set by sending configuration commands. Do so with:
 
