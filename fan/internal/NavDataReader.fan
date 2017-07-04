@@ -30,7 +30,7 @@ internal const class NavDataReader {
 	
 	NavData? connect() {
 		// call synchronized so we know when we've connected
-		mutex.getState |NavDataReaderImpl reader->NavData?| {
+		mutex.sync |NavDataReaderImpl reader->NavData?| {
 			reader.connect
 			
 			// check we have data coming through before we enter the loop
@@ -43,7 +43,7 @@ internal const class NavDataReader {
 	}
 	
 	private Void readNavData() {
-		mutex.withState |NavDataReaderImpl reader| {
+		mutex.async |NavDataReaderImpl reader| {
 			doReadNavData(reader)
 			if (reader.connected && !actorPool.isStopped)
 				readNavData
@@ -63,7 +63,7 @@ internal const class NavDataReader {
 	}
 	
 	Void disconnect() {
-		mutex.getState |NavDataReaderImpl reader| {
+		mutex.sync |NavDataReaderImpl reader| {
 			reader.disconnect
 		}
 	}
