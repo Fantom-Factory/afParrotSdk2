@@ -274,7 +274,7 @@ const class VideoStreamer {
 	
 	private Void onVideoFrame(Buf payload, PaveHeader pave) {
 		if (!mutex.lock.actor.pool.isStopped)
-			mutex.withState |VideoStreamerImpl state| {
+			mutex.async |VideoStreamerImpl state| {
 				state.onVideoFrame(payload, pave)
 			}
 	}
@@ -283,7 +283,7 @@ const class VideoStreamer {
 		if (attachedRef.val.not) return
 		
 		if (!mutex.lock.actor.pool.isStopped)
-			mutex.getState |VideoStreamerImpl state| {
+			mutex.sync |VideoStreamerImpl state| {
 				state.onDisconnect(abnormal)
 			}
 

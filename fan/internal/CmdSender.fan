@@ -18,21 +18,21 @@ internal const class CmdSender {
 	Void connect() {
 		// call synchronized so we know we've connected
 		if (!actorPool.isStopped)
-			mutex.getState |CmdSenderImpl sender| {
+			mutex.sync |CmdSenderImpl sender| {
 				sender.connect
 			}
 	}
 	
 	Void send(Cmd cmd, Cmd? cmd2 := null) {
 		if (!actorPool.isStopped)
-			mutex.withState |CmdSenderImpl sender| {
+			mutex.async |CmdSenderImpl sender| {
 				sender.send(cmd, cmd2)
 			}
 	}
 	
 	Void disconnect() {
 		if (!actorPool.isStopped)
-			mutex.getState |CmdSenderImpl sender| {
+			mutex.sync |CmdSenderImpl sender| {
 				sender.disconnect
 			}
 	}	

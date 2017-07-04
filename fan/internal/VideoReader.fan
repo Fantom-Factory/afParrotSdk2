@@ -34,7 +34,7 @@ internal const class VideoReader {
 	}
 	
 	Void connect() {
-		mutex.getState |VideoReaderImpl reader| {
+		mutex.sync |VideoReaderImpl reader| {
 			reader.connect
 			
 			if (reader.isConnected && !actorPool.isStopped)
@@ -43,14 +43,14 @@ internal const class VideoReader {
 	}
 	
 	Bool isConnected() {
-		mutex.getState |VideoReaderImpl reader->Bool| {
+		mutex.sync |VideoReaderImpl reader->Bool| {
 			reader.isConnected
 		}
 	}
 
 	Void disconnect() {
 		if (!mutex.lock.actor.pool.isStopped)
-			try mutex.getState |VideoReaderImpl reader| {
+			try mutex.sync |VideoReaderImpl reader| {
 				reader.disconnect
 			}
 			catch { /* meh */ }
@@ -60,7 +60,7 @@ internal const class VideoReader {
 	}
 
 	private Void readVidData() {
-		mutex.withState |VideoReaderImpl reader| {
+		mutex.async |VideoReaderImpl reader| {
 			doReadVidData(reader)
 			if (reader.isConnected && !actorPool.isStopped)
 				readVidData
