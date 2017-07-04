@@ -1,8 +1,8 @@
-#Parrot Drone SDK 2 v0.0.6
+#Parrot Drone SDK 2 v0.0.8
 ---
 
 [![Written in: Fantom](http://img.shields.io/badge/written%20in-Fantom-lightgray.svg)](http://fantom-lang.org/)
-[![pod: v0.0.6](http://img.shields.io/badge/pod-v0.0.6-yellow.svg)](http://www.fantomfactory.org/pods/afParrotSdk2)
+[![pod: v0.0.8](http://img.shields.io/badge/pod-v0.0.8-yellow.svg)](http://www.fantomfactory.org/pods/afParrotSdk2)
 ![Licence: ISC](http://img.shields.io/badge/licence-ISC-blue.svg)
 
 ## Overview
@@ -252,6 +252,8 @@ vs.onPngImage = |Bug pngBuf| {
 Note that `VideoStreamer` requires [FFmpeg](https://ffmpeg.org/) so you should download (or compile) a version for your hardware. Installation isn't required, just place the `ffmpeg` executable in the current working directory.
 
 Note that PNG images are streamed at the same frame rate as the video, is not juttery, and is fine for piping / drawing to an FWT canvas.
+
+Also note that Parrot SDK 2 is known to work with FFMEG 3.3 "Hilbert".
 
 ## Roundel Detection
 

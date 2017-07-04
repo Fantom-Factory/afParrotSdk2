@@ -5,7 +5,7 @@ class Build : BuildPod {
 	new make() {
 		podName = "afParrotSdk2"
 		summary = "An SDK for remotely piloting the Parrot AR Drone 2.0 quadcopter"
-		version = Version("0.0.8")
+		version = Version("0.0.9")
 
 		meta = [
 			"pod.dis"			: "Parrot Drone SDK 2",
