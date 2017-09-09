@@ -270,7 +270,7 @@ const class Drone {
 			log.warn("Could not FTP version.txt from drone\n  ${err.msg}")
 
 		// grab some config
-		configMapRef.map = controlReader.read
+		configMapRef.val = controlReader.read
 
 		Env.cur.addShutdownHook(shutdownHook)
 
@@ -298,13 +298,13 @@ const class Drone {
 	** All config data is cached, see [configRefresh()]`Drone.configRefresh` obtain fresh data from the
 	** drone.
 	Str:Str configMap() {
-		configMapRef.map
+		configMapRef.val
 	}
 
 	** Reloads the 'configMap' with fresh data from the drone. 
 	Void configRefresh() {
 		if (isConnected)
-			configMapRef.map = controlReader.read
+			configMapRef.val = controlReader.read
 	}
 	
 	** Returns config for the drone. Note all data is backed by the raw 'configMap'.
