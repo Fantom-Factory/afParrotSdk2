@@ -17,7 +17,7 @@ class Build : BuildPod {
 			"sys          1.0.69 - 1.0",
 			"inet         1.0.69 - 1.0",
 			"concurrent   1.0.69 - 1.0",
-			"afConcurrent 1.0.18 - 1.0",
+			"afConcurrent 1.0.20 - 1.0",
 			
 			// ---- libs for examples ----
 			"gfx          1.0.69 - 1.0",
